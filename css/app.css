@@ -136,7 +136,7 @@ select,button{font:inherit;font-size:15px;min-height:40px;border-radius:8px}
 .steps li span:last-child{margin-left:auto;font:500 12px "IBM Plex Mono",monospace;color:var(--mut)}
 .reward{font:500 13px "IBM Plex Mono",monospace;color:var(--mut);display:inline-flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 .netfig{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px;margin:18px 0}
-.netfig svg{display:block;width:100%;height:auto;max-height:340px}
+.netfig svg:not(.ic){display:block;width:100%;height:auto;max-height:340px}
 .ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 2px}
 .ctrl select{background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:0 8px}
 .status{min-height:44px;padding:8px 10px;border-radius:8px;background:var(--soft);font-size:14px}
