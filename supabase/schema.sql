@@ -66,6 +66,13 @@ drop policy if exists "progreso: instructor lee todo" on public.progress;
 create policy "progreso: instructor lee todo" on public.progress for select to authenticated using (public.is_admin());
 drop policy if exists "feedback: instructor lee" on public.feedback;
 create policy "feedback: instructor lee" on public.feedback for select to authenticated using (public.is_admin());
+-- Rellena nombre y correo de los alumnos que ya existían
+update public.progress p
+   set name = coalesce(nullif(p.name,''), u.raw_user_meta_data->>'name'),
+       email = coalesce(nullif(p.email,''), u.email)
+  from auth.users u
+ where u.id = p.user_id and (p.name is null or p.name = '' or p.email is null or p.email = '');
+
 -- Tu cuenta como instructor (agrega más correos separados por coma si hay otros instructores):
 insert into public.admins (user_id)
   select id from auth.users where lower(email) in ('noonaameed@gmail.com')
