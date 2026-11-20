@@ -57,11 +57,13 @@ create table if not exists public.admins (
 alter table public.admins enable row level security;
 drop policy if exists "admins: ver el propio" on public.admins;
 create policy "admins: ver el propio" on public.admins for select to authenticated using (user_id = auth.uid());
+drop policy if exists "admins: instructores ven todos" on public.admins;
 create or replace function public.is_admin() returns boolean
   language sql stable security definer set search_path = public
   as $$ select exists (select 1 from public.admins where user_id = auth.uid()) $$;
 revoke all on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
+create policy "admins: instructores ven todos" on public.admins for select to authenticated using (public.is_admin());
 drop policy if exists "progreso: instructor lee todo" on public.progress;
 create policy "progreso: instructor lee todo" on public.progress for select to authenticated using (public.is_admin());
 drop policy if exists "feedback: instructor lee" on public.feedback;
