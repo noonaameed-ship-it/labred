@@ -149,7 +149,7 @@ const GLYPH={'l0-1':'pc','l0-2':'sw','l0-3':'vlan','x0':'cert','lab1':'pair','x1
 
 /* Certificaciones de zona: preguntas al azar del banco, opciones barajadas, con tiempo. Se aprueba con 90%. */
 const EXAMS={
-x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:20,min:20,pool:[
+x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:30,min:30,pool:[
  {q:'¿Qué identifica una dirección MAC?',o:['Una tarjeta o interfaz de red (NIC)','Una red completa','Un usuario','Un sitio web'],a:0,topic:'l0-1'},
  {q:'¿Cuántos bits tiene una dirección MAC?',o:['48','32','64','128'],a:0,topic:'l0-1'},
  {q:'¿Qué indica el OUI de una MAC?',o:['El fabricante de la tarjeta','La VLAN del puerto','La IP del equipo','El número de puerto'],a:0,topic:'l0-1'},
@@ -182,7 +182,7 @@ x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:20,min:20,pool:[
  {q:'¿Para qué usa una empresa varias VLANs?',o:['Para separar PCs, teléfonos, cámaras e invitados en redes distintas','Para que el internet sea más rápido','Para no tener que usar cables','Para cambiar las MAC'],a:0,topic:'l0-3'},
  {q:'Cuando un frame sale del trunk hacia la PC destino, ¿qué pasa con el tag 802.1Q?',o:['El switch se lo quita antes de entregarlo por el access port','Se queda puesto','Se cambia por otro','Se duplica'],a:0,topic:'l0-3'}
 ]},
-x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,lab:true,labMin:20,pool:[
+x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:30,min:30,lab:true,labMin:20,pool:[
  {q:'Cisco IOS: ¿qué par de comandos deja Gi0/1 como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set interfaces ge-0/0/1 vlan 10','switchport trunk vlan 10'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando pone una interfaz como access en la VLAN 10?',o:['vlan access 10','switchport access vlan 10','set vlan members 10','access vlan 10 enable'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando permite la VLAN 10 en un trunk?',o:['vlan trunk allowed 10','switchport trunk allowed vlan 10','set trunk 10','trunk vlan 10 allow'],a:0,topic:'lab1'},
@@ -203,5 +203,28 @@ x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,lab:tr
  {q:'Cisco IOS: ¿qué comando muestra las VLANs y qué puertos de acceso tiene cada una?',o:['show vlan brief','show interfaces trunk','show mac','show ip route'],a:0,topic:'lab1'},
  {q:'Junos: antes de hacer commit, ¿cómo ves qué vas a cambiar?',o:['show | compare','show changes','diff config','commit check all'],a:0,topic:'lab1'},
  {q:'En SW1 el enlace entre switches es trunk, pero en SW2 ese mismo puerto quedó como access en la VLAN 1. ¿Qué pasa con la VLAN 10?',o:['No cruza: los dos lados deben ser trunk y permitir la VLAN 10','Cruza normal','Se convierte en VLAN 1 y funciona igual','El switch lo corrige solo'],a:0,topic:'lab1'},
- {q:'Junos: ¿qué dos líneas convierten ge-0/0/23 en trunk que lleva VENTAS?',o:['interface-mode trunk y vlan members VENTAS','interface-mode access y vlan members all','port-mode trunk y native VENTAS','set trunk VENTAS'],a:0,topic:'lab1'}
+ {q:'Junos: ¿qué dos líneas convierten ge-0/0/23 en trunk que lleva VENTAS?',o:['interface-mode trunk y vlan members VENTAS','interface-mode access y vlan members all','port-mode trunk y native VENTAS','set trunk VENTAS'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿cómo entras a configurar el puerto GigabitEthernet0/1?',o:['interface GigabitEthernet0/1 (o int g0/1)','port 0/1','set interface 0/1','edit g0/1'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: estás en (config-if)#. ¿Qué comando te regresa directo a SW1#?',o:['end','exit exit exit','commit','top'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿cómo le pones el nombre VENTAS a la VLAN 10?',o:['vlan 10 y luego name VENTAS','set vlans VENTAS vlan-id 10','vlan name 10 VENTAS','name vlan 10 VENTAS'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: el trunk debe llevar solo la VLAN 10. ¿Qué comando usas en la interfaz?',o:['switchport trunk allowed vlan 10','switchport access vlan 10','vlan trunk allowed 10','switchport trunk native vlan 10'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: el trunk ya permite la VLAN 10 y quieres agregar la 20 sin borrar la 10. ¿Qué usas?',o:['switchport trunk allowed vlan add 20','switchport trunk allowed vlan 20','switchport trunk vlan 20 only','vlan add 20'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿cómo enciendes una interfaz que alguien apagó?',o:['no shutdown','shutdown','enable interface','commit'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿cómo creas la VLAN 10?',o:['vlan 10 (en configure terminal)','set vlans 10','create vlan 10','vlan database 10'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿cómo entras a configurar el puerto 24?',o:['interface 1/1/24','interface ge-0/0/23','int g0/24','port 24'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿cómo guardas la configuración?',o:['write memory','commit','save config','copy run start all'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿qué comando muestra las VLANs y sus interfaces?',o:['show vlan','show vlans brief','run show vlans','display vlan'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: ¿cómo entras al modo de configuración?',o:['configure','enable','configure terminal','set config'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: hiciste cambios con set y quieres descartarlos sin aplicarlos. ¿Qué usas?',o:['rollback','commit','delete all','exit'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: ¿qué comando revisa la configuración sin aplicarla?',o:['commit check','commit','show | compare apply','test config'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: en el lab, ¿en qué unidad de la interfaz se configura ethernet-switching?',o:['unit 0','unit 1','unit 10','No lleva unidad'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: en run show vlans ves ge-0/0/1.0*. ¿Qué significa el asterisco?',o:['Que la interfaz está activa','Que tiene un error','Que es un trunk','Que no tiene VLAN'],a:0,topic:'lab1'},
+ {q:'El puerto de PC-A sigue en la VLAN 1 y el de PC-B está en la VLAN 10. ¿Se hacen ping?',o:['No: están en VLANs distintas; hay que poner el puerto de PC-A en la VLAN 10','Sí, porque comparten switch','Sí, si el trunk está bien','Solo con VLAN nativa'],a:0,topic:'lab1'},
+ {q:'En SW1 la VLAN 10 se llama VENTAS y en SW2 se llama Ventas2, pero las dos son la VLAN 10. ¿Funciona?',o:['Sí: entre switches lo que cuenta es el número de VLAN (VID), no el nombre','No, los nombres deben ser idénticos','Solo en Cisco','Solo si la nativa es 10'],a:0,topic:'lab1'},
+ {q:'La VLAN 10 existe en SW1 pero no en SW2. ¿Qué pasa con los frames de la VLAN 10 que llegan a SW2?',o:['SW2 los descarta: hay que crear la VLAN 10 también en SW2','SW2 la crea solo','Pasan a la VLAN 1','Pasan normal'],a:0,topic:'lab1'},
+ {q:'¿Por qué en el lab PC-A tiene la IP 192.168.10.11?',o:['Porque cada VLAN suele tener su propia red IP: la VLAN 10 usa 192.168.10.0/24','Porque lo exige Cisco','Porque la MAC termina en 11','Es al azar'],a:0,topic:'lab1'},
+ {q:'¿Por qué en el lab el puerto de la PC se configura como access y no como trunk?',o:['Porque la PC solo necesita una VLAN y manda frames sin tag','Porque los trunks no existen en Aruba','Porque es más rápido','Porque la PC pone el tag'],a:0,topic:'lab1'}
 ]}};
+
+/* El banco de la CERT-0 también incluye las preguntas de las lecciones (sin repetir). */
+(()=>{const seen=new Set(EXAMS.x0.pool.map(q=>q.q.toLowerCase()));for(const L of Object.values(LES)){if(L.lv!==0)continue;for(const q of L.quiz){if(seen.has(q.q.toLowerCase()))continue;seen.add(q.q.toLowerCase());EXAMS.x0.pool.push({q:q.q,o:q.o,a:q.a,topic:L.id})}}})();
