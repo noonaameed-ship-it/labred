@@ -336,7 +336,7 @@ function renderEntrar(){
    if(r.error){msg.textContent=authErr(r.error);return}if(!r.data.session){msg.textContent='Te mandamos un correo para confirmar tu cuenta. Ábrelo y después entra aquí.'}}
   else{bt.disabled=true;bt.textContent='Entrando…';const r=await sb.auth.signInWithPassword({email:em,password:pw});bt.disabled=false;bt.textContent='Entrar';if(r.error)msg.textContent=authErr(r.error)}});
 }
-function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos.';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Primero confirma tu correo con el enlace que te mandamos.';if(m.includes('rate'))return'Demasiados intentos. Espera unos minutos.';return'No se pudo: '+(e.message||'error desconocido')}
+function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos.';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Primero confirma tu correo con el enlace que te mandamos.';if(m.includes('signups')&&m.includes('disabled'))return'El registro de cuentas está apagado. Pídele al administrador que lo active en Supabase.';if(m.includes('rate'))return'Demasiados intentos. Espera unos minutos.';return'No se pudo: '+(e.message||'error desconocido')}
 async function onSession(session){
  const u=session&&session.user;
  if(u&&u.id===uid)return;
