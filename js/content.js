@@ -9,8 +9,8 @@ const LEVELS=[
  {n:4,t:'Agregación con LACP',d:'Juntar varios cables como si fueran uno.',soon:true},
  {n:5,t:'Ruteo entre VLAN',d:'Hacer que VLANs distintas se hablen con SVI.',soon:true}
 ];
-const TITLES=[[0,'Becario de redes'],[150,'Técnico de cableado'],[400,'Técnico NOC'],[800,'Ingeniero de redes jr'],[1500,'Ingeniero de redes']];
-const rankTitle=p=>TITLES.filter(t=>p>=t[0]).pop()[1];
+/* Rangos: se suben certificando zonas. Al agregar zonas nuevas, agrega rangos aquí. */
+const RANKS=['Becario de redes','Técnico de cableado','Técnico de switching','Especialista en VLAN','Técnico NOC','Ingeniero de redes jr','Ingeniero de redes','Arquitecto de redes'];
 const MAC={A:'00:1a:2b:00:00:0a',B:'00:1a:2b:00:00:0b',C:'00:1a:2b:00:00:0c',D:'00:1a:2b:00:00:0d'};
 const PORTN={A:1,B:2,C:3,D:4};
 

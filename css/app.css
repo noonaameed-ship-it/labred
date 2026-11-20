@@ -289,3 +289,11 @@ td code{font:13px "IBM Plex Mono",monospace}
 .labexam .exbar b{font:600 18px "IBM Plex Mono",monospace;color:var(--trunk)}
 .labexam .guide,.labexam #lscore,.labexam #chk,.labexam #notes,.labexam #done,.labexam .vend small,.labexam #rst{display:none!important}
 .labprog{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-top:10px;font-size:14px}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0;align-items:end}
+.pod{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.pod.p1{order:2;padding-top:22px;border-color:var(--trunk)}.pod.p2{order:1}.pod.p3{order:3}
+.pod .pos{font:600 26px/1 "IBM Plex Mono",monospace;color:var(--trunk)}.pod span{font-size:12px;color:var(--mut)}.pod strong{font:600 14px "IBM Plex Mono",monospace}
+@media(max-width:560px){.podium{grid-template-columns:minmax(0,1fr)}.pod.p1,.pod.p2,.pod.p3{order:0}}
+.ladder{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px;max-width:560px}
+.ladder li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px}
+.ladder li span{color:var(--mut);font-size:13px}.ladder li.ok{border-color:var(--ok)}.ladder li.ok b::before{content:"✓ ";color:var(--ok)}.ladder li.cur{border-color:var(--trunk);background:color-mix(in srgb,var(--trunk) 10%,var(--paper))}

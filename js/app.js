@@ -62,30 +62,38 @@ const lesById=id=>Object.values(LES).find(l=>l.id===id);
 const unlocked=n=>cOn()||n<=st.unlocked;
 function checkLevels(){for(const L of LEVELS){if(L.soon||!L.items)continue;if(L.items.every(i=>isPassed(i.id))&&st.unlocked<L.n+1){st.unlocked=L.n+1;celebrate('net',`Zona ${L.n} en línea`,`Cerraste todos los tickets de <strong>${esc(L.t)}</strong>. La Zona ${L.n+1} ya está disponible en tu red.`,'Ver mi red',`%LINK-3-UPDOWN: Zona${L.n}, changed state to up`)}}}
 let wt=null,writing=false,again=false;
-let prevPts=null,prevPassed=null;
+let prevPts=null,prevPassed=null,prevCerts=null;
 const allIds=()=>LEVELS.flatMap(L=>L.items||[]).map(i=>i.id);
 function save(quiet){const p=calcPts();st.pts=p;st.badges=st.badges||{};
  if(prevPts===null||quiet){prevPts=p;prevPassed=new Set(allIds().filter(isPassed));BADGES.forEach(b=>{if(b.f()&&!st.badges[b.id])st.badges[b.id]=today()})}
- else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak()}
-  if(!isOwner&&rankTitle(p)!==rankTitle(prevPts))celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle(p))}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle(p)}`);
+ else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak();const wk=isoWeek();if(!st.wk||st.wk.id!==wk)st.wk={id:wk,xp:0};st.wk.xp+=p-prevPts}
+  const cc=certCount(st.done);if(!isOwner&&prevCerts!==null&&cc>prevCerts)celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle())}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle()}`);
   const np=allIds().filter(isPassed).filter(i=>!prevPassed.has(i));if(np.length){confetti();sfx('win')}
   for(const b of BADGES)if(!st.badges[b.id]&&b.f()){st.badges[b.id]=today();celebrate(b.ic,'Insignia: '+b.n,esc(b.d),'Continuar','%LABRED-6-BADGE: '+b.n)}
   prevPts=p;prevPassed=new Set(allIds().filter(isPassed))}
+ prevCerts=certCount(st.done);
  try{localStorage.setItem(LSK(),JSON.stringify(st))}catch(e){}renderMe();if(sb&&uid){clearTimeout(wt);wt=setTimeout(flush,700)}}
 async function flush(){if(writing){again=true;return}writing=true;
  try{const r1=await sb.from('progress').upsert({user_id:uid,name:(myName||'').slice(0,60),email:userEmail,data:clone(st),updated_at:new Date().toISOString()});if(r1.error)throw r1.error;
   if(st.noRank){if(lastRank!=='off'){await sb.from('ranking').delete().eq('user_id',uid);lastRank='off'}}
-  else if(st.pts!==lastRank){const r2=await sb.from('ranking').upsert({user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:st.unlocked,updated_at:new Date().toISOString()});if(!r2.error)lastRank=st.pts}
+  else{const sig2=JSON.stringify([st.pts,certCount(st.done),st.streak,st.wk]);if(sig2!==lastRank){const base={user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:st.unlocked,updated_at:new Date().toISOString()},wk=st.wk&&st.wk.id===isoWeek()?st.wk:{id:isoWeek(),xp:0};
+   let r2=await sb.from('ranking').upsert({...base,certs:certCount(st.done),stars:ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),streak:st.streak||0,week:wk.id,week_xp:wk.xp});if(r2.error)r2=await sb.from('ranking').upsert(base);if(!r2.error)lastRank=sig2}}
  }catch(e){console.warn('No se pudo guardar',e)}
  writing=false;if(again){again=false;flush()}}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),3800)}
-function nextT(p){const i=TITLES.findIndex(t=>t[0]>p);return i<0?null:TITLES[i]}
-function xpPct(p){const cur=TITLES.filter(t=>p>=t[0]).pop(),n=nextT(p);return n?Math.round(100*(p-cur[0])/(n[0]-cur[0])):100}
+const CERTS=()=>LEVELS.flatMap(L=>(L.items||[]).filter(i=>i.exam).map(i=>i.id));
+const certCount=done=>CERTS().filter(id=>passIn(done,id)).length;
+const rankOfCerts=n=>RANKS[Math.min(n,RANKS.length-1)];
+function rankTitle(){return rankOfCerts(certCount(st.done))}
+function nextT(){const n=certCount(st.done);if(n>=RANKS.length-1)return null;return{t:RANKS[n+1],z:n}}
+function nextTxt(){const n=nextT();return n?`Siguiente rango: ${esc(n.t)} (certifica la Zona ${n.z})`:'Rango máximo'}
+function xpPct(){const n=nextT();if(!n)return 100;const L=LEVELS[n.z];if(!L||!L.items)return 0;return Math.round(100*L.items.filter(i=>isPassed(i.id)).length/L.items.length)}
+function isoWeek(d=new Date()){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return t.getUTCFullYear()+'-W'+String(Math.ceil(((t-y)/864e5+1)/7)).padStart(2,'0')}
 const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
 function curTheme(){try{return localStorage.getItem('labred_theme')||''}catch(e){return''}}
 function setTheme(t){try{t?localStorage.setItem('labred_theme',t):localStorage.removeItem('labred_theme')}catch(e){}t?document.documentElement.dataset.theme=t:delete document.documentElement.dataset.theme}
 function renderMe(){const p=calcPts(),nb=Object.keys(st.badges||{}).length,h=location.hash.slice(1)||'mapa';
- $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct(p)}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
+ $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct()}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
  $('#thm').addEventListener('click',()=>{const n={'':'light',light:'dark',dark:''}[curTheme()];setTheme(n);toast('Tema: '+({light:'claro',dark:'oscuro'}[n]||'automático (como tu sistema)'));renderMe()});
  $('#snd').addEventListener('click',()=>{st.mute=!st.mute;save(true);if(!st.mute)sfx('ok')})}
 
@@ -139,7 +147,7 @@ function renderMap(){
  const desc=C?(C.exam?DESC_T.exam(cur):cur==='lab1'?DESC_T.lab:DESC_T.lesson):'';
  const stChip=id=>isPassed(id)?'<span class="chip ok">Cerrado</span>':!itemOpen(id)?'<span class="chip lock">Bloqueado</span>':st.done[id]?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>';
  $('#v-mapa').innerHTML=`<div class="console"><aside class="op">
-  <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle(p))}</span></div></div><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><div class="small">${n?`${n[0]-p} XP para ${esc(n[1])}`:'Rango máximo'} · ${saved}</div></div>
+  <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle())}</span></div></div><div class="xpbar"><i style="width:${xpPct()}%"></i></div><div class="small">${nextTxt()} · ${saved}</div></div>
   <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${Object.keys(st.badges||{}).length}/${BADGES.length}</b><span>Insignias</span></div></div>
   ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
   ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:''}
@@ -151,10 +159,10 @@ function renderMap(){
 
 /* ---------- insignias ---------- */
 function renderLogros(){const p=calcPts(),stars=ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),nb=Object.keys(st.badges||{}).length;
- $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${isOwner?'Instructor':esc(rankTitle(p))}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct(p)}%"></i></div><p class="small">${p} XP${nextT(p)?` · ${nextT(p)[0]-p} XP para ${esc(nextT(p)[1])}`:''}</p></div></header>
+ $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${isOwner?'Instructor':esc(rankTitle())}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct()}%"></i></div><p class="small">${p} XP · ${nextTxt()}</p></div></header>
  <div class="wrap" style="padding-bottom:40px"><div class="stats"><div class="stat"><b>${p}</b><span>XP total</span></div><div class="stat"><b>${stars}</b><span>Barras de señal</span></div><div class="stat"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="stat"><b>${nb}/${BADGES.length}</b><span>Insignias</span></div></div>
  <h2>Insignias</h2><div class="badges">${BADGES.map(b=>{const on=st.badges&&st.badges[b.id];return`<div class="badge ${on?'on':''}"><div class="bi">${ico(on?b.ic:'lock')}</div><div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div></div>`}).join('')}</div>
- <h2 style="margin-top:24px">Rangos</h2><p>${TITLES.map(t=>`${esc(t[1])} (${t[0]} XP)`).join(' · ')}</p>
+ <h2 style="margin-top:24px">Rangos</h2>${rankLadder()}
  <h2 style="margin-top:24px">Cómo se gana</h2><table class="stack"><thead><tr><th>Actividad</th><th>Recompensa</th></tr></thead><tbody><tr><td>Pregunta correcta al primer intento</td><td>10 XP</td></tr><tr><td>Tu explicación</td><td>10 XP por punto (hasta 100)</td></tr><tr><td>Lab cerrado</td><td>2 XP por punto del lab (hasta 200), +50 si mezclas vendors</td></tr><tr><td>Certificación de zona</td><td>hasta 150 XP</td></tr><tr><td>Señal del ticket</td><td>1, 2 o 3 barras según tu calificación</td></tr><tr><td>Practicar días seguidos</td><td>Uptime</td></tr></tbody></table></div>`}
 
 /* ---------- modo creador ---------- */
@@ -427,16 +435,22 @@ r.lastScore=score;r.leaves=(r.leaves||0)+EX.leaves;if(score>(r.examBest||0)){r.e
 }
 
 /* ---------- ranking ---------- */
-let rank=[],rankNote='';
+let rank=[],rankNote='',rankTab='general';
+function rankLadder(){const n=certCount(st.done);return`<ol class="ladder">${RANKS.map((t,i)=>`<li class="${i<n?'ok':i===n?'cur':''}"><b>${esc(t)}</b><span>${i===0?'Al empezar':`Certificar la Zona ${i-1}${LEVELS[i-1]&&!LEVELS[i-1].soon?'':' (próximamente)'}`}</span></li>`).join('')}</ol>`}
 async function renderRank(){
  const v=$('#v-ranking');if(!v.classList.contains('on'))return;
- if(sb&&uid){rankNote='Cargando…';const r=await sb.from('ranking').select('user_id,name,xp,nivel').order('xp',{ascending:false}).limit(50);if(r.error){rankNote='No se pudo cargar el ranking.';rank=[]}else{rank=r.data;rankNote=''}}
- let rows=rank.map((r,i)=>`<tr class="${r.user_id===uid?'mine':''}"><td class="n">${i+1}</td><td>${esc(r.name||'Alguien')}${r.user_id===uid?' (tú)':''}</td><td>${esc(rankTitle(+r.xp||0))}</td><td class="n">Nivel ${+r.nivel||0}</td><td class="n">${+r.xp||0}</td></tr>`).join('');
- const p=calcPts();
- v.innerHTML=`<header class="band hero"><div class="in"><p class="brand"><a href="#mapa" style="color:#fff">Mapa</a> · ranking</p><h1>Ranking de la comunidad</h1><p>Tú: ${p} XP · ${esc(rankTitle(p))}.</p></div></header>
- <div class="band"><div class="wrap">${rows?`<table class="rank stack"><thead><tr><th class="n">#</th><th>Nombre</th><th>Título</th><th class="n">Nivel</th><th class="n">XP</th></tr></thead><tbody>${rows}</tbody></table>`:`<p>${sb&&uid?esc(rankNote||'Aún no hay nadie. Termina una lección y serás el primero.'):'Para aparecer en el ranking, <a href="#entrar">entra con tu cuenta</a>.'}</p>`}
- 
- <h2 style="margin-top:28px">Títulos</h2><p>${TITLES.map(t=>`${esc(t[1])} (${t[0]})`).join(' · ')}</p></div></div>`;
+ if(sb&&uid){const r=await sb.from('ranking').select('*').limit(500);if(r.error){rankNote='No se pudo cargar el ranking.';rank=[]}else{rank=r.data||[];rankNote=''}}
+ const wk=isoWeek(),W=rankTab==='semana';
+ const list=rank.map(x=>({...x,xp:+x.xp||0,certs:+x.certs||0,wxp:x.week===wk?(+x.week_xp||0):0,stars:+x.stars||0,streak:+x.streak||0}))
+  .sort((a,b)=>W?(b.wxp-a.wxp||b.xp-a.xp):(b.certs-a.certs||b.xp-a.xp));
+ const shown=W?list.filter(x=>x.wxp>0):list,me=shown.findIndex(x=>x.user_id===uid),p=calcPts();
+ const pod=shown.slice(0,3).map((x,i)=>`<div class="pod p${i+1}"><span class="pos">${i+1}</span><b>${esc(x.name||'Alguien')}${x.user_id===uid?' (tú)':''}</b><span>${esc(rankOfCerts(x.certs))}</span><strong>${W?x.wxp+' XP esta semana':x.xp+' XP'}</strong></div>`).join('');
+ const rows=shown.map((x,i)=>`<tr class="${x.user_id===uid?'mine':''}"><td class="n">${i+1}</td><td><strong>${esc(x.name||'Alguien')}</strong>${x.user_id===uid?' (tú)':''}</td><td>${esc(rankOfCerts(x.certs))}</td><td class="n">${x.certs}</td><td class="n">Zona ${Math.min(+x.nivel||0,LEVELS.length-1)}</td><td class="n">${x.stars}</td><td class="n">${x.streak}d</td><td class="n">${W?x.wxp:x.xp}</td></tr>`).join('');
+ v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / ranking</p><h1>Ranking</h1><p>Primero cuentan las certificaciones; a empate, la XP. ${isOwner?'Como instructor no apareces en el ranking.':me>=0?`Vas en el lugar <strong>#${me+1}</strong> de ${shown.length}.`:''}</p></div></header>
+ <div class="wrap" style="padding-bottom:40px"><div class="atabs" role="tablist" style="max-width:380px"><button role="tab" aria-selected="${!W}" data-rt="general">General</button><button role="tab" aria-selected="${W}" data-rt="semana">Esta semana</button></div>
+ ${shown.length?`<div class="podium">${pod}</div><table class="rank stack"><thead><tr><th class="n">#</th><th>Nombre</th><th>Rango</th><th class="n">Certificaciones</th><th class="n">Zona</th><th class="n">Señal</th><th class="n">Uptime</th><th class="n">${W?'XP semana':'XP'}</th></tr></thead><tbody>${rows}</tbody></table>`:`<p>${sb&&uid?esc(rankNote||(W?'Nadie ha ganado XP esta semana todavía. ¡Sé el primero!':'Aún no hay nadie. Termina un ticket y serás el primero.')):'Para aparecer en el ranking, <a href="#entrar">entra con tu cuenta</a>.'}</p>`}
+ <h2 style="margin-top:28px">Rangos</h2><p class="tip" style="margin-top:0">Subes de rango certificando zonas. Cada zona nueva que agreguemos abre un rango más.</p>${rankLadder()}</div>`;
+ v.querySelectorAll('[data-rt]').forEach(b=>b.addEventListener('click',()=>{rankTab=b.dataset.rt;renderRank()}));
 }
 
 /* ---------- lab 1 ---------- */

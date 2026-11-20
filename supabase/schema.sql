@@ -24,6 +24,11 @@ create table if not exists public.ranking (
   nivel integer not null default 0 check (nivel between 0 and 50),
   updated_at timestamptz not null default now()
 );
+alter table public.ranking add column if not exists certs integer not null default 0;
+alter table public.ranking add column if not exists stars integer not null default 0;
+alter table public.ranking add column if not exists streak integer not null default 0;
+alter table public.ranking add column if not exists week text;
+alter table public.ranking add column if not exists week_xp integer not null default 0;
 alter table public.ranking enable row level security;
 drop policy if exists "ranking: ver" on public.ranking;
 drop policy if exists "ranking propio: crear" on public.ranking;
