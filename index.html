@@ -6,7 +6,7 @@
 <title>LabRed · Aprende redes</title>
 <meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -20,6 +20,7 @@
 <div class="view" id="v-ubicacion"></div>
 <div class="view" id="v-ranking"></div>
 <div class="view" id="v-lec"></div>
+<div class="view" id="v-examen"></div>
 <div class="view" id="v-lock"></div>
 <div class="view" id="v-entrar"></div>
 <div class="view" id="v-logros"></div>
@@ -56,6 +57,7 @@
     <div class="card">
       <h2>Objetivo</h2>
       <p class="goal">PC-A (192.168.10.11) hace ping a PC-B (192.168.10.12).</p>
+      <p class="tip" id="lscore"></p>
       <ul class="chk" id="chk"></ul>
       <div id="notes"></div>
     </div>
@@ -72,7 +74,7 @@
   <div class="fig" id="g3d"><span class="hint">Arrastra para girar · pellizca o rueda para acercar</span></div>
   <div class="leg3"><span><b style="background:#4f9bff"></b>Frame untagged (access port)</span><span><b style="background:#ffc61a"></b>Frame tagged 802.1Q, VLAN 10 (trunk)</span><span><b style="background:#e9eef2"></b>Conmutación dentro del switch</span></div>
 
-  <div id="labexp" style="margin-top:28px"></div>
+  <div id="labres" style="margin-top:20px"></div><div id="labexp" style="margin-top:20px"></div>
   <h2 style="margin-top:28px">La misma solución en los tres vendors</h2>
   <div class="sol" id="sol"></div>
   <table class="stack">

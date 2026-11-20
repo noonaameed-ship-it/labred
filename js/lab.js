@@ -32,7 +32,9 @@ function mkSwitch(name,vendor){
 }
 const mkPC=(name,ip,peer)=>{const p={type:'pc',name,ip,peer,lines:[],hist:[],hp:0};tut(p,`${name} · ${ip}/24 · comandos: ping, ipconfig, cls`);return p};
 let S1,S2,PCA,PCB,devs,cur,done=false,busy=false;
-function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);PCA=mkPC('PC-A','192.168.10.11','192.168.10.12');PCB=mkPC('PC-B','192.168.10.12','192.168.10.11');devs=[S1,S2,PCA,PCB];done=false;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
+const LS={err:0,hints:new Set(),fails:0,t0:Date.now(),paste:0};window.LAB_STATS=LS;
+const labScore=()=>Math.max(0,100-Math.min(20,LS.err)-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
+function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);PCA=mkPC('PC-A','192.168.10.11','192.168.10.12');PCB=mkPC('PC-B','192.168.10.12','192.168.10.11');devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
 const other=sw=>sw===S1?S2:S1;
 function push(d,t,c){(Array.isArray(t)?t:[t]).forEach(x=>d.lines.push(typeof x==='object'?x:{t:x,c}));if(d.lines.length>600)d.lines.splice(0,d.lines.length-600)}
 const tut=(d,t)=>push(d,'[tutor] '+t,'tut');
@@ -266,7 +268,7 @@ function exec(d,raw){
   const echo=prompt(d);push(d,echo+raw,'cmd');const line=raw.trim();if(line){d.hist.push(raw);d.hp=d.hist.length}
   if(!line)return;
   if(d.type==='pc')return pcExec(d,line);
-  push(d,d.vendor==='juniper'?jExec(d,line):runTable(d,line,echo.length));
+  const o=d.vendor==='juniper'?jExec(d,line):runTable(d,line,echo.length);if(o.some(x=>x&&x.c==='err'))LS.err++;push(d,o);
 }
 function pcExec(p,line){
   const[c,arg]=line.split(/\s+/);const cl=c.toLowerCase();
@@ -276,10 +278,10 @@ function pcExec(p,line){
   if(!arg||!/^\d+\.\d+\.\d+\.\d+$/.test(arg)){push(p,'Ping request could not find host '+(arg||'')+'. Please check the name and try again.','err');return}
   const ok=arg===p.ip||(arg===p.peer&&allOk());const inNet=arg.startsWith('192.168.10.');
   push(p,['','Pinging '+arg+' with 32 bytes of data:']);busy=true;render();let i=0;
-  const tick=()=>{if(i<4){push(p,inNet?(ok?`Reply from ${arg}: bytes=32 time=${i?1:2}ms TTL=128`:'Request timed out.'):'PING: transmit failed. General failure.',ok?'okl':'err');i++;render();setTimeout(tick,ok?380:700)}
+  drawScore();const tick=()=>{if(i<4){push(p,inNet?(ok?`Reply from ${arg}: bytes=32 time=${i?1:2}ms TTL=128`:'Request timed out.'):'PING: transmit failed. General failure.',ok?'okl':'err');i++;render();setTimeout(tick,ok?380:700)}
     else{push(p,['','Ping statistics for '+arg+':',`    Packets: Sent = 4, Received = ${ok?4:0}, Lost = ${ok?0:4} (${ok?0:100}% loss),`]);
-      if(!ok&&arg===p.peer)tut(p,'Sin respuesta. Revisa la lista de objetivos: algo en SW1 o SW2 aún no está listo.');
-      busy=false;render();if(ok&&arg===p.peer)win()}};
+      if(!ok&&arg===p.peer){LS.fails++}if(!ok&&arg===p.peer)tut(p,'Sin respuesta. Revisa la lista de objetivos: algo en SW1 o SW2 aún no está listo.');
+      busy=false;render();drawScore();if(ok&&arg===p.peer)win()}};
   setTimeout(tick,500);
 }
 
@@ -305,6 +307,7 @@ function drawTopo(){
   ${t(133,40,a.pcS,'end')}${t(237,40,a.upS,'start')}${t(323,178,b.upS,'end')}${t(427,178,b.pcS,'start')}
   ${pc(PCA,45)}${sw(S1,185,a)}${sw(S2,375,b)}${pc(PCB,515)}</g>`;
 }
+function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: errores de comando (−1, máx −20), cada pista (−10), cada ping fallido (−5).`}
 function drawChecks(){
   const cs=checks();
   $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.sw.name} · ${VEND[c.sw.vendor].label}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(HINT[c.sw.vendor][c.k])}</code></details></div></li>`).join('')+
@@ -312,7 +315,7 @@ function drawChecks(){
   const n=[];for(const sw of[S1,S2])if(sw.vendor==='juniper'&&JSON.stringify(sw.cand)!==JSON.stringify(sw.act))n.push(`<p class="warn">${sw.name} tiene cambios sin commit: aún no se aplican.</p>`);
   if(!done&&cs.every(c=>c.ok))n.push('<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping 192.168.10.12</code>.</p>');
   $('#notes').innerHTML=n.join('');
-  for(const li of $('#chk').querySelectorAll('details'))li.addEventListener('toggle',()=>{});
+  $('#chk').querySelectorAll('details').forEach((dt,i)=>{dt.addEventListener('toggle',()=>{if(dt.open){LS.hints.add(i);drawScore()}})});drawScore();
 }
 document.addEventListener('click',e=>{const t=e.target.closest('[data-dev]');if(t&&!busy){select(devs.find(d=>d.name===t.dataset.dev));if(matchMedia('(min-width:901px)').matches)cmd.focus()}});
 $('#topo').addEventListener('keydown',e=>{if(e.key==='Enter'){const t=e.target.closest('[data-dev]');if(t)select(devs.find(d=>d.name===t.dataset.dev))}});
@@ -322,11 +325,13 @@ cmd.addEventListener('keydown',e=>{
   else if(e.key==='ArrowUp'){e.preventDefault();hist(-1)}else if(e.key==='ArrowDown'){e.preventDefault();hist(1)}
   else if(e.key==='z'&&e.ctrlKey&&cur.type==='sw'&&cur.vendor!=='juniper'&&cur.mode.startsWith('config')){e.preventDefault();push(cur,prompt(cur)+'^Z','cmd');cur.mode='priv';render()}
 });
+['paste','drop'].forEach(ev=>cmd.addEventListener(ev,e=>{e.preventDefault();LS.paste++;tut(cur,'En LabRed los comandos se escriben, no se pegan: así se te quedan en la memoria.');render()}));
 cmd.addEventListener('input',()=>{if(cmd.value.endsWith('?')){const v=cmd.value.slice(0,-1);help(cur,v);cmd.value=v;render()}});
 function hist(dir){const h=cur.hist;if(!h.length)return;cur.hp=Math.max(0,Math.min(h.length,cur.hp+dir));cmd.value=h[cur.hp]||''}
 for(const b of document.querySelectorAll('.keys button'))b.addEventListener('click',()=>{const k=b.dataset.k;if(k==='?'){help(cur,cmd.value);render()}else if(k==='tab')cmd.value=complete(cur,cmd.value);else hist(k==='up'?-1:1);cmd.focus()});
 $('#clr').addEventListener('click',()=>{cur.lines=[];render()});
 $('#rst').addEventListener('click',()=>{reset()});
+addEventListener('lab-reset',()=>{reset();scrollTo(0,0)});
 for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
 
 /* ---------- solutions ---------- */
@@ -368,7 +373,7 @@ $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-cop
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
 function build3D(){
   const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}

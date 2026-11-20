@@ -48,12 +48,21 @@ drop policy if exists "feedback: enviar" on public.feedback;
 create policy "feedback: enviar" on public.feedback for insert to anon, authenticated
   with check (user_id is null or user_id = auth.uid());
 
--- 4. Vista para el instructor: explicaciones de cada alumno (consúltala en el SQL Editor)
-create or replace view public.explicaciones with (security_invoker = true) as
+-- 4. Vista para el instructor: avance, explicaciones y señales de cada alumno
+--    Consúltala en el SQL Editor:  select * from explicaciones order by updated_at desc;
+drop view if exists public.explicaciones;
+create view public.explicaciones with (security_invoker = true) as
 select u.email, r.name, m.key as modulo,
-       (m.value->>'exp')::int as mejor_puntaje,
-       (m.value->>'tries')::int as intentos,
+       (m.value->>'exp')::int as explicacion_mejor,
+       (m.value->>'tries')::int as intentos_explicacion,
        m.value->>'lastText' as ultima_explicacion,
+       (m.value->'lastMetrics'->>'segundos')::int as segundos_escribiendo,
+       (m.value->'lastMetrics'->>'pegados')::int as intentos_de_pegar,
+       (m.value->>'labScore')::int as lab_mejor,
+       m.value->'labLast' as lab_ultimo_intento,
+       (m.value->>'examBest')::int as examen_mejor,
+       (m.value->>'attempts')::int as examen_intentos,
+       (m.value->>'leaves')::int as examen_salidas_de_pestana,
        p.updated_at
 from public.progress p
 join auth.users u on u.id = p.user_id

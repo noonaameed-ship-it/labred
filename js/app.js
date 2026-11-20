@@ -5,31 +5,37 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const clone=o=>JSON.parse(JSON.stringify(o));
 const PASS=8,MINW=40;
-const IC={book:'M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h8M8 11h6',term:'M3 5h18v14H3zM7 10l3 2-3 2M12 15h5',lock:'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3',check:'M5 12l5 5 9-10',star:'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z',flame:'M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1.5 1 2 2 2 3 1-2 1-4 1-6z',trophy:'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8',mail:'M3 6h18v12H3zM3 7l9 6 9-6',table:'M4 5h16v14H4zM4 10h16M10 10v9',layers:'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',multi:'M3 7h7v10H3zM14 7h7v10h-7zM10 12h4',up:'M12 20V5M6 11l6-6 6 6',map:'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14',sound:'M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6',mute:'M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6',wrench:'M15 4a5 5 0 0 0-5 6l-7 7 3 3 7-7a5 5 0 0 0 6-5l-3 1-2-2z',bolt:'M13 3L5 14h6l-1 7 8-11h-6z',user:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',packet:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8',cloud:'M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z'};
+const IC={book:'M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h8M8 11h6',term:'M3 5h18v14H3zM7 10l3 2-3 2M12 15h5',lock:'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3',check:'M5 12l5 5 9-10',star:'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z',flame:'M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1.5 1 2 2 2 3 1-2 1-4 1-6z',trophy:'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8',mail:'M3 6h18v12H3zM3 7l9 6 9-6',table:'M4 5h16v14H4zM4 10h16M10 10v9',layers:'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',multi:'M3 7h7v10H3zM14 7h7v10h-7zM10 12h4',up:'M12 20V5M6 11l6-6 6 6',map:'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14',sound:'M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6',mute:'M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6',wrench:'M15 4a5 5 0 0 0-5 6l-7 7 3 3 7-7a5 5 0 0 0 6-5l-3 1-2-2z',bolt:'M13 3L5 14h6l-1 7 8-11h-6z',user:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',packet:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8',cloud:'M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z',cert:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4',clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',net:'M5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 9v3M5 15l7-3 7 3'};
 const ico=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
+const EXPASS=90,LABPASS=90;
 const starsOf=e=>e>=10?3:e>=9?2:e>=PASS?1:0;
+const starsPct=p=>p>=100?3:p>=95?2:p>=90?1:0;
+function starsFor(id){const r=st.done[id];if(!r||!isPassed(id))return 0;if(EXAMS[id])return starsPct(r.examBest||0);if(id==='lab1')return Math.min(starsPct(r.labScore||0),starsOf(r.exp||0));return starsOf(r.exp||0)}
+const sig=(n,big)=>`<span class="sig${big?' big':''}" role="img" aria-label="Señal ${n} de 3">${[0,1,2].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</span>`;
 const starRow=(n,cls='stars')=>`<span class="${cls}" aria-label="${n} de 3 estrellas">${[0,1,2].map(i=>ico('star',i<n?'on':'')).join('')}</span>`;
 let AC=null;
 function sfx(k){if(st.mute)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const seq={xp:[[660,.06],[880,.09]],win:[[523,.1],[659,.1],[784,.1],[1047,.25]],bad:[[220,.12],[170,.2]],ok:[[740,.07],[1040,.11]],badge:[[784,.09],[988,.09],[1175,.09],[1568,.22]]}[k];let t=AC.currentTime;for(const[f,d]of seq){const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d);t+=d*.9}}catch(e){}}
-function confetti(){if(RM)return;const c=document.createElement('canvas');c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:13';document.body.appendChild(c);const W=c.width=innerWidth,H=c.height=innerHeight,x=c.getContext('2d');if(!x){c.remove();return}const cols=['#ffc21a','#19b866','#2d7cf6','#ff6b5b','#ffffff'];
+function confetti(){if(RM)return;const c=document.createElement('canvas');c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:13';document.body.appendChild(c);const W=c.width=innerWidth,H=c.height=innerHeight,x=c.getContext('2d');if(!x){c.remove();return}const cols=['#e0a100','#0e9450','#1f63d6','#33d17f','#5c9bff'];
  const P=Array.from({length:140},()=>({x:W/2,y:H*.45,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*6+4,c:cols[Math.random()*5|0],a:Math.random()*6}));let t0=performance.now();
  const f=now=>{const k=now-t0;x.clearRect(0,0,W,H);for(const p of P){p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()}k<2200?requestAnimationFrame(f):c.remove()};requestAnimationFrame(f)}
 function floatXP(n){let e=$('#xpf');if(!e){e=document.createElement('div');e.id='xpf';document.body.appendChild(e)}e.textContent='+'+n+' XP';e.classList.remove('go');void e.offsetWidth;e.classList.add('go')}
 const celebQ=[];let celebOn=false;
-function celebrate(icon,title,text,btn='¡Vamos!'){celebQ.push({icon,title,text,btn});if(!celebOn)nextCeleb()}
+function celebrate(icon,title,text,btn='Continuar',log){celebQ.push({icon,title,text,btn,log:log||'%LABRED-5-EVENT: '+title});if(!celebOn)nextCeleb()}
 function nextCeleb(){const c=celebQ.shift(),el=$('#celeb');if(!c){celebOn=false;el.classList.remove('on');return}celebOn=true;
- el.innerHTML=`<div class="card"><div class="big">${ico(c.icon)}</div><h2 id="celt">${esc(c.title)}</h2><p>${c.text}</p><button>${esc(c.btn)}</button></div>`;el.classList.add('on');confetti();sfx('badge');const b=el.querySelector('button');b.focus();b.addEventListener('click',nextCeleb)}
+ el.innerHTML=`<div class="card"><div class="log">${esc(c.log)}</div><div class="body"><div class="big">${ico(c.icon)}</div><h2 id="celt">${esc(c.title)}</h2><p>${c.text}</p><button>${esc(c.btn)}</button></div></div>`;el.classList.add('on');confetti();sfx('badge');const b=el.querySelector('button');b.focus();b.addEventListener('click',nextCeleb)}
 const BADGES=[
  {id:'primera',n:'Primer paquete',d:'Responde bien tu primera pregunta',ic:'packet',f:()=>Object.values(st.done).some(r=>r.qok&&Object.values(r.qok).some(Boolean))},
  {id:'ubicado',n:'Sé dónde estoy',d:'Haz el examen de ubicación',ic:'map',f:()=>st.placed!==null&&st.placed!==undefined},
  {id:'cartero',n:'Cartero',d:'Aprueba la misión del frame y la MAC',ic:'mail',f:()=>isPassed('l0-1')},
  {id:'memoria',n:'Memoria de switch',d:'Aprueba la misión de la MAC address table',ic:'table',f:()=>isPassed('l0-2')},
  {id:'vlan',n:'Arquitecto de VLAN',d:'Aprueba la misión de VLAN',ic:'layers',f:()=>isPassed('l0-3')},
- {id:'consola',n:'Primera consola',d:'Cierra el ticket del Lab 1',ic:'term',f:()=>isPassed('lab1')},
+ {id:'consola',n:'Primera consola',d:'Cierra el ticket TK-1042 con 90/100 o más',ic:'term',f:()=>isPassed('lab1')},
+ {id:'impecable',n:'Configuración impecable',d:'Cierra un lab con 100/100: sin pistas ni errores',ic:'check',f:()=>(st.done.lab1&&st.done.lab1.labScore||0)>=100},
+ {id:'cert0',n:'Certificado Zona 0',d:'Aprueba la certificación de Fundamentos',ic:'cert',f:()=>isPassed('x0')},
  {id:'multi',n:'Multivendor',d:'Resuelve el Lab 1 mezclando vendors',ic:'multi',f:()=>(st.done.lab1&&st.done.lab1.labPts||0)>=250},
  {id:'perfecto',n:'Explicación perfecta',d:'Saca 10/10 en una explicación',ic:'star',f:()=>Object.values(st.done).some(r=>r.exp===10)},
  {id:'persiste',n:'No me rindo',d:'Aprueba una explicación que antes reprobaste',ic:'up',f:()=>Object.values(st.done).some(r=>r.failed&&r.exp>=PASS)},
- {id:'racha3',n:'Racha de 3 días',d:'Practica 3 días seguidos',ic:'flame',f:()=>(st.streak||0)>=3}
+ {id:'racha3',n:'Uptime de 3 días',d:'Practica 3 días seguidos',ic:'flame',f:()=>(st.streak||0)>=3}
 ];
 const today=()=>new Date().toLocaleDateString('sv');
 function touchStreak(){const t=today();if(st.lastDay===t)return;const y=new Date(Date.now()-864e5).toLocaleDateString('sv');st.streak=st.lastDay===y?(st.streak||0)+1:1;st.lastDay=t}
@@ -48,20 +54,20 @@ let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
-const calcPts=()=>Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0),0);
-const isPassed=id=>{const r=st.done[id];if(!r)return false;if(id==='lab1')return!!r.lab&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
+const calcPts=()=>Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0),0);
+const isPassed=id=>{const r=st.done[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&(r.labScore||0)>=LABPASS&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
 const lesById=id=>Object.values(LES).find(l=>l.id===id);
 const unlocked=n=>cOn()||n<=st.unlocked;
-function checkLevels(){for(const L of LEVELS){if(L.soon||!L.items)continue;if(L.items.every(i=>isPassed(i.id))&&st.unlocked<L.n+1){st.unlocked=L.n+1;celebrate('trophy',`¡Zona ${L.n} completada!`,`Terminaste <strong>${esc(L.t)}</strong> y desbloqueaste la Zona ${L.n+1}.`)}}}
+function checkLevels(){for(const L of LEVELS){if(L.soon||!L.items)continue;if(L.items.every(i=>isPassed(i.id))&&st.unlocked<L.n+1){st.unlocked=L.n+1;celebrate('net',`Zona ${L.n} en línea`,`Cerraste todos los tickets de <strong>${esc(L.t)}</strong>. La Zona ${L.n+1} ya está disponible en tu red.`,'Ver mi red',`%LINK-3-UPDOWN: Zona${L.n}, changed state to up`)}}}
 let wt=null,writing=false,again=false;
 let prevPts=null,prevPassed=null;
 const allIds=()=>LEVELS.flatMap(L=>L.items||[]).map(i=>i.id);
 function save(quiet){const p=calcPts();st.pts=p;st.badges=st.badges||{};
  if(prevPts===null||quiet){prevPts=p;prevPassed=new Set(allIds().filter(isPassed));BADGES.forEach(b=>{if(b.f()&&!st.badges[b.id])st.badges[b.id]=today()})}
  else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak()}
-  if(rankTitle(p)!==rankTitle(prevPts))celebrate('up','¡Subiste de rango!',`Ahora eres <strong>${esc(rankTitle(p))}</strong>.`);
+  if(rankTitle(p)!==rankTitle(prevPts))celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle(p))}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle(p)}`);
   const np=allIds().filter(isPassed).filter(i=>!prevPassed.has(i));if(np.length){confetti();sfx('win')}
-  for(const b of BADGES)if(!st.badges[b.id]&&b.f()){st.badges[b.id]=today();celebrate(b.ic,'Insignia: '+b.n,esc(b.d),'¡Genial!')}
+  for(const b of BADGES)if(!st.badges[b.id]&&b.f()){st.badges[b.id]=today();celebrate(b.ic,'Insignia: '+b.n,esc(b.d),'Continuar','%LABRED-6-BADGE: '+b.n)}
   prevPts=p;prevPassed=new Set(allIds().filter(isPassed))}
  try{localStorage.setItem(LSK(),JSON.stringify(st))}catch(e){}renderMe();if(sb&&uid){clearTimeout(wt);wt=setTimeout(flush,700)}}
 async function flush(){if(writing){again=true;return}writing=true;
@@ -73,35 +79,81 @@ async function flush(){if(writing){again=true;return}writing=true;
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),3800)}
 function nextT(p){const i=TITLES.findIndex(t=>t[0]>p);return i<0?null:TITLES[i]}
 function xpPct(p){const cur=TITLES.filter(t=>p>=t[0]).pop(),n=nextT(p);return n?Math.round(100*(p-cur[0])/(n[0]-cur[0])):100}
-function renderMe(){const p=calcPts(),nb=Object.keys(st.badges||{}).length;
- $('#hud').innerHTML=`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}<span>${p} XP</span><span class="bar"><i style="width:${xpPct(p)}%"></i></span></a><a class="hudp fl" href="#logros" title="Racha de días">${ico('flame')}${st.streak||0}</a><a class="hudp" href="#logros" title="Insignias">${ico('trophy')}${nb}/${BADGES.length}</a><a class="hudp" href="#ranking" title="Ranking"><span class="lbl">Ranking</span><span aria-hidden="true" class="ranki">#</span></a><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><button class="hudp" id="fbk">Feedback</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}`;
+const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
+function renderMe(){const p=calcPts(),nb=Object.keys(st.badges||{}).length,h=location.hash.slice(1)||'mapa';
+ $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct(p)}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
  $('#snd').addEventListener('click',()=>{st.mute=!st.mute;save(true);if(!st.mute)sfx('ok')})}
 
-/* ---------- mapa ---------- */
+/* ---------- mapa: tu red ---------- */
+const ORDER=['l0-1','l0-2','l0-3','x0','lab1','x1','z2','z3','z4','z5'];
+const LAY={
+ w:{vb:[960,500],zones:{0:[20,30,450,200],1:[490,30,450,200],2:[725,270,215,210],3:[490,270,215,210],4:[255,270,215,210],5:[20,270,215,210]},
+   pos:{'l0-1':[75,125],'l0-2':[185,125],'l0-3':[295,125],'x0':[405,125],'lab1':[620,125],'x1':[830,125],z2:[832,365],z3:[597,365],z4:[362,365],z5:[127,365]},off:{x1:80}},
+ t:{vb:[360,1170],zones:{0:[10,20,340,310],1:[10,350,340,180],2:[10,550,340,140],3:[10,705,340,140],4:[10,860,340,140],5:[10,1015,340,140]},
+   pos:{'l0-1':[95,105],'l0-2':[265,105],'l0-3':[95,250],'x0':[265,250],'lab1':[95,440],'x1':[265,440],z2:[180,612],z3:[180,767],z4:[180,922],z5:[180,1077]},off:{}}};
+function itemById(id){for(const L of LEVELS)for(const i of(L.items||[]))if(i.id===id)return{...i,L};const n=+id.slice(1);return{id,t:LEVELS[n].t,L:LEVELS[n],soon:true}}
+function itemOpen(id){const I=itemById(id);if(I.soon||I.L.soon)return false;if(!unlocked(I.L.n))return false;if(I.exam&&!cOn())return I.L.items.filter(i=>i.id!==id).every(i=>isPassed(i.id));return true}
+const nextOpen=()=>ORDER.find(id=>itemOpen(id)&&!isPassed(id));
+function glyph(t,x,y,stt){const ink=stt==='lock'?'var(--line)':'var(--ink)',fill=stt==='done'?'var(--ink)':stt==='lock'?'var(--soft)':'var(--paper)',in2=stt==='done'?'var(--paper)':ink;
+ const sw=(cx,cy,w,h,cols)=>`<rect x="${cx-w/2}" y="${cy-h/2}" width="${w}" height="${h}" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3,4,5].map(i=>`<rect x="${cx-w/2+7+i*((w-14)/6)}" y="${cy-3}" width="${(w-14)/6-3}" height="6" rx="1" fill="${cols?cols[i%2]:in2}"/>`).join('')}`;
+ switch(t){
+ case'pc':return`<rect x="${x-24}" y="${y-20}" width="48" height="32" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/><rect x="${x-4}" y="${y+12}" width="8" height="6" fill="${ink}"/><rect x="${x-14}" y="${y+18}" width="28" height="4" rx="2" fill="${ink}"/>`;
+ case'sw':return sw(x,y,70,26);
+ case'vlan':return sw(x,y,70,26,stt==='lock'?null:['var(--blue)','var(--trunk)']);
+ case'cert':return`<path d="M${x} ${y-24}l20 8v14c0 12-9 19-20 22-11-3-20-10-20-22v-14z" fill="${fill}" stroke="${ink}" stroke-width="2"/><path d="M${x-8} ${y}l6 6 10-11" fill="none" stroke="${stt==='done'?'var(--trunk)':ink}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+ case'pair':return sw(x,y-13,56,18)+sw(x,y+13,56,18)+`<path d="M${x+28} ${y-13}h8v26h-8" fill="none" stroke="${stt==='lock'?ink:'var(--trunk)'}" stroke-width="3"/>`;
+ case'rack':return`<rect x="${x-22}" y="${y-24}" width="44" height="48" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3].map(i=>`<rect x="${x-15}" y="${y-17+i*10}" width="30" height="5" rx="1" fill="${in2}"/>`).join('')}`;
+ case'stp':return`<path d="M${x} ${y-18}L${x-22} ${y+14}M${x} ${y-18}L${x+22} ${y+14}" stroke="${ink}" stroke-width="2"/><path d="M${x-22} ${y+14}H${x+22}" stroke="${ink}" stroke-width="2" stroke-dasharray="3 4"/>${[[x,y-18],[x-22,y+14],[x+22,y+14]].map(([a,b])=>`<circle cx="${a}" cy="${b}" r="8" fill="${fill}" stroke="${ink}" stroke-width="2"/>`).join('')}`;
+ case'lacp':return sw(x-26,y,30,22).replace(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="6"[^>]*\/>/g,'')+sw(x+26,y,30,22).replace(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="6"[^>]*\/>/g,'')+[-6,0,6].map(d=>`<path d="M${x-11} ${y+d}H${x+11}" stroke="${ink}" stroke-width="2"/>`).join('');
+ case'router':return`<circle cx="${x}" cy="${y}" r="20" fill="${fill}" stroke="${ink}" stroke-width="2"/><path d="M${x-10} ${y-5}h20m-5-5 5 5-5 5M${x+10} ${y+6}h-20m5-5-5 5 5 5" fill="none" stroke="${in2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`}
+ return''}
+function wrapT(t,n){const w=t.split(' '),L=[''];for(const x of w){if(L[L.length-1]&&(L[L.length-1]+' '+x).length>n)L.push(x);else L[L.length-1]=(L[L.length-1]+' '+x).trim()}return L.length>2?[L[0],L[1]+'…']:L}
+function drawNet(card){
+ const box=card.querySelector('.netbox'),mode=box.clientWidth<640?'t':'w',Ly=LAY[mode],cur=nextOpen();
+ if(box.dataset.mode===mode&&box.dataset.sig===JSON.stringify([st.done,st.unlocked,st.cUnlock]))return;box.dataset.mode=mode;box.dataset.sig=JSON.stringify([st.done,st.unlocked,st.cUnlock]);
+ const P=Ly.pos,stOf=id=>id[0]==='z'?'lock':isPassed(id)?'done':!itemOpen(id)?'lock':id===cur?'cur':'open';
+ const zones=Object.entries(Ly.zones).map(([n,[x,y,w,h]])=>{const L=LEVELS[n],ok=L.items&&L.items.every(i=>isPassed(i.id));return`<rect class="zr" x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/><text class="zl" x="${x+12}" y="${y+20}">${L.soon?`Zona ${n} · próximamente`:`Zona ${n} · ${esc(L.t)}${ok?' · en línea':''}`}</text>`}).join('');
+ let links='';for(let i=0;i<ORDER.length-1;i++){const a=ORDER[i],b=ORDER[i+1],[ax,ay]=P[a],[bx,by]=P[b],up=isPassed(a)&&b[0]!=='z';
+  const d=ay===by&&ax!==bx?`M${ax} ${ay}H${bx}`:`M${ax} ${ay}H${ax+(Ly.off[a]||(mode==='t'&&a[0]==='z'?85:65))}V${ay===by?ay:by-(mode==='t'?62:62)}H${bx}V${by}`;
+  links+=`<path class="lk ${up?'up':'dn'}" d="${d}"/>${up&&!RM?`<path class="pk" d="${d}"/>`:''}`}
+ const nodes=ORDER.map(id=>{const[x,y]=P[id],s=stOf(id),I=itemById(id),open=s!=='lock',tid=id[0]==='z'?'Zona '+id.slice(1):TID[id],t=wrapT(I.t,mode==='t'?20:14);
+  const led=s==='done'?'var(--ok)':s==='cur'?'var(--trunk)':s==='open'?'var(--blue)':'var(--line)';
+  return`<g class="dev" tabindex="0" role="link" data-id="${id}" aria-label="${esc(tid+': '+I.t)}${open?'':' (bloqueado)'}"><rect class="hl" x="${x-62}" y="${y-34}" width="124" height="118" rx="10" fill="transparent" stroke="transparent" stroke-width="2"/>
+  ${s==='cur'?`<rect class="tag" x="${x-34}" y="${y-56}" width="68" height="18" rx="5"/><text class="tagt" x="${x}" y="${y-43}" text-anchor="middle">Siguiente</text>`:''}${glyph(GLYPH[id],x,y,s)}<circle class="led ${s}" cx="${x+34}" cy="${y-24}" r="4.5" fill="${led}"/>
+  <text class="ni" x="${x}" y="${y+44}" text-anchor="middle">${esc(tid)}</text>${id[0]==='z'?'':[0,1,2].map(k=>`<rect x="${x+30+k*5}" y="${y+44-4-k*3}" width="3" height="${4+k*3}" rx="1" fill="${k<starsFor(id)?'var(--ok)':'var(--line)'}"/>`).join('')}
+  ${t.map((l,k)=>`<text class="nt" x="${x}" y="${y+61+k*15}" text-anchor="middle"${s==='lock'?' style="fill:var(--mut)"':''}>${esc(l)}</text>`).join('')}</g>`}).join('');
+ box.innerHTML=`<svg class="netsvg" viewBox="0 0 ${Ly.vb[0]} ${Ly.vb[1]}" role="group" aria-label="Mapa de tu red">${zones}${links}${nodes}</svg>`;
+ box.querySelectorAll('.dev').forEach(g=>{const go=()=>{const id=g.dataset.id;if(itemOpen(id)){location.hash=itemById(id).h.slice(1)}else{sfx('bad');g.classList.add('shake');setTimeout(()=>g.classList.remove('shake'),400);const I=itemById(id);toast(I.soon||I.L.soon?'Esta zona está en construcción.':I.exam&&unlocked(I.L.n)?'Primero cierra los demás tickets de esta zona.':`Bloqueado: certifica la Zona ${I.L.n-1} o haz el examen de ubicación.`)}};
+  g.addEventListener('click',go);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}})});
+}
+let netRO=null;
+const DESC_T={lesson:'Lección corta con práctica interactiva, quiz y tu explicación con tus palabras (aprueba con 8/10).',lab:'Configura dos switches en consola. Se aprueba con 90/100 y tu explicación con 8/10.',exam:n=>`${EXAMS[n].n} preguntas al azar de todo lo visto en la zona, ${EXAMS[n].min} minutos. Aprueba con 90%.`};
 function renderMap(){
- const p=calcPts(),n=nextT(p),offs=[0,70,100,70,0,-70,-100,-70];let k=0,curSet=false;
- const firstOpen=allIds().find(id=>{const L=LEVELS.find(L=>(L.items||[]).some(i=>i.id===id));return unlocked(L.n)&&!isPassed(id)});
- const saved=sb&&uid?`${ico('cloud')} Tu progreso se guarda en tu cuenta`:'Sin cuenta: tu progreso se guarda solo en este navegador';
- $('#v-mapa').innerHTML=`<div class="world"><div class="player"><div class="avatar">${ico('user')}</div><div><h1>${myName?'Hola, '+esc(myName.split(' ')[0]):'Tu ruta de redes'}</h1><div class="g" style="font-size:18px;font-weight:700">${esc(rankTitle(p))} · ${p} XP</div><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><small>${n?`${n[0]-p} XP para ${esc(n[1])}`:'Rango máximo'} · ${saved}</small></div></div>
- <div class="cta2">${st.placed===null||st.placed===undefined?`<a class="sec" href="#ubicacion">${ico('map')}Ya sé algo: examen de ubicación</a>`:''}<a class="sec" href="#logros">${ico('trophy')}Insignias</a></div>
- ${LEVELS.map(L=>{const open=unlocked(L.n)&&!L.soon,ok=L.items&&L.items.every(i=>isPassed(i.id));
-  const nodes=(L.items||[{id:'soon'+L.n,t:'Próximamente',h:''}]).map(i=>{const x=offs[k++%offs.length],ps=L.items&&isPassed(i.id),r=st.done[i.id],cur=!curSet&&i.id===firstOpen;if(cur)curSet=true;
-   const cls=L.soon||!open?'lock':ps?'done':cur?'cur':'open',icn=L.soon||!open?'lock':ps?'check':i.id==='lab1'?'term':'book';
-   return`<div class="nrow" style="--x:${x}px">${cur?`<span class="bubble">${r?'¡SIGUE!':'¡EMPIEZA!'}</span>`:''}<a class="node ${cls}" ${cls==='lock'?`href="#mapa" data-lock="${L.soon?'soon':L.n}"`:`href="${i.h}"`} aria-label="${esc(i.t)}${cls==='lock'?' (bloqueado)':''}">${ico(icn)}</a>${L.items?starRow(starsOf(r&&r.exp||0)):''}<div class="nlabel">${esc(i.t)}</div></div>`}).join('');
-  return`<section class="zone"><div class="zb"><h2>Zona ${L.n} · ${esc(L.t)}</h2><p>${L.soon?'Próximamente':ok?'Completada':open?esc(L.d):'Bloqueada'}</p></div><div class="nodes">${nodes}</div></section>`}).join('')}</div>`;
- $('#v-mapa').querySelectorAll('[data-lock]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();sfx('bad');a.classList.add('shake');setTimeout(()=>a.classList.remove('shake'),400);toast(a.dataset.lock==='soon'?'Esta zona está en construcción.':`Bloqueado: termina la Zona ${a.dataset.lock-1} o haz el examen de ubicación.`)}));
+ const p=calcPts(),n=nextT(p),cur=nextOpen(),C=cur&&itemById(cur),ids=ORDER.filter(id=>id[0]!=='z'),closed=ids.filter(isPassed).length;
+ const saved=sb&&uid?'Progreso guardado en tu cuenta':'Sin cuenta: progreso solo en este navegador';
+ const desc=C?(C.exam?DESC_T.exam(cur):cur==='lab1'?DESC_T.lab:DESC_T.lesson):'';
+ const stChip=id=>isPassed(id)?'<span class="chip ok">Cerrado</span>':!itemOpen(id)?'<span class="chip lock">Bloqueado</span>':st.done[id]?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>';
+ $('#v-mapa').innerHTML=`<div class="console"><aside class="op">
+  <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${esc(rankTitle(p))}</span></div></div><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><div class="small">${n?`${n[0]-p} XP para ${esc(n[1])}`:'Rango máximo'} · ${saved}</div></div>
+  <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${Object.keys(st.badges||{}).length}/${BADGES.length}</b><span>Insignias</span></div></div>
+  ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
+  ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:''}
+ </aside><section><div class="netcard"><div class="nethead"><h2>Tu red</h2><div class="nleg"><span><i style="background:var(--ok)"></i>enlace up</span><span><i style="background:var(--line)"></i>pendiente</span><span><i style="background:var(--trunk)"></i>siguiente</span></div></div><div class="netbox"></div></div>
+ <div class="netcard queue"><h2>Cola de tickets</h2>${ids.map(id=>{const I=itemById(id);return`<a class="qrow ${itemOpen(id)?'':'lock'}" href="${itemOpen(id)?I.h:'#mapa'}" data-q="${id}"><span class="qid">${esc(TID[id])}</span><span class="qt"><b>${esc(I.t)}</b><span>Zona ${I.L.n} · ${esc(I.L.t)}</span></span>${sig(starsFor(id))}${stChip(id)}</a>`}).join('')}</div></section></div>`;
+ const card=$('#v-mapa .netcard');drawNet(card);if(netRO)netRO.disconnect();netRO=new ResizeObserver(()=>drawNet(card));netRO.observe(card);
+ $('#v-mapa').querySelectorAll('.qrow.lock').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();toast('Ese ticket todavía está bloqueado.')}));
 }
 
 /* ---------- insignias ---------- */
-function renderLogros(){const p=calcPts(),stars=Object.values(st.done).reduce((a,r)=>a+starsOf(r.exp||0),0),nb=Object.keys(st.badges||{}).length;
- $('#v-logros').innerHTML=`<div class="world" style="padding-bottom:28px"><div class="player"><div class="avatar">${ico('trophy')}</div><div><h1>${esc(rankTitle(p))}</h1><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><small>${p} XP${nextT(p)?` · ${nextT(p)[0]-p} XP para ${esc(nextT(p)[1])}`:''}</small></div></div></div>
- <div class="band"><div class="wrap"><div class="stats"><div class="stat"><b>${p}</b><span>XP total</span></div><div class="stat"><b>${stars}</b><span>Estrellas</span></div><div class="stat"><b>${st.streak||0}</b><span>Días de racha</span></div><div class="stat"><b>${nb}/${BADGES.length}</b><span>Insignias</span></div></div>
- <h2>Insignias</h2><div class="badges">${BADGES.map(b=>{const on=st.badges&&st.badges[b.id];return`<div class="badge ${on?'on':''}"><div class="bi">${ico(on?b.ic:'lock')}</div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div>`}).join('')}</div>
- <h2 style="margin-top:28px">Rangos</h2><p>${TITLES.map(t=>`${esc(t[1])} (${t[0]} XP)`).join(' · ')}</p>
- <h2 style="margin-top:28px">Cómo ganar XP y estrellas</h2><table class="stack"><thead><tr><th>Actividad</th><th>Recompensa</th></tr></thead><tbody><tr><td>Pregunta correcta al primer intento</td><td>10 XP</td></tr><tr><td>Tu explicación</td><td>10 XP por punto (hasta 100)</td></tr><tr><td>Aprobar con 8, 9 o 10</td><td>1, 2 o 3 estrellas</td></tr><tr><td>Cerrar el ticket del Lab 1</td><td>200 XP</td></tr><tr><td>Lab mezclando vendors</td><td>+50 XP</td></tr><tr><td>Practicar días seguidos</td><td>Racha</td></tr></tbody></table></div></div>`}
+function renderLogros(){const p=calcPts(),stars=ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),nb=Object.keys(st.badges||{}).length;
+ $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${esc(rankTitle(p))}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct(p)}%"></i></div><p class="small">${p} XP${nextT(p)?` · ${nextT(p)[0]-p} XP para ${esc(nextT(p)[1])}`:''}</p></div></header>
+ <div class="wrap" style="padding-bottom:40px"><div class="stats"><div class="stat"><b>${p}</b><span>XP total</span></div><div class="stat"><b>${stars}</b><span>Barras de señal</span></div><div class="stat"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="stat"><b>${nb}/${BADGES.length}</b><span>Insignias</span></div></div>
+ <h2>Insignias</h2><div class="badges">${BADGES.map(b=>{const on=st.badges&&st.badges[b.id];return`<div class="badge ${on?'on':''}"><div class="bi">${ico(on?b.ic:'lock')}</div><div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div></div>`}).join('')}</div>
+ <h2 style="margin-top:24px">Rangos</h2><p>${TITLES.map(t=>`${esc(t[1])} (${t[0]} XP)`).join(' · ')}</p>
+ <h2 style="margin-top:24px">Cómo se gana</h2><table class="stack"><thead><tr><th>Actividad</th><th>Recompensa</th></tr></thead><tbody><tr><td>Pregunta correcta al primer intento</td><td>10 XP</td></tr><tr><td>Tu explicación</td><td>10 XP por punto (hasta 100)</td></tr><tr><td>Lab cerrado</td><td>2 XP por punto del lab (hasta 200), +50 si mezclas vendors</td></tr><tr><td>Certificación de zona</td><td>hasta 150 XP</td></tr><tr><td>Señal del ticket</td><td>1, 2 o 3 barras según tu calificación</td></tr><tr><td>Practicar días seguidos</td><td>Uptime</td></tr></tbody></table></div>`}
 
 /* ---------- modo creador ---------- */
-function markPassed(id){const r=item(id);if(id==='lab1'){r.lab=true;r.labPts=Math.max(r.labPts||0,200)}else{const L=lesById(id);r.qok={};r.quiz={};L.quiz.forEach((_,i)=>{r.qok[i]=true;r.quiz[i]='ok'});r.quizPts=L.quiz.length*10}r.exp=10;r.expPts=100}
+function markPassed(id){const r=item(id);if(EXAMS[id]){r.examBest=100;r.examPts=150;r.attempts=(r.attempts||0)+1;return}if(id==='lab1'){r.lab=true;r.labScore=100;r.labPts=Math.max(r.labPts||0,200)}else{const L=lesById(id);r.qok={};r.quiz={};L.quiz.forEach((_,i)=>{r.qok[i]=true;r.quiz[i]='ok'});r.quizPts=L.quiz.length*10}r.exp=10;r.expPts=100}
 function renderCreador(){
  if(!isOwner){$('#v-creador').innerHTML='<div class="band"><p>Esta sección es solo para el creador de LabRed.</p></div>';return}
  let bk=null;try{bk=JSON.parse(localStorage.getItem('labred_bk')||'null')}catch(e){}
@@ -238,8 +290,15 @@ function mountExplain(el,id,cfg,onDone){
  el.innerHTML=`<div class="exp"><h2>Explícalo con tus palabras</h2><p>${esc(cfg.q)}</p><p class="tip">Mínimo <strong>${MINW} palabras</strong>. Se evalúa que lo entiendas, no la redacción. Para aprobar necesitas <strong>${PASS}/10</strong>; vale hasta 100 puntos.</p><textarea id="ex-${id}" aria-label="Tu explicación" placeholder="Escribe como se lo explicarías a un compañero que no sabe nada de redes…">${esc(r.lastText||'')}</textarea><div class="ctrl" style="padding-left:0"><button class="btn pri" id="eb-${id}">Evaluar mi explicación</button><span class="tip" style="margin:0" id="wc-${id}"></span>${r.exp?`<span class="tip" style="margin:0">Tu mejor puntaje: ${r.exp}/10</span>`:''}</div><div id="er-${id}"></div></div>`;
  const btn=el.querySelector('#eb-'+id),out=el.querySelector('#er-'+id),ta=el.querySelector('#ex-'+id),cnt=el.querySelector('#wc-'+id);
  const upd=()=>{const n=wc(ta.value);cnt.textContent=`${n}/${MINW} palabras`;cnt.style.color=n>=MINW?'var(--ok)':'';btn.disabled=n<MINW};upd();
+ const init=r.lastText||'',M={typed:init.length,t0:0,paste:0};
+ ['paste','drop'].forEach(ev=>ta.addEventListener(ev,e=>{e.preventDefault();M.paste++;out.innerHTML='<p class="warn">Aquí no se pega texto: escríbelo tú, con tus palabras. Así es como se aprende.</p>'}));
+ ta.addEventListener('beforeinput',e=>{if(!M.t0)M.t0=Date.now();if(/^insert(Text|ReplacementText|CompositionText|LineBreak)$/.test(e.inputType))M.typed+=(e.data||' ').length});
  ta.addEventListener('input',()=>{r.lastText=ta.value;upd()});
  btn.addEventListener('click',async()=>{const tx=ta.value.trim();if(wc(tx)<MINW){out.innerHTML=`<p class="warn">Te faltan ${MINW-wc(tx)} palabras. Una explicación de pocas palabras no demuestra que lo entiendes.</p>`;return}
+  const secs=M.t0?(Date.now()-M.t0)/1000:0,fresh=tx!==(r.evalText||'');
+  if(fresh&&M.typed<tx.length*0.6){out.innerHTML='<p class="warn">Buena parte de este texto no se escribió aquí. Escribe tu explicación tú mismo en este cuadro.</p>';return}
+  if(fresh&&secs<(wc(tx)-wc(init))*0.5){out.innerHTML='<p class="warn">Lo escribiste demasiado rápido para ser tuyo. Tómate tu tiempo y explícalo con calma.</p>';return}
+  r.lastMetrics={palabras:wc(tx),segundos:Math.round(secs),tecleado:M.typed,largo:tx.length,pegados:M.paste};r.evalText=tx;
   btn.disabled=true;btn.textContent='Evaluando…';out.innerHTML='';
   const v=await evaluate(cfg,tx);btn.textContent='Evaluar de nuevo';upd();
   if(v.error){out.innerHTML=`<p class="warn">${esc(v.error)}</p>`;return}
@@ -267,21 +326,60 @@ function mountExplain(el,id,cfg,onDone){
 /* ---------- lección ---------- */
 function showLesson(key){
  const L=LES[key];if(!L){location.hash='mapa';return}
- const r=item(L.id),keys=Object.keys(LES),i=keys.indexOf(key),prev=keys[i-1],next=keys[i+1];
- $('#v-lec').innerHTML=`<header class="band hero"><div class="in"><p class="brand"><a href="#mapa" style="color:#fff">Mapa</a> · Zona ${L.lv} · Misión ${L.k} de ${keys.length}</p><h1>${esc(L.t)}</h1><span class="reward">${ico('bolt')} hasta ${L.quiz.length*10+100} XP · ${ico('star')} 3 estrellas con 10/10</span></div></header>
- <div class="band"><article class="lec">${L.body.map(p=>`<p>${p}</p>`).join('')}<div class="vocab"><h3>Vocabulario de la misión</h3><p class="tip" style="margin:0 0 6px">En el trabajo y en la documentación de los vendors todo está en inglés. Acostúmbrate a estos términos:</p><dl>${(VOCAB[key]||[]).map(([e,t])=>`<div><dt>${esc(e)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl></div><div id="lfig"></div><div class="real">${L.real}</div>
- <h2>Comprueba</h2><div id="lquiz"></div><div id="lexp" style="margin-top:28px"></div><div id="lpass"></div>
- <div class="nextnav">${prev?`<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;border-radius:8px" href="#leccion-${prev}">← Anterior</a>`:'<span></span>'}<a id="lnext" class="btn pri" style="display:inline-flex;align-items:center;text-decoration:none;border-radius:8px" href="${next?'#leccion-'+next:'#lab-1'}">${next?'Siguiente lección →':'Ir al Lab 1 →'}</a></div><div id="lgate"></div></article></div>`;
+ const r=item(L.id),keys=Object.keys(LES),i=keys.indexOf(key),prev=keys[i-1],next=keys[i+1],nextH=next?'#leccion-'+next:'#examen-0',nextT=next?'Siguiente ticket':'Ir a la certificación';
+ $('#v-lec').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${L.lv} / ${TID[L.id]}</p><h1>${esc(L.t)}</h1></div></header>
+ <div class="lgrid"><article class="lec">${L.body.map(p=>`<p>${p}</p>`).join('')}<div id="lfig"></div><div class="real">${L.real}</div>
+ <h2>Comprueba</h2><div id="lquiz"></div><div id="lexp" style="margin-top:24px"></div><div id="lpass"></div>
+ <div class="nextnav">${prev?`<a class="btn" href="#leccion-${prev}">← Anterior</a>`:'<span></span>'}<a id="lnext" class="btnl" href="${nextH}">${nextT} →</a></div><div id="lgate"></div></article>
+ <aside class="side"><div class="card" id="lside"></div><div class="card vocab"><h3 style="margin:0">Vocabulario</h3><p class="tip" style="margin:2px 0 6px">En el trabajo todo está en inglés:</p><dl>${(VOCAB[key]||[]).map(([e,t])=>`<div><dt>${esc(e)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl></div></aside></div>`;
  FIGS[L.fig]($('#lfig'));
- const pass=()=>{const ok=isPassed(L.id);$('#lpass').innerHTML=ok?`<div class="win3"><h3>¡Misión cumplida!</h3>${starRow(starsOf(r.exp),'bigstars')}<p>${r.exp<10?'Sube tu explicación a 10/10 para conseguir las 3 estrellas.':'Perfecto: 3 estrellas.'}</p><a class="btn pri" style="display:inline-flex;align-items:center;text-decoration:none;border-radius:10px" href="${next?'#leccion-'+next:'#lab-1'}">${next?'Siguiente misión →':'Ir al Lab 1 →'}</a></div>`:'';const g=$('#lgate');if(g&&ok)g.innerHTML='';$('#lnext').classList.toggle('lockd',!ok)};
+ const side=()=>{const qk=L.quiz.filter((_,k)=>r.qok&&r.qok[k]).length,ok=isPassed(L.id);
+  $('#lside').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="mono small">${TID[L.id]}</span>${ok?'<span class="chip ok">Cerrado</span>':st.done[L.id]&&(qk||r.exp)?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>'}</div>
+  <ul class="steps"><li class="${qk===L.quiz.length?'ok':''}"><span class="d"></span><span>Quiz</span><span>${qk}/${L.quiz.length}</span></li><li class="${(r.exp||0)>=PASS?'ok':''}"><span class="d"></span><span>Explicación (mín. ${PASS})</span><span>${r.exp||0}/10</span></li></ul>
+  <div class="reward">${ico('bolt')} hasta ${L.quiz.length*10+100} XP</div><div style="margin-top:6px">${sig(starsFor(L.id))} <span class="small">8, 9 o 10 = 1, 2 o 3 barras</span></div>`};
+ const pass=()=>{const ok=isPassed(L.id);side();$('#lpass').innerHTML=ok?`<div class="closed"><div class="log">%LINK-3-UPDOWN: Interface ${TID[L.id]}, changed state to up</div><div class="in">${sig(starsFor(L.id),true)}<div><h3>Ticket cerrado</h3><p>${r.exp<10?'Sube tu explicación a 10/10 para la señal completa.':'Señal completa.'}</p><a class="btnl" href="${nextH}">${nextT} →</a></div></div></div>`:'';const g=$('#lgate');if(g&&ok)g.innerHTML='';$('#lnext').classList.toggle('lockd',!ok)};
  $('#lquiz').innerHTML=L.quiz.map((q,qi)=>`<div class="q" data-q="${qi}"><p>${esc(q.q)}</p><div class="opts">${q.o.map((o,j)=>`<button data-j="${j}">${esc(o)}</button>`).join('')}</div><div class="why"></div></div>`).join('');
  L.quiz.forEach((q,qi)=>{const box=$(`#lquiz [data-q="${qi}"]`);const show=j=>{box.querySelectorAll('button').forEach((b,k)=>{b.classList.toggle('right',k===q.a&&j===q.a);b.classList.toggle('wrong',k===j&&j!==q.a)});box.querySelector('.why').innerHTML=(j===q.a?'<strong style="color:var(--ok)">Correcto.</strong> ':'<strong style="color:var(--bad)">No exactamente.</strong> Intenta otra vez. ')+(j===q.a?esc(q.why):'')};
   if(r.qok&&r.qok[qi])show(q.a);
   box.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const j=+b.dataset.j;if(r.quiz[qi]===undefined){r.quiz[qi]=j===q.a?'ok':'bad';if(j===q.a){r.quizPts=(r.quizPts||0)+10}}if(j===q.a){r.qok=r.qok||{};r.qok[qi]=true;sfx('ok')}else{sfx('bad');b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),400)}checkLevels();save();show(j);pass()})});
  mountExplain($('#lexp'),L.id,L.exp,pass);pass();
- $('#lnext').addEventListener('click',e=>{if(isPassed(L.id)||cOn())return;e.preventDefault();const q=L.quiz.filter((_,i)=>!(r.qok&&r.qok[i])).length;
-  $('#lgate').innerHTML=`<div class="res" style="border-color:var(--bad)"><h3 style="margin:0 0 6px">Todavía no has aprendido esta lección</h3><p>Aquí no se avanza por avanzar: lo que no entiendas ahora te va a costar en los labs. Te falta:</p><ul>${q?`<li>Responder bien ${q===1?'la pregunta pendiente':'las '+q+' preguntas pendientes'} del quiz.</li>`:''}${r.exp>=PASS?'':`<li>Explicarlo con tus palabras y sacar al menos ${PASS}/10${r.exp?` (tu mejor puntaje es ${r.exp}/10)`:''}.</li>`}</ul><p>Si te atoraste, prueba otra forma de aprenderlo:</p><ul><li>${esc(ALT[L.id].analog)}</li><li>${esc(ALT[L.id].fig)}</li></ul><button class="btn" id="gexp">Ir a mi explicación</button></div>`;
+ $('#lnext').addEventListener('click',e=>{if(isPassed(L.id)||cOn())return;e.preventDefault();const q=L.quiz.filter((_,k)=>!(r.qok&&r.qok[k])).length;
+  $('#lgate').innerHTML=`<div class="res" style="border-color:var(--bad)"><h3 style="margin:0 0 6px">Todavía no has aprendido este ticket</h3><p>Aquí no se avanza por avanzar: lo que no entiendas ahora te va a costar en los labs. Te falta:</p><ul>${q?`<li>Responder bien ${q===1?'la pregunta pendiente':'las '+q+' preguntas pendientes'} del quiz.</li>`:''}${r.exp>=PASS?'':`<li>Explicarlo con tus palabras y sacar al menos ${PASS}/10${r.exp?` (tu mejor puntaje es ${r.exp}/10)`:''}.</li>`}</ul><p>Si te atoraste, prueba otra forma de aprenderlo:</p><ul><li>${esc(ALT[L.id].analog)}</li><li>${esc(ALT[L.id].fig)}</li></ul><button class="btn" id="gexp">Ir a mi explicación</button></div>`;
   $('#gexp').addEventListener('click',()=>$('#lexp').scrollIntoView({behavior:RM?'auto':'smooth'}))});
+}
+
+/* ---------- certificaciones de zona ---------- */
+let EX=null;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function examAbort(){if(EX){clearInterval(EX.tmr);document.removeEventListener('visibilitychange',EX.vis);const r=item(EX.id);r.attempts=(r.attempts||0)+1;r.abandoned=(r.abandoned||0)+1;save(true);EX=null}}
+function renderExam(z){
+ const id='x'+z,E=EXAMS[id],L=LEVELS[z],r=item(id),others=L.items.filter(i=>i.id!==id),pend=others.filter(i=>!isPassed(i.id)),v=$('#v-examen');
+ const head=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${z} / ${TID[id]}</p><h1>${esc(E.t)}</h1></div></header>`;
+ if(!unlocked(z)||(pend.length&&!cOn())){v.innerHTML=head+`<div class="lecw"><div class="res"><h3 style="margin:0 0 6px">Primero cierra los tickets de la zona</h3><p>La certificación evalúa todo lo de la Zona ${z}. Te falta:</p><ul>${pend.map(i=>`<li><a href="${i.h}">${esc(TID[i.id]+' · '+i.t)}</a></li>`).join('')}</ul></div></div>`;return}
+ v.innerHTML=head+`<div class="lecw"><div class="card"><h2>Reglas</h2><ul><li>${E.n} preguntas al azar de un banco de ${E.pool.length}: cada intento es distinto.</li><li>${E.min} minutos. Al acabarse el tiempo, se califica lo que lleves.</li><li>Se aprueba con <strong>${EXPASS}%</strong>.</li><li>No se muestran las respuestas correctas, solo los temas que debes repasar.</li><li>Salir de la pestaña durante el examen queda registrado para tu instructor.</li></ul>
+ <p class="small">Intentos: ${r.attempts||0} · Mejor resultado: ${r.examBest||0}%</p><button class="btnl" id="exgo">${isPassed(id)?'Volver a presentar (para mejorar tu señal)':'Comenzar'}</button></div></div>`;
+ $('#exgo').addEventListener('click',()=>startExam(id));
+}
+function startExam(id){const E=EXAMS[id];
+ const qs=shuffle(E.pool).slice(0,E.n).map(q=>{const o=shuffle(q.o.map((t,k)=>({t,ok:k===q.a})));return{q:q.q,o,topic:q.topic}});
+ EX={id,qs,i:0,ans:[],leaves:0,end:Date.now()+E.min*60000};
+ EX.vis=()=>{if(document.hidden&&EX)EX.leaves++};document.addEventListener('visibilitychange',EX.vis);
+ EX.tmr=setInterval(()=>{if(!EX)return;const left=Math.max(0,EX.end-Date.now()),el=$('#exclock');if(el)el.textContent=`${Math.floor(left/60000)}:${String(Math.floor(left/1000)%60).padStart(2,'0')}`;if(!left)finishExam()},500);
+ showQ()}
+function showQ(){const q=EX.qs[EX.i],E=EXAMS[EX.id],v=$('#v-examen');
+ v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb">${TID[EX.id]} · pregunta ${EX.i+1} de ${EX.qs.length} · ${ico('clock')} <span id="exclock"></span></p><h1>${esc(E.t)}</h1><div class="xpbar" style="max-width:520px"><i style="width:${100*EX.i/EX.qs.length}%"></i></div></div></header>
+ <div class="lecw"><div class="q"><p>${esc(q.q)}</p><div class="opts">${q.o.map((o,j)=>`<button data-j="${j}">${esc(o.t)}</button>`).join('')}</div></div></div>`;
+ v.querySelectorAll('.opts button').forEach(b=>b.addEventListener('click',()=>{EX.ans[EX.i]=q.o[+b.dataset.j].ok;EX.i++;sfx('xp');EX.i<EX.qs.length?showQ():finishExam()}))}
+function finishExam(){if(!EX)return;clearInterval(EX.tmr);document.removeEventListener('visibilitychange',EX.vis);
+ const E=EXAMS[EX.id],r=item(EX.id),ok=EX.qs.filter((_,k)=>EX.ans[k]).length,score=Math.round(100*ok/EX.qs.length),miss=[...new Set(EX.qs.filter((_,k)=>!EX.ans[k]).map(q=>q.topic))];
+ r.attempts=(r.attempts||0)+1;r.lastScore=score;r.leaves=(r.leaves||0)+EX.leaves;if(score>(r.examBest||0)){r.examBest=score;r.examPts=Math.round(score*1.5)}
+ const leaves=EX.leaves,id=EX.id;EX=null;checkLevels();save();
+ const pass=score>=EXPASS,topicT=t=>{const it=itemById(t);return`<li><a href="${it.h}">${esc(TID[t]+' · '+it.t)}</a></li>`};
+ $('#v-examen').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / ${TID[id]}</p><h1>${esc(E.t)}</h1></div></header><div class="lecw">
+ ${pass?`<div class="closed"><div class="log">%LABRED-5-CERT: ${TID[id]} aprobada con ${score}%</div><div class="in">${sig(starsPct(score),true)}<div><h3>Certificación aprobada: ${score}%</h3><p>${ok} de ${E.n} correctas. La siguiente zona queda en línea.</p><a class="btnl" href="#mapa">Ver mi red →</a></div></div></div>`
+ :`<div class="res" style="border-color:var(--bad)"><div class="sc" style="color:var(--bad)">${score}%</div><div class="meter"><i style="width:${score}%;background:var(--bad)"></i></div><p><strong>Necesitas ${EXPASS}% para certificar.</strong> Tuviste ${ok} de ${E.n} correctas.</p>${miss.length?`<h4>Repasa estos tickets</h4><ul>${miss.map(topicT).join('')}</ul>`:''}<p class="tip">Cuando estés listo vuelve a presentar: las preguntas cambian cada vez.</p><button class="btnl" id="exretry">Volver a presentar</button></div>`}
+ ${leaves?`<p class="warn">Saliste de la pestaña ${leaves} ${leaves===1?'vez':'veces'} durante el examen. Queda registrado para tu instructor.</p>`:''}</div>`;
+ $('#exretry')?.addEventListener('click',()=>renderExam(E.zone));
 }
 
 /* ---------- ranking ---------- */
@@ -298,17 +396,22 @@ async function renderRank(){
 }
 
 /* ---------- lab 1 ---------- */
-addEventListener('lab-done',e=>{const r=item('lab1');let add=0;if(!r.lab){r.lab=true;r.labPts=200;add=200}if(e.detail.mixed&&r.labPts<250){r.labPts=250;add+=50}if(add)setTimeout(()=>toast(`Para cerrar el ticket, explica abajo lo que hiciste (mínimo ${PASS}/10).`),1500);checkLevels();save()});
+addEventListener('lab-done',e=>{const r=item('lab1'),d=e.detail,prevPts=r.labPts||0;r.lab=true;r.labRuns=(r.labRuns||0)+1;r.labLast={score:d.score,err:d.err,hints:d.hints,fails:d.fails,s:Math.round(d.ms/1000),paste:d.paste,mixed:d.mixed};
+ if(d.score>(r.labScore||0))r.labScore=d.score;r.labPts=Math.max(prevPts,d.score*2+(d.mixed?50:0));checkLevels();save();
+ const ok=d.score>=LABPASS;$('#labres').innerHTML=`<div class="${ok?'closed':'res'}" ${ok?'':'style="border-color:var(--bad)"'}>${ok?`<div class="log">%LABRED-5-TICKET: TK-1042 resuelto con ${d.score}/100</div><div class="in">${sig(starsPct(d.score),true)}<div><h3>Configuración aprobada: ${d.score}/100</h3><p>Errores de comando: ${d.err} · pistas: ${d.hints} · pings fallidos: ${d.fails}. Para cerrar el ticket, explica abajo lo que hiciste (mínimo ${PASS}/10).</p></div></div>`:`<div class="sc" style="color:var(--bad)">${d.score}/100</div><div class="meter"><i style="width:${d.score}%;background:var(--bad)"></i></div><p><strong>El ping funcionó, pero necesitas ${LABPASS}/100 para aprobar el lab.</strong> Errores de comando: ${d.err} (−${Math.min(20,d.err)}) · pistas: ${d.hints} (−${10*d.hints}) · pings fallidos: ${d.fails} (−${5*d.fails}).</p><p class="tip">Así se practica en la vida real: repítelo hasta que te salga limpio. Reinicia el lab y hazlo sin pistas y con menos errores.</p><button class="btnl" id="labagain">Reiniciar el lab</button>`}</div>`;
+ $('#labagain')?.addEventListener('click',()=>dispatchEvent(new Event('lab-reset')));
+});
 mountExplain($('#labexp'),'lab1',LABEXP);
 function renderLock(){$('#v-lock').innerHTML=`<header class="band hero"><div class="in"><p class="brand"><a href="#mapa" style="color:#fff">Mapa</a> · Nivel 1</p><h1>El Lab 1 está bloqueado</h1><p>Termina las tres lecciones del Nivel 0 o demuestra en el examen de ubicación que ya dominas lo básico.</p><div class="cta"><a class="pri" href="#leccion-0-1">Ir al Nivel 0</a><a class="sec" href="#ubicacion">Examen de ubicación</a></div></div></header>`}
 
 /* ---------- router ---------- */
 function route(){
  const h=location.hash.slice(1)||'mapa';let id='v-mapa';
- if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(h==='lab-1')id=unlocked(1)?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar'].includes(h))id='v-'+h;
+ if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=unlocked(1)?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar'].includes(h))id='v-'+h;
  if(sb&&!uid&&!guest)id='v-entrar';
- $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));
- if(id==='v-lec')showLesson(h.slice(8));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();
+ if(EX&&id!=='v-examen')examAbort();
+ $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));renderMe();
+ if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();
  if(id==='v-lab1')dispatchEvent(new Event('lab-show'));
  scrollTo(0,0);
 }
@@ -318,16 +421,19 @@ save(true);route();
 /* ---------- cuentas (Supabase Auth) ---------- */
 function renderEntrar(){
  const v=$('#v-entrar');let mode=v.dataset.mode||'login';
- if(!sb){v.innerHTML='<div class="world"><div class="player"><div><h1>Sin conexión</h1><p>La página no tiene configurada la base de datos. Revisa js/config.js.</p></div></div></div>';return}
- if(uid){v.innerHTML=`<div class="world"><div class="player"><div class="avatar">${ico('user')}</div><div><h1>${esc(myName||'Tu cuenta')}</h1><small>${esc(userEmail)}</small><div class="cta2" style="justify-content:flex-start"><a class="pri" href="#mapa">Ir al mapa</a><a class="sec" href="#entrar" id="logout">Salir</a></div></div></div></div>`;
+ if(!sb){v.innerHTML='<div class="authw"><div class="auth"><h2>Sin conexión</h2><p>La página no tiene configurada la base de datos. Revisa js/config.js.</p></div></div>';return}
+ if(uid){v.innerHTML=`<div class="authw" style="min-height:auto"><div class="auth"><div class="prof"><div class="av">${esc(initials(myName))}</div><div><b>${esc(myName||'Tu cuenta')}</b><span>${esc(userEmail)}</span></div></div><div class="cta"><a href="#mapa">Ir a mi red</a><a class="sec" href="#entrar" id="logout">Salir</a></div></div></div>`;
   $('#logout').addEventListener('click',async e=>{e.preventDefault();await sb.auth.signOut();});return}
- v.innerHTML=`<div class="world"><div class="auth"><h1 class="g">LabRed</h1><p>Aprende redes jugando, desde cero hasta configurar switches de Cisco, Aruba y Juniper.</p>
+ v.innerHTML=`<div class="authw"><div class="pitch"><p class="crumb">LabRed · laboratorio de redes</p><h1>Aprende redes construyendo tu propia red</h1><p>Cada ticket que cierras enciende un equipo en tu mapa. Empiezas desde qué es un frame y terminas configurando switches de Cisco, Aruba y Juniper.</p>
+ <svg viewBox="0 0 560 150" aria-hidden="true"><path class="lkx" d="M70 75H280H490" stroke="var(--ok)" stroke-width="3" fill="none"/><path d="M70 75H280H490" stroke="#fff" stroke-width="3" fill="none" stroke-dasharray="2 22" style="animation:flow 1.2s linear infinite"/>${glyph('pc',70,70,'done')}${glyph('pair',280,75,'done')}${glyph('pc',490,70,'open')}<text x="70" y="130" text-anchor="middle" class="small" fill="var(--mut)" font-size="12">PC-A</text><text x="280" y="130" text-anchor="middle" fill="var(--mut)" font-size="12">SW1 · SW2</text><text x="490" y="130" text-anchor="middle" fill="var(--mut)" font-size="12">PC-B</text></svg>
+ <ul><li>Fundamentos explicados para que se entiendan.</li><li>Labs en consola de tres vendors, sin pegar comandos.</li><li>Certificaciones por zona: avanzas cuando de verdad lo sabes.</li></ul></div>
+ <div class="auth"><h2>${mode==='signup'?'Crea tu cuenta':'Entra a tu red'}</h2>
  <div class="atabs" role="tablist"><button role="tab" aria-selected="${mode==='login'}" data-m="login">Entrar</button><button role="tab" aria-selected="${mode==='signup'}" data-m="signup">Crear cuenta</button></div>
  <form id="af" novalidate>${mode==='signup'?'<label>Tu nombre (así sale en el ranking)<input id="an" autocomplete="name" maxlength="40" required></label>':''}
  <label>Correo<input id="ae" type="email" autocomplete="email" required></label>
  <label>Contraseña${mode==='signup'?' (mínimo 8 caracteres)':''}<input id="ap" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" required></label>
  <button class="bigbtn" type="submit" id="ab">${mode==='signup'?'Crear mi cuenta':'Entrar'}</button><p id="amsg" class="amsg" role="alert">${esc(authNote)}</p></form>
- <button class="guest" id="resend" style="background:none;border:0;cursor:pointer;width:100%;font-size:15px;text-decoration:underline">Reenviar correo de confirmación</button>
+ <button class="guest" id="resend" style="background:none;border:0;cursor:pointer;width:100%;text-decoration:underline">Reenviar correo de confirmación</button>
  <a href="#mapa" id="guest" class="guest">Probar sin cuenta (no se guarda tu progreso)</a></div></div>`;
  v.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{v.dataset.mode=b.dataset.m;renderEntrar()}));
  $('#resend').addEventListener('click',async()=>{const em=$('#ae').value.trim(),msg=$('#amsg');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){msg.style.color='';msg.textContent='Escribe tu correo arriba y vuelve a tocar "Reenviar".';return}

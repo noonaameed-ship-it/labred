@@ -2,8 +2,8 @@
    Edita este archivo para corregir textos o agregar lecciones. */
 /* ---------- contenido ---------- */
 const LEVELS=[
- {n:0,t:'Fundamentos',d:'Qué viaja por el cable, cómo piensa un switch y qué es una VLAN. Teoría corta, con animaciones.',items:[{id:'l0-1',t:'El frame y la dirección MAC',h:'#leccion-0-1'},{id:'l0-2',t:'Cómo aprende un switch',h:'#leccion-0-2'},{id:'l0-3',t:'VLAN: varias redes en un switch',h:'#leccion-0-3'}]},
- {n:1,t:'Switching básico',d:'Tu primera VLAN entre dos switches, en consola real de Cisco, Aruba o Juniper.',items:[{id:'lab1',t:'Lab: tu primera VLAN entre dos switches',h:'#lab-1'}]},
+ {n:0,t:'Fundamentos',d:'Qué viaja por el cable, cómo piensa un switch y qué es una VLAN. Teoría corta, con animaciones.',items:[{id:'l0-1',t:'El frame y la dirección MAC',h:'#leccion-0-1'},{id:'l0-2',t:'Cómo aprende un switch',h:'#leccion-0-2'},{id:'l0-3',t:'VLAN: varias redes en un switch',h:'#leccion-0-3'},{id:'x0',t:'Certificación de la Zona 0',h:'#examen-0',exam:true}]},
+ {n:1,t:'Switching básico',d:'Tu primera VLAN entre dos switches, en consola real de Cisco, Aruba o Juniper.',items:[{id:'lab1',t:'Lab: tu primera VLAN entre dos switches',h:'#lab-1'},{id:'x1',t:'Certificación de la Zona 1',h:'#examen-1',exam:true}]},
  {n:2,t:'Trunks y VLAN nativa',d:'Varias VLAN en un mismo trunk y qué pasa cuando la nativa no coincide.',soon:true},
  {n:3,t:'Spanning Tree',d:'Encontrar al root bridge y entender por qué se bloquea un puerto.',soon:true},
  {n:4,t:'Agregación con LACP',d:'Juntar varios cables como si fueran uno.',soon:true},
@@ -91,3 +91,46 @@ const PLACE=[
  {lv:2,q:'En STP, ¿cómo se elige el root bridge?',o:['El de más puertos','El de menor bridge ID (prioridad + MAC)','El más nuevo','El que tenga más VLAN'],a:1}
 ];
 
+
+/* Identificador de ticket y tipo de equipo de cada misión en el mapa */
+const TID={'l0-1':'L0-01','l0-2':'L0-02','l0-3':'L0-03','x0':'CERT-0','lab1':'TK-1042','x1':'CERT-1'};
+const GLYPH={'l0-1':'pc','l0-2':'sw','l0-3':'vlan','x0':'cert','lab1':'pair','x1':'cert',z2:'rack',z3:'stp',z4:'lacp',z5:'router'};
+
+/* Certificaciones de zona: preguntas al azar del banco, opciones barajadas, con tiempo. Se aprueba con 90%. */
+const EXAMS={
+x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:10,min:12,pool:[
+ {q:'¿Qué identifica una dirección MAC?',o:['Una tarjeta o interfaz de red (NIC)','Una red completa','Un usuario','Un sitio web'],a:0,topic:'l0-1'},
+ {q:'¿Cuántos bits tiene una dirección MAC?',o:['48','32','64','128'],a:0,topic:'l0-1'},
+ {q:'¿Qué indica el OUI de una MAC?',o:['El fabricante de la tarjeta','La VLAN del puerto','La IP del equipo','El número de puerto'],a:0,topic:'l0-1'},
+ {q:'¿Qué campo del frame usa el switch para decidir el puerto de salida?',o:['Destination MAC','Source MAC','EtherType','FCS'],a:0,topic:'l0-1'},
+ {q:'¿Para qué sirve el FCS de un frame?',o:['Detectar si el frame llegó dañado','Indicar la VLAN','Cifrar los datos','Indicar la prioridad'],a:0,topic:'l0-1'},
+ {q:'Un frame trae EtherType 0x0800. ¿Qué lleva en el payload?',o:['Un paquete IPv4','Un paquete IPv6','Un mensaje ARP','Una etiqueta 802.1Q'],a:0,topic:'l0-1'},
+ {q:'¿Con qué información aprende el switch su MAC address table?',o:['Source MAC y el puerto por donde entró el frame','Destination MAC y el puerto de salida','La IP del equipo','Se configura a mano siempre'],a:0,topic:'l0-2'},
+ {q:'Llega un frame unicast para una MAC que no está en la tabla. ¿Qué hace el switch?',o:['Flooding por todos los puertos de esa VLAN menos el de entrada','Lo descarta','Lo regresa al origen','Lo manda solo al puerto 1'],a:0,topic:'l0-2'},
+ {q:'¿Cuál es la MAC de broadcast?',o:['ff:ff:ff:ff:ff:ff','00:00:00:00:00:00','01:00:5e:00:00:01','La MAC del switch'],a:0,topic:'l0-2'},
+ {q:'¿Qué es el aging en la MAC address table?',o:['Las entradas expiran si esa MAC deja de enviar tráfico','El tiempo que tarda el switch en encender','La vida útil del cable','El tiempo de un ping'],a:0,topic:'l0-2'},
+ {q:'Mueves una PC del puerto 3 al puerto 7 del mismo switch. ¿Qué pasa con la tabla?',o:['Se actualiza cuando la PC envía un frame por el puerto 7','Se queda en el puerto 3 para siempre','El switch se reinicia','Hay que borrar la tabla a mano'],a:0,topic:'l0-2'},
+ {q:'El switch conoce la Destination MAC de un frame. ¿Por dónde lo manda?',o:['Solo por el puerto asociado a esa MAC','Por todos los puertos','Por el puerto de entrada','Por ninguno'],a:0,topic:'l0-2'},
+ {q:'¿Qué separa una VLAN?',o:['Broadcast domains: el broadcast de una VLAN no llega a otra','Velocidades de los puertos','Tipos de cable','Direcciones MAC de fábrica'],a:0,topic:'l0-3'},
+ {q:'PC-A está en la VLAN 10 y PC-B en la VLAN 20, en el mismo switch, sin router. ¿Se pueden hacer ping?',o:['No: están en VLANs distintas y hace falta un router (capa 3)','Sí, porque están en el mismo switch','Sí, si están en el mismo cable','Solo si el switch se reinicia'],a:0,topic:'l0-3'},
+ {q:'¿Qué hace un trunk?',o:['Lleva varias VLAN por un mismo enlace usando tags 802.1Q','Conecta una sola PC','Une dos VLANs en una','Apaga las VLANs sin uso'],a:0,topic:'l0-3'},
+ {q:'¿Cuánto mide el tag 802.1Q y cuántos bits tiene el VID?',o:['4 bytes; VID de 12 bits','2 bytes; VID de 8 bits','6 bytes; VID de 16 bits','1 byte; VID de 4 bits'],a:0,topic:'l0-3'},
+ {q:'¿Cómo salen los frames por un access port hacia una PC?',o:['Untagged (sin tag)','Con tag 802.1Q','Cifrados','Duplicados'],a:0,topic:'l0-3'},
+ {q:'¿Qué rango de VLAN ID se puede usar en 802.1Q?',o:['1 a 4094','0 a 255','1 a 1024','1 a 65535'],a:0,topic:'l0-3'}
+]},
+x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,pool:[
+ {q:'Cisco IOS: ¿qué par de comandos deja Gi0/1 como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set interfaces ge-0/0/1 vlan 10','switchport trunk vlan 10'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿qué comando pone una interfaz como access en la VLAN 10?',o:['vlan access 10','switchport access vlan 10','set vlan members 10','access vlan 10 enable'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX: ¿qué comando permite la VLAN 10 en un trunk?',o:['vlan trunk allowed 10','switchport trunk allowed vlan 10','set trunk 10','trunk vlan 10 allow'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: ¿cómo creas la VLAN VENTAS con ID 10?',o:['set vlans VENTAS vlan-id 10','vlan 10 name VENTAS','create vlan VENTAS 10','set vlan-id 10 VENTAS'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: configuraste todo con set pero el ping no funciona. ¿Qué te falta muy probablemente?',o:['commit','write memory','reload','no shutdown'],a:0,topic:'lab1'},
+ {q:'Juniper Junos: estás en modo configuración y quieres ver las VLANs operativas. ¿Qué escribes?',o:['run show vlans','show vlans brief','do show vlan','display vlans'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿qué comando muestra los trunks y las VLANs permitidas?',o:['show interfaces trunk','show vlan trunk','show trunk all','show running trunk'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: escribes switchport access vlan 10 y la VLAN 10 no existe. ¿Qué pasa?',o:['El switch la crea automáticamente y avisa','Da error y no hace nada','Usa la VLAN 1','Apaga el puerto'],a:0,topic:'lab1'},
+ {q:'¿Puede formarse un trunk 802.1Q entre un Cisco y un Juniper?',o:['Sí, 802.1Q es un estándar IEEE','No, cada vendor usa su propio protocolo','Solo con un cable especial','Solo si ambos tienen la misma versión'],a:0,topic:'lab1'},
+ {q:'El trunk está up, pero en un lado la VLAN 10 no está en la lista de permitidas. ¿Qué pasa con el tráfico de la VLAN 10?',o:['No cruza ese trunk','Cruza sin tag','Se convierte a la VLAN 1','Cruza normal'],a:0,topic:'lab1'},
+ {q:'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?',o:['VLAN 1, que viaja sin tag','VLAN 10','La VLAN más alta','No existe VLAN nativa'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿cómo guardas la configuración para que sobreviva un reinicio?',o:['copy running-config startup-config (o write memory)','commit','save all','exit'],a:0,topic:'lab1'},
+ {q:'En el Lab 1, ¿por qué el enlace entre switches se configura como trunk?',o:['Para que pueda llevar varias VLAN con tag, hoy la 10 y mañana más','Porque es más rápido','Porque las PCs lo necesitan','Porque así se apaga STP'],a:0,topic:'lab1'},
+ {q:'Junos: tu PC está en ge-0/0/1. ¿Qué dos cosas necesita esa interfaz en el lab?',o:['interface-mode access y vlan members VENTAS','interface-mode trunk y native-vlan 10','solo description','vlan-id 10 y commit check'],a:0,topic:'lab1'}
+]}};
