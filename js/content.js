@@ -120,7 +120,7 @@ const PLACE=[
 
 
 /* Identificador de ticket y tipo de equipo de cada misión en el mapa */
-const TID={'l0-1':'L0-01','l0-2':'L0-02','l0-3':'L0-03','x0':'CERT-0','lab1':'TK-1042','x1':'CERT-1'};
+const TID={'place':'UBICACIÓN','l0-1':'L0-01','l0-2':'L0-02','l0-3':'L0-03','x0':'CERT-0','lab1':'TK-1042','x1':'CERT-1'};
 const GLYPH={'l0-1':'pc','l0-2':'sw','l0-3':'vlan','x0':'cert','lab1':'pair','x1':'cert',z2:'rack',z3:'stp',z4:'lacp',z5:'router'};
 
 /* Certificaciones de zona: preguntas al azar del banco, opciones barajadas, con tiempo. Se aprueba con 90%. */
