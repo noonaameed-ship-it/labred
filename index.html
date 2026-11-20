@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabRed · Aprende redes</title>
+<meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+<nav class="top"><a href="#mapa" class="logo">LabRed</a><span class="navl" id="hud"></span></nav>
+<div id="celeb" role="dialog" aria-modal="true" aria-labelledby="celt"></div>
+<div id="toast" role="status"></div>
+<div class="view" id="v-mapa"></div>
+<div class="view" id="v-ubicacion"></div>
+<div class="view" id="v-ranking"></div>
+<div class="view" id="v-lec"></div>
+<div class="view" id="v-lock"></div>
+<div class="view" id="v-entrar"></div>
+<div class="view" id="v-logros"></div>
+<div class="view" id="v-creador"></div>
+<div class="view" id="v-lab1">
+<header class="band">
+  <p class="brand"><a href="#mapa" style="color:#fff">Mapa</a> · Nivel 1 · Switching básico · Lab 1</p>
+  <h1>Tu primera VLAN entre dos switches</h1>
+  <div class="ticket"><span class="tk">Ticket #1042 · prioridad media · de: Gerencia de Ventas</span><p>"Pusimos una PC de Ventas en cada piso y no se ven entre ellas. Necesitamos que estén en su propia red, la VLAN 10 (VENTAS)." Configura SW1 y SW2 para que PC-A y PC-B se vean a través del enlace entre switches. El ticket se cierra cuando el ping funciona y explicas lo que hiciste.</p></div>
+  <div class="vend">
+    <label>SW1 <select id="v1"><option value="cisco">Cisco IOS</option><option value="aruba">Aruba AOS-CX</option><option value="juniper">Juniper Junos</option></select></label>
+    <label>SW2 <select id="v2"><option value="cisco">Cisco IOS</option><option value="aruba">Aruba AOS-CX</option><option value="juniper">Juniper Junos</option></select></label>
+    <small>Puedes mezclar vendors: interoperan por 802.1Q.</small>
+  </div>
+</header>
+
+<div class="band">
+<main>
+  <section>
+    <div class="topo">
+      <svg id="topo" viewBox="0 0 560 190" role="img" aria-label="Topología: PC-A, SW1, SW2, PC-B"></svg>
+      <div class="legend"><span><i style="background:var(--blue)"></i>acceso</span><span><i style="background:var(--trunk)"></i>trunk</span><span><i style="background:#9aa4ad"></i>sin enlace</span><span>Toca un equipo para abrir su consola</span></div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="term">
+      <div class="bar"><span id="tinfo"></span><span><button id="clr">Limpiar</button> <button id="rst">Reiniciar lab</button></span></div>
+      <pre id="out" aria-live="polite"></pre>
+      <div class="inl"><span id="pr"></span><input id="cmd" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Comando"></div>
+      <div class="keys"><button data-k="?">?</button><button data-k="tab">Tab</button><button data-k="up">↑</button><button data-k="down">↓</button></div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>Objetivo</h2>
+      <p class="goal">PC-A (192.168.10.11) hace ping a PC-B (192.168.10.12).</p>
+      <ul class="chk" id="chk"></ul>
+      <div id="notes"></div>
+    </div>
+    <div class="card">
+      <h2>Cómo se usa</h2>
+      <p class="tip" style="margin:0">Escribe <code>?</code> en cualquier momento para ver los comandos posibles. Las abreviaturas funcionan como en el equipo real (<code>conf t</code>, <code>int g0/1</code>, <code>sh vl br</code>). Las líneas azules marcadas <code>[tutor]</code> son ayuda del simulador, no del equipo.</p>
+    </div>
+  </aside>
+</main>
+</div>
+
+<section id="done" class="band">
+  <div class="win"><h2>Lab completado</h2><span>Así se ve lo que acabas de configurar en un rack real.</span></div>
+  <div class="fig" id="g3d"><span class="hint">Arrastra para girar · pellizca o rueda para acercar</span></div>
+  <div class="leg3"><span><b style="background:#4f9bff"></b>Frame untagged (access port)</span><span><b style="background:#ffc61a"></b>Frame tagged 802.1Q, VLAN 10 (trunk)</span><span><b style="background:#e9eef2"></b>Conmutación dentro del switch</span></div>
+
+  <div id="labexp" style="margin-top:28px"></div>
+  <h2 style="margin-top:28px">La misma solución en los tres vendors</h2>
+  <div class="sol" id="sol"></div>
+  <table class="stack">
+    <thead><tr><th>Concepto</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><th>Juniper Junos</th></tr></thead>
+    <tbody>
+      <tr><td>Crear VLAN</td><td><code>vlan 10</code> + <code>name</code></td><td><code>vlan 10</code> + <code>name</code></td><td><code>set vlans VENTAS vlan-id 10</code></td></tr>
+      <tr><td>Access port</td><td><code>switchport mode access</code><br><code>switchport access vlan 10</code></td><td><code>vlan access 10</code></td><td><code>interface-mode access</code><br><code>vlan members VENTAS</code></td></tr>
+      <tr><td>Trunk</td><td><code>switchport mode trunk</code></td><td><code>vlan trunk allowed 10</code></td><td><code>interface-mode trunk</code></td></tr>
+      <tr><td>Aplicar cambios</td><td>Inmediato</td><td>Inmediato</td><td><code>commit</code></td></tr>
+      <tr><td>Guardar</td><td><code>write memory</code></td><td><code>write memory</code></td><td>El commit ya persiste</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div>
+
+
+<script src="js/config.js"></script>
+<script src="js/content.js"></script>
+<script src="js/lab.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
