@@ -431,7 +431,7 @@ function renderEntrar(){
  <div class="atabs" role="tablist"><button role="tab" aria-selected="${mode==='login'}" data-m="login">Entrar</button><button role="tab" aria-selected="${mode==='signup'}" data-m="signup">Crear cuenta</button></div>
  <form id="af" novalidate>${mode==='signup'?'<label>Tu nombre (así sale en el ranking)<input id="an" autocomplete="name" maxlength="40" required></label>':''}
  <label>Correo<input id="ae" type="email" autocomplete="email" required></label>
- <label>Contraseña${mode==='signup'?' (mínimo 8 caracteres)':''}<input id="ap" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" required></label>
+ <label>Contraseña${mode==='signup'?' (mínimo 8, con mayúscula, minúscula, número y símbolo)':''}<input id="ap" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" required></label>
  <button class="bigbtn" type="submit" id="ab">${mode==='signup'?'Crear mi cuenta':'Entrar'}</button><p id="amsg" class="amsg" role="alert">${esc(authNote)}</p></form>
  <button class="guest" id="resend" style="background:none;border:0;cursor:pointer;width:100%;text-decoration:underline">Reenviar correo de confirmación</button>
  <a href="#mapa" id="guest" class="guest">Probar sin cuenta (no se guarda tu progreso)</a></div></div>`;
@@ -441,12 +441,12 @@ function renderEntrar(){
  $('#guest').addEventListener('click',()=>{guest=true;try{sessionStorage.setItem('labred_guest','1')}catch(e){}});
  $('#af').addEventListener('submit',async e=>{e.preventDefault();const em=$('#ae').value.trim(),pw=$('#ap').value,msg=$('#amsg'),bt=$('#ab');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){msg.textContent='Escribe un correo válido.';return}
-  if(mode==='signup'){const nm=$('#an').value.trim();if(nm.length<2){msg.textContent='Escribe tu nombre.';return}if(pw.length<8){msg.textContent='La contraseña debe tener al menos 8 caracteres.';return}
+  if(mode==='signup'){const nm=$('#an').value.trim();if(nm.length<2){msg.textContent='Escribe tu nombre.';return}if(pw.length<8||!/[a-z]/.test(pw)||!/[A-Z]/.test(pw)||!/[0-9]/.test(pw)||!/[^A-Za-z0-9]/.test(pw)){msg.textContent='La contraseña necesita al menos 8 caracteres, con mayúscula, minúscula, número y símbolo (por ejemplo: Redes2026!).';return}
    bt.disabled=true;bt.textContent='Creando…';const r=await sb.auth.signUp({email:em,password:pw,options:{data:{name:nm},emailRedirectTo:location.origin+location.pathname}});bt.disabled=false;bt.textContent='Crear mi cuenta';
    if(r.error){msg.textContent=authErr(r.error);return}if(!r.data.session){msg.style.color='var(--ok)';msg.textContent='¡Listo! Te mandamos un correo para confirmar tu cuenta. Ábrelo (revisa también spam) y después entra aquí con "Entrar".'}}
   else{bt.disabled=true;bt.textContent='Entrando…';const r=await sb.auth.signInWithPassword({email:em,password:pw});bt.disabled=false;bt.textContent='Entrar';if(r.error)msg.textContent=authErr(r.error)}});
 }
-function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos.';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Primero confirma tu correo con el enlace que te mandamos.';if(m.includes('signups')&&m.includes('disabled'))return'El registro de cuentas está apagado. Pídele al administrador que lo active en Supabase.';if(m.includes('email rate'))return'Se llegó al límite de correos de confirmación por hora. Avísale a tu instructor (detalle: '+e.message+').';if(m.includes('rate'))return'Demasiados intentos desde esta red. Espera unos minutos (detalle: '+e.message+').';return'No se pudo: '+(e.message||'error desconocido')}
+function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos.';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Primero confirma tu correo con el enlace que te mandamos.';if(m.includes('signups')&&m.includes('disabled'))return'El registro de cuentas está apagado. Pídele al administrador que lo active en Supabase.';if(m.includes('weak')||m.includes('password should'))return'Contraseña muy débil: usa al menos 8 caracteres con mayúscula, minúscula, número y símbolo.';if(m.includes('email rate'))return'Se llegó al límite de correos de confirmación por hora. Avísale a tu instructor (detalle: '+e.message+').';if(m.includes('rate'))return'Demasiados intentos desde esta red. Espera unos minutos (detalle: '+e.message+').';return'No se pudo: '+(e.message||'error desconocido')}
 async function onSession(session){
  const u=session&&session.user;
  if(u&&u.id===uid)return;
