@@ -55,6 +55,7 @@ try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
 const calcPts=()=>Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0),0);
+const passIn=(done,id)=>{const r=(done||{})[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&(r.labScore||0)>=LABPASS&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
 const isPassed=id=>{const r=st.done[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&(r.labScore||0)>=LABPASS&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
 const lesById=id=>Object.values(LES).find(l=>l.id===id);
 const unlocked=n=>cOn()||n<=st.unlocked;
@@ -71,7 +72,7 @@ function save(quiet){const p=calcPts();st.pts=p;st.badges=st.badges||{};
   prevPts=p;prevPassed=new Set(allIds().filter(isPassed))}
  try{localStorage.setItem(LSK(),JSON.stringify(st))}catch(e){}renderMe();if(sb&&uid){clearTimeout(wt);wt=setTimeout(flush,700)}}
 async function flush(){if(writing){again=true;return}writing=true;
- try{const r1=await sb.from('progress').upsert({user_id:uid,data:clone(st),updated_at:new Date().toISOString()});if(r1.error)throw r1.error;
+ try{const r1=await sb.from('progress').upsert({user_id:uid,name:(myName||'').slice(0,60),email:userEmail,data:clone(st),updated_at:new Date().toISOString()});if(r1.error)throw r1.error;
   if(st.noRank){if(lastRank!=='off'){await sb.from('ranking').delete().eq('user_id',uid);lastRank='off'}}
   else if(st.pts!==lastRank){const r2=await sb.from('ranking').upsert({user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:st.unlocked,updated_at:new Date().toISOString()});if(!r2.error)lastRank=st.pts}
  }catch(e){console.warn('No se pudo guardar',e)}
@@ -83,7 +84,7 @@ const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].t
 function curTheme(){try{return localStorage.getItem('labred_theme')||''}catch(e){return''}}
 function setTheme(t){try{t?localStorage.setItem('labred_theme',t):localStorage.removeItem('labred_theme')}catch(e){}t?document.documentElement.dataset.theme=t:delete document.documentElement.dataset.theme}
 function renderMe(){const p=calcPts(),nb=Object.keys(st.badges||{}).length,h=location.hash.slice(1)||'mapa';
- $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct(p)}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
+ $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct(p)}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
  $('#thm').addEventListener('click',()=>{const n={'':'light',light:'dark',dark:''}[curTheme()];setTheme(n);toast('Tema: '+({light:'claro',dark:'oscuro'}[n]||'automático (como tu sistema)'));renderMe()});
  $('#snd').addEventListener('click',()=>{st.mute=!st.mute;save(true);if(!st.mute)sfx('ok')})}
 
@@ -316,7 +317,7 @@ function mountExplain(el,id,cfg,onDone){
     <details open><summary>1. Con una comparación de la vida diaria</summary><p>${esc(A.analog)}</p></details>
     <details><summary>2. Repite la práctica, con una tarea concreta</summary><p>${esc(A.fig)}</p><button class="btn" data-goto="fig">Ir a la práctica</button></details>
     <details><summary>3. Responde estas preguntas en tu explicación</summary><ul>${A.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></details>
-    <details><summary>4. Que Claude te lo explique de otra forma, según lo que te faltó</summary><button class="btn" data-goto="re">Explícamelo de otra forma</button><div class="reout"></div></details>
+    ${window.LABRED_AI?`<details><summary>4. Que Claude te lo explique de otra forma, según lo que te faltó</summary><button class="btn" data-goto="re">Explícamelo de otra forma</button><div class="reout"></div></details>`:''}
     <p class="tip">Cuando lo tengas, reescribe tu explicación con tus palabras (no copies) y evalúala de nuevo.</p></div>`}`;
   out.querySelector('[data-goto="fig"]')?.addEventListener('click',()=>{const f=document.querySelector(id==='lab1'?'#v-lab1 .term':'#lfig');f&&f.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'})});
   const rb=out.querySelector('[data-goto="re"]');
@@ -410,11 +411,11 @@ function renderLock(){$('#v-lock').innerHTML=`<header class="band hero"><div cla
 /* ---------- router ---------- */
 function route(){
  const h=location.hash.slice(1)||'mapa';let id='v-mapa';
- if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=unlocked(1)?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar'].includes(h))id='v-'+h;
+ if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=unlocked(1)?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar','instructor'].includes(h))id='v-'+h;
  if(sb&&!uid&&!guest)id='v-entrar';
  if(EX&&id!=='v-examen')examAbort();
  $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));renderMe();
- if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();
+ if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();
  if(id==='v-lab1')dispatchEvent(new Event('lab-show'));
  scrollTo(0,0);
 }
@@ -455,6 +456,7 @@ async function onSession(session){
  if(u&&u.id===uid)return;
  uid=u?u.id:null;userEmail=u?u.email:'';myName=u?((u.user_metadata&&u.user_metadata.name)||u.email.split('@')[0]):'';
  isOwner=!!(u&&(LABRED_CONFIG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase()));
+ if(u&&!isOwner){try{const ad=await sb.from('admins').select('user_id').eq('user_id',u.id).maybeSingle();isOwner=!!(ad.data)}catch(e){}}
  st=clone(BASE);prevPts=null;lastRank=null;
  if(uid){try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
   const r=await sb.from('progress').select('data').eq('user_id',uid).maybeSingle();
@@ -466,6 +468,35 @@ async function onSession(session){
 }
 if(sb){sb.auth.getSession().then(r=>onSession(r.data.session));sb.auth.onAuthStateChange((ev,session)=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')onSession(session)})}
 else{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done){st=Object.assign(clone(BASE),l);save(true);route()}}catch(e){}}
+
+/* ---------- panel de instructor ---------- */
+const fmtD=t=>t?new Date(t).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+async function renderInstructor(){
+ const v=$('#v-instructor'),head=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / instructor</p><h1>Panel de instructor</h1><p>El avance de cada becario, sus explicaciones y las señales de posible copia. Solo lo ven los administradores.</p></div></header>`;
+ if(!isOwner||!sb||!uid){v.innerHTML=head+'<div class="wrap"><p>Esta sección es solo para instructores.</p></div>';return}
+ v.innerHTML=head+'<div class="wrap"><p class="tip">Cargando…</p></div>';
+ const[p,f]=await Promise.all([sb.from('progress').select('user_id,name,email,data,updated_at').order('updated_at',{ascending:false}),sb.from('feedback').select('*').order('created_at',{ascending:false}).limit(200)]);
+ if(p.error){v.innerHTML=head+`<div class="wrap"><div class="res" style="border-color:var(--bad)"><p><strong>No tengo permiso para leer el avance de los becarios.</strong> Vuelve a correr el archivo <code>supabase/schema.sql</code> completo en el SQL Editor de Supabase: agrega el permiso de instructor para tu cuenta.</p><p class="small">Detalle: ${esc(p.error.message)}</p></div></div>`;return}
+ const ids=ORDER.filter(id=>id[0]!=='z'),rows=(p.data||[]).filter(x=>x.user_id!==uid||true);
+ const flags=d=>{let n=0;const out=[];for(const[k,r]of Object.entries(d.done||{})){const m=r.lastMetrics||{};if(m.pegados)out.push(`${TID[k]||k}: intentó pegar ${m.pegados}`);if(r.leaves)out.push(`${TID[k]||k}: salió de la pestaña ${r.leaves}`);if(r.labLast&&r.labLast.paste)out.push(`Lab: intentó pegar ${r.labLast.paste}`)}return out};
+ const names=Object.fromEntries(rows.map(x=>[x.user_id,x.name||x.email||'Alguien']));
+ v.innerHTML=head+`<div class="wrap" style="padding-bottom:40px"><div class="stats"><div class="stat"><b>${rows.length}</b><span>Becarios con cuenta</span></div><div class="stat"><b>${rows.filter(x=>passIn(x.data.done,'x0')).length}</b><span>Certificaron Zona 0</span></div><div class="stat"><b>${rows.filter(x=>passIn(x.data.done,'lab1')).length}</b><span>Cerraron el Lab 1</span></div><div class="stat"><b>${(f.data||[]).length}</b><span>Comentarios de feedback</span></div></div>
+ <h2>Becarios</h2><p class="tip">Toca un becario para ver sus explicaciones y resultados.</p>
+ <table class="rank stack" id="itab"><thead><tr><th>Nombre</th><th class="n">XP</th><th class="n">Tickets</th><th>Alertas</th><th>Última actividad</th></tr></thead><tbody>${rows.map((x,i)=>{const d=x.data||{},fl=flags(d);return`<tr data-i="${i}" style="cursor:pointer" tabindex="0"><td><strong>${esc(x.name||'(sin nombre)')}</strong><br><span class="small">${esc(x.email||'')}</span></td><td class="n">${+d.pts||0}</td><td class="n">${ids.filter(id=>passIn(d.done,id)).length}/${ids.length}</td><td>${fl.length?`<span class="chip go">${fl.length}</span>`:'<span class="small">—</span>'}</td><td>${esc(fmtD(x.updated_at))}</td></tr>`}).join('')||'<tr><td colspan="5">Todavía no hay becarios con avance.</td></tr>'}</tbody></table>
+ <div id="idet"></div>
+ <h2 style="margin-top:28px">Feedback</h2>${(f.data||[]).length?(f.data||[]).map(x=>`<div class="card" style="margin-top:8px"><div class="small">${esc(names[x.user_id]||'Sin cuenta')} · ${esc(x.page||'')} · ${esc(fmtD(x.created_at))}</div><div>${x.rating?'★'.repeat(+x.rating)+'☆'.repeat(5-x.rating):''}</div><p style="margin:4px 0 0;white-space:pre-wrap">${esc(x.comment||'')}</p></div>`).join(''):'<p class="tip">Sin comentarios todavía.</p>'}</div>`;
+ const show=i=>{const x=rows[i],d=x.data||{},fl=flags(d);
+  $('#idet').innerHTML=`<div class="card" style="margin-top:14px"><h2 style="margin:0">${esc(x.name||x.email)}</h2><p class="small">${esc(x.email||'')} · ${+d.pts||0} XP · uptime ${d.streak||0}d · examen de ubicación: ${d.placed===null||d.placed===undefined?'no lo hizo':'nivel '+d.placed}</p>
+  ${fl.length?`<div class="res" style="border-color:var(--trunk)"><strong>Señales a revisar</strong><ul>${fl.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`:''}
+  ${ids.map(id=>{const r=(d.done||{})[id],I=itemById(id);if(!r)return`<h3 style="margin:16px 0 2px">${TID[id]} · ${esc(I.t)}</h3><p class="small">Sin empezar</p>`;const m=r.lastMetrics||{},ok=passIn(d.done,id);
+   return`<h3 style="margin:16px 0 2px">${TID[id]} · ${esc(I.t)} ${ok?'<span class="chip ok">Cerrado</span>':'<span class="chip go">En curso</span>'}</h3>
+   ${EXAMS[id]?`<p class="small">Mejor: ${r.examBest||0}% · último: ${r.lastScore??'—'}% · intentos: ${r.attempts||0} · abandonados: ${r.abandoned||0} · salidas de pestaña: ${r.leaves||0}</p>`:''}
+   ${id==='lab1'&&r.labLast?`<p class="small">Lab mejor: ${r.labScore||0}/100 · último intento: ${r.labLast.score}/100 (errores ${r.labLast.err}, pistas ${r.labLast.hints}, pings fallidos ${r.labLast.fails}, ${Math.round((r.labLast.s||0)/60)} min${r.labLast.mixed?', multivendor':''}) · intentos: ${r.labRuns||0}</p>`:''}
+   ${LES[Object.keys(LES).find(k=>LES[k].id===id)]?`<p class="small">Quiz: ${Object.keys(r.qok||{}).length}/2</p>`:''}
+   ${r.exp!==undefined&&!EXAMS[id]?`<p class="small">Explicación: mejor ${r.exp||0}/10 · intentos ${r.tries||0}${m.segundos!==undefined?` · último: ${m.palabras} palabras en ${Math.round(m.segundos/60)} min ${m.segundos%60}s · intentos de pegar: ${m.pegados||0}`:''}</p>${r.lastText?`<div class="real" style="margin:6px 0"><p style="margin:0;white-space:pre-wrap">${esc(r.lastText)}</p></div>`:''}`:''}`}).join('')}</div>`;
+  $('#idet').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
+ v.querySelectorAll('#itab tr[data-i]').forEach(tr=>{tr.addEventListener('click',()=>show(+tr.dataset.i));tr.addEventListener('keydown',e=>{if(e.key==='Enter')show(+tr.dataset.i)})});
+}
 
 /* ---------- feedback ---------- */
 function openFeedback(){const el=$('#celeb');let rating=0;

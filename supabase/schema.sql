@@ -48,7 +48,30 @@ drop policy if exists "feedback: enviar" on public.feedback;
 create policy "feedback: enviar" on public.feedback for insert to anon, authenticated
   with check (user_id is null or user_id = auth.uid());
 
--- 4. Vista para el instructor: avance, explicaciones y señales de cada alumno
+-- 4. Instructores: pueden leer el avance de todos y el feedback
+alter table public.progress add column if not exists name text;
+alter table public.progress add column if not exists email text;
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+alter table public.admins enable row level security;
+drop policy if exists "admins: ver el propio" on public.admins;
+create policy "admins: ver el propio" on public.admins for select to authenticated using (user_id = auth.uid());
+create or replace function public.is_admin() returns boolean
+  language sql stable security definer set search_path = public
+  as $$ select exists (select 1 from public.admins where user_id = auth.uid()) $$;
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+drop policy if exists "progreso: instructor lee todo" on public.progress;
+create policy "progreso: instructor lee todo" on public.progress for select to authenticated using (public.is_admin());
+drop policy if exists "feedback: instructor lee" on public.feedback;
+create policy "feedback: instructor lee" on public.feedback for select to authenticated using (public.is_admin());
+-- Tu cuenta como instructor (agrega más correos separados por coma si hay otros instructores):
+insert into public.admins (user_id)
+  select id from auth.users where lower(email) in ('noonaameed@gmail.com')
+  on conflict do nothing;
+
+-- 5. Vista para el instructor: avance, explicaciones y señales de cada alumno
 --    Consúltala en el SQL Editor:  select * from explicaciones order by updated_at desc;
 drop view if exists public.explicaciones;
 create view public.explicaciones with (security_invoker = true) as
