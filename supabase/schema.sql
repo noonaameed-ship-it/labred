@@ -78,7 +78,31 @@ insert into public.admins (user_id)
   select id from auth.users where lower(email) in ('noonaameed@gmail.com')
   on conflict do nothing;
 
--- 5. Vista para el instructor: avance, explicaciones y señales de cada alumno
+-- 5. Comentarios del instructor a cada alumno, por ticket
+create table if not exists public.reviews (
+  id bigint generated always as identity primary key,
+  student_id uuid not null references auth.users(id) on delete cascade,
+  author_id uuid references auth.users(id) on delete set null default auth.uid(),
+  module text not null check (char_length(module) <= 20),
+  comment text not null check (char_length(comment) between 1 and 2000),
+  reopen boolean not null default false,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+alter table public.reviews enable row level security;
+drop policy if exists "reviews: instructor crea" on public.reviews;
+drop policy if exists "reviews: instructor lee" on public.reviews;
+drop policy if exists "reviews: alumno lee las suyas" on public.reviews;
+drop policy if exists "reviews: alumno marca leido" on public.reviews;
+create policy "reviews: instructor crea" on public.reviews for insert to authenticated with check (public.is_admin());
+create policy "reviews: instructor lee" on public.reviews for select to authenticated using (public.is_admin());
+create policy "reviews: alumno lee las suyas" on public.reviews for select to authenticated using (student_id = auth.uid());
+create policy "reviews: alumno marca leido" on public.reviews for update to authenticated using (student_id = auth.uid()) with check (student_id = auth.uid());
+-- El alumno solo puede cambiar read_at (marcar como leído)
+revoke update on public.reviews from authenticated;
+grant update (read_at) on public.reviews to authenticated;
+
+-- 6. Vista para el instructor: avance, explicaciones y señales de cada alumno
 --    Consúltala en el SQL Editor:  select * from explicaciones order by updated_at desc;
 drop view if exists public.explicaciones;
 create view public.explicaciones with (security_invoker = true) as
