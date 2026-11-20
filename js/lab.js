@@ -252,14 +252,36 @@ function helpList(sw,body){const endsSpace=body===''||/\s$/.test(body);const tok
   for(const[p]of tbl(sw)){const pt=p.split(' ');let ok=true;for(let i=0;i<k;i++){if(!pt[i]||!tokOk(pt[i],toks[i],sw.vendor)){ok=false;break}if(pt[i]==='<rest>'){ok=false;break}}if(!ok)continue;
     if(pt.length===k){if(endsSpace)m.set('<cr>','');continue}const nx=pt[k];if(nx[0]==='<'){if(endsSpace)m.set(nx,DESC[nx]||'')}else if(nx.startsWith(part))m.set(nx,DESC[nx]||'')}
   return{m,part,endsSpace}}
+/* Junos: árbol de comandos para ? y Tab, según el contexto */
+const JT={vlans:{d:'VLANs',arg:{n:'<nombre>',d:'Nombre de la VLAN, por ejemplo VENTAS',next:{'vlan-id':{d:'Número de la VLAN',arg:{n:'<1-4094>',d:'VLAN ID'}},description:{d:'Descripción',arg:{n:'<texto>',d:'Texto libre'}}}}},
+ interfaces:{d:'Interfaces del equipo',arg:{n:'<interfaz>',d:'De ge-0/0/0 a ge-0/0/23',list:()=>ports('juniper'),next:{unit:{d:'Unidad lógica de la interfaz',arg:{n:'0',d:'Unidad 0 (la que se usa en switching)',list:()=>['0'],next:{family:{d:'Familia de protocolo',next:{'ethernet-switching':{d:'Switching de capa 2 (VLANs)',next:{'interface-mode':{d:'Modo del puerto',next:{access:{d:'Una sola VLAN, sin tag'},trunk:{d:'Varias VLAN con tag 802.1Q'}}},vlan:{d:'Pertenencia a VLAN',next:{members:{d:'VLANs del puerto',arg:{n:'<vlan>',d:'Nombre o número de VLAN',list:d=>Object.keys(d.cand.vlans)}}}}}}}}}}},disable:{d:'Apagar la interfaz'},description:{d:'Descripción',arg:{n:'<texto>',d:'Texto libre'}}}}}};
+function jWalk(d,toks){let node=JT,arg=null;
+ for(const t of toks){if(arg){node=arg.next||null;arg=null;continue}
+  if(!node)return{end:true};const ks=Object.keys(node),k=ks.includes(t.toLowerCase())?t.toLowerCase():(ks.filter(x=>x.startsWith(t.toLowerCase())).length===1?ks.find(x=>x.startsWith(t.toLowerCase())):null);
+  if(!k)return{bad:t};const e=node[k];if(e.arg){arg=e.arg}else node=e.next||null}
+ if(arg)return{arg};if(!node)return{end:true};return{node}}
+function jOptions(d,toks,part){
+ const top=d.mode==='op'?[['configure','Entrar a modo configuración'],['show','Mostrar información'],['exit','Salir']]:[['set','Agregar configuración'],['delete','Borrar configuración'],['commit','Aplicar la configuración candidata'],['show','Ver la configuración candidata ( | compare para ver los cambios)'],['run','Ejecutar un comando operacional'],['rollback','Descartar los cambios sin commit'],['exit','Salir de modo configuración']];
+ const opSub={show:[['vlans','VLANs y sus interfaces'],['configuration','Configuración activa'],['interfaces','Estado de interfaces (terse)']],configure:[]};
+ if(!toks.length)return top.filter(([k])=>k.startsWith(part));
+ const c0=toks[0].toLowerCase();
+ if(d.mode==='conf'&&/^(set|delete)$/.test(c0)){const w=jWalk(d,toks.slice(1));if(w.bad)return null;if(w.end)return[['<Enter>','Ejecutar']];
+  if(w.arg){const L=w.arg.list?w.arg.list(d):[];const hits=L.filter(x=>x.toLowerCase().startsWith(part));return hits.length&&part?hits.map(x=>[x,'']):[[w.arg.n,w.arg.d]]}
+  return Object.entries(w.node).filter(([k])=>k.startsWith(part)).map(([k,v])=>[k,v.d])}
+ if(c0==='show'||(c0==='run'&&toks[1]==='show'))return toks.length===(c0==='run'?2:1)?opSub.show.filter(([k])=>k.startsWith(part)):[['<Enter>','Ejecutar']];
+ return[['<Enter>','Ejecutar']]}
 function help(d,val){
   push(d,prompt(d)+val+'?','cmd');
   if(d.type==='pc'){push(d,['ping <ip>   Probar conectividad','ipconfig    Ver la IP','cls         Limpiar pantalla']);return}
-  if(d.vendor==='juniper'){const t=val.trim().split(/\s+/)[0]||'';if(d.mode==='conf'&&/^(set|del)/.test(t)){push(d,['Possible completions:','  interfaces           Interfaces del equipo','  vlans                VLANs']);tut(d,'Estructura: set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access')}
-    else push(d,['Possible completions:',...J_HELP[d.mode].map(([a,b])=>'  '+a.padEnd(20)+' '+b)]);return}
+  if(d.vendor==='juniper'){const endsSpace=val===''||/\s$/.test(val),toks=val.trim()?val.trim().split(/\s+/):[],part=endsSpace?'':toks.pop().toLowerCase();
+    const o=jOptions(d,toks,part);if(!o||!o.length){push(d,{t:'syntax error, expecting <command>.',c:'err'});return}
+    push(d,['Possible completions:',...o.map(([a,b])=>'  '+a.padEnd(22)+' '+b)]);return}
   const{m}=helpList(d,val);if(!m.size)push(d,{t:'% Unrecognized command',c:'err'});else push(d,[...m].map(([a,b])=>'  '+a.padEnd(18)+b))}
 function complete(d,val){if(d.type==='pc'||!val||/\s$/.test(val))return val;
-  if(d.vendor==='juniper'){const toks=val.split(/\s+/);const opts=['set','delete','commit','show','run','exit','configure','interfaces','vlans','vlan-id','unit','family','ethernet-switching','interface-mode','access','trunk','vlan','members','disable','compare','configuration','terse'];const l=toks.pop(),c=opts.filter(o=>o.startsWith(l.toLowerCase()));return c.length===1?[...toks,c[0]].join(' ')+' ':val}
+  if(d.vendor==='juniper'){const toks=val.trim().split(/\s+/),part=toks.pop();const o=(jOptions(d,toks,part.toLowerCase())||[]).filter(([k])=>k[0]!=='<');
+    if(o.length===1)return val.slice(0,val.length-part.length)+o[0][0]+' ';
+    if(o.length>1){let p=o[0][0];for(const[k]of o)while(!k.startsWith(p))p=p.slice(0,-1);if(p.length>part.length)return val.slice(0,val.length-part.length)+p}
+    return val}
   const{m,part}=helpList(d,val);const ks=[...m.keys()].filter(x=>x[0]!=='<');if(ks.length===1)return val.slice(0,val.length-part.length)+ks[0]+' ';return val}
 
 /* ---------- prompt / exec ---------- */
