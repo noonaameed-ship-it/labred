@@ -7,7 +7,7 @@
 <meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=202611201350">
+<link rel="stylesheet" href="css/app.css?v=202611201353">
 <script>try{var t=localStorage.getItem('labred_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -30,7 +30,7 @@
 <div class="view" id="v-mensajes"></div>
 <div class="view" id="v-lab1">
 <header class="band">
-  <p class="brand"><a href="#mapa" style="color:#fff">Mapa</a> · Nivel 1 · Switching básico · Lab 1</p>
+  <p class="crumb"><a href="#mapa">Mi red</a> / Zona 1 / TK-1042</p>
   <h1>Tu primera VLAN entre dos switches</h1>
   <div class="ticket"><span class="tk">Ticket #1042 · prioridad media · de: Gerencia de Ventas</span><p>"Pusimos una PC de Ventas en cada piso y no se ven entre ellas. Necesitamos que estén en su propia red, la VLAN 10 (VENTAS)." Configura SW1 y SW2 para que PC-A y PC-B se vean a través del enlace entre switches. El ticket se cierra cuando el ping funciona y explicas lo que hiciste.</p></div>
   <div class="vend">
@@ -38,6 +38,14 @@
     <label>SW2 <select id="v2"><option value="cisco">Cisco IOS</option><option value="aruba">Aruba AOS-CX</option><option value="juniper">Juniper Junos</option></select></label>
     <small>Puedes mezclar vendors: interoperan por 802.1Q.</small>
   </div>
+  <details class="guide" open><summary>Antes de empezar: cómo se resuelve este ticket</summary>
+   <ol class="pasos"><li><strong>Entra al modo de configuración</strong> de cada switch (abajo está cómo en cada vendor).</li><li><strong>Crea la VLAN 10</strong> con el nombre VENTAS, en los dos switches.</li><li><strong>Configura el puerto de la PC como access port</strong> de la VLAN 10, en los dos switches.</li><li><strong>Configura el puerto entre switches como trunk</strong> que permita la VLAN 10.</li><li><strong>Prueba:</strong> abre la consola de PC-A y haz ping a 192.168.10.12.</li></ol>
+   <p>Es lo mismo que viste en L0-03, ahora con comandos reales. Toca un equipo en el diagrama para abrir su consola. Escribe <code>?</code> para ver qué comandos existen en ese momento y usa <code>Tab</code> para completar. Los nombres de los puertos cambian por vendor; los ves en el diagrama. Las pistas del panel de objetivos dan el comando exacto, pero cada una cuesta 10 puntos.</p>
+   <table class="stack"><thead><tr><th>Vendor</th><th>Al abrir la consola</th><th>Para configurar</th><th>Cuándo se aplican los cambios</th></tr></thead><tbody>
+   <tr><td>Cisco IOS</td><td><code>SW1&gt;</code> es el modo usuario. Escribe <code>enable</code> para pasar a <code>SW1#</code>.</td><td><code>configure terminal</code> te lleva a <code>SW1(config)#</code>. Dentro de una interfaz verás <code>(config-if)#</code>.</td><td>Al instante. <code>end</code> te regresa a <code>SW1#</code>.</td></tr>
+   <tr><td>Aruba AOS-CX</td><td>Empiezas directo en <code>SW1#</code>.</td><td><code>configure terminal</code> te lleva a <code>SW1(config)#</code>. Ojo: en este simulador los puertos vienen apagados.</td><td>Al instante.</td></tr>
+   <tr><td>Juniper Junos</td><td><code>admin@SW1&gt;</code> es el modo operacional.</td><td><code>configure</code> te lleva a <code>admin@SW1#</code>. Todo se escribe en una línea que empieza con <code>set</code>.</td><td>Nada se aplica hasta que escribes <code>commit</code>.</td></tr>
+   </tbody></table></details>
 </header>
 
 <div class="band">
@@ -95,9 +103,9 @@
 </div>
 
 
-<script src="js/config.js?v=202611201350"></script>
-<script src="js/content.js?v=202611201350"></script>
-<script src="js/lab.js?v=202611201350"></script>
-<script src="js/app.js?v=202611201350"></script>
+<script src="js/config.js?v=202611201353"></script>
+<script src="js/content.js?v=202611201353"></script>
+<script src="js/lab.js?v=202611201353"></script>
+<script src="js/app.js?v=202611201353"></script>
 </body>
 </html>

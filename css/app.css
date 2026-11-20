@@ -148,7 +148,7 @@ select,button{font:inherit;font-size:15px;min-height:40px;border-radius:8px}
 .fdesc{margin-top:8px;font-size:14px;min-height:44px}
 .real{border-left:3px solid var(--trunk);background:var(--paper);padding:12px 16px;border-radius:0 10px 10px 0;margin:22px 0}
 .real h3{margin:0 0 6px}
-.real pre,details code{background:var(--term);color:#d7e2ea;padding:10px;border-radius:8px;font:13px/1.5 "IBM Plex Mono",monospace;margin:8px 0 0;display:block;white-space:pre-wrap}
+.real pre,ul.chk details code{background:var(--term);color:#d7e2ea;padding:10px;border-radius:8px;font:13px/1.5 "IBM Plex Mono",monospace;margin:8px 0 0;display:block;white-space:pre-wrap}
 .vocab dl{display:grid;gap:6px;margin:6px 0 0}
 .vocab dt{font:600 13px "IBM Plex Mono",monospace;color:var(--blue)}.vocab dd{margin:0 0 4px;font-size:13px;color:var(--mut)}
 .q{margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
@@ -282,3 +282,5 @@ td code{font:13px "IBM Plex Mono",monospace}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .pasos{margin:0 0 14px;padding-left:22px;max-width:70ch}.pasos li{margin:8px 0}
+.guide{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-top:14px;max-width:1000px}.guide summary{font-weight:600;font-size:15px;color:var(--ink)}.guide p{color:var(--ink);font-size:14px}.guide table{font-size:13px}
+.lec h3{font-size:17px;margin:20px 0 6px}
