@@ -32,11 +32,13 @@ function mkSwitch(name,vendor){
 }
 const mkPC=(name,ip,peer)=>{const p={type:'pc',name,ip,peer,lines:[],hist:[],hp:0};tut(p,`${name} · ${ip}/24 · comandos: ping, ipconfig, cls`);return p};
 let S1,S2,PCA,PCB,devs,cur,done=false,busy=false;
+let SC={vid:10,name:'VENTAS',exam:false};
+const NET=()=>'192.168.'+SC.vid+'.';
 const LS={err:0,hints:new Set(),fails:0,t0:Date.now(),paste:0};window.LAB_STATS=LS;
 const labScore=()=>Math.max(0,100-Math.min(20,LS.err)-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
-function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);PCA=mkPC('PC-A','192.168.10.11','192.168.10.12');PCB=mkPC('PC-B','192.168.10.12','192.168.10.11');devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
+function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);PCA=mkPC('PC-A',NET()+'11',NET()+'12');PCB=mkPC('PC-B',NET()+'12',NET()+'11');devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
 const other=sw=>sw===S1?S2:S1;
-function push(d,t,c){(Array.isArray(t)?t:[t]).forEach(x=>d.lines.push(typeof x==='object'?x:{t:x,c}));if(d.lines.length>600)d.lines.splice(0,d.lines.length-600)}
+function push(d,t,c){if(SC.exam){t=(Array.isArray(t)?t:[t]).filter(x=>!(x&&typeof x==='object'&&x.c==='tut')&&!(typeof x==='string'&&c==='tut'));if(c==='tut')return}(Array.isArray(t)?t:[t]).forEach(x=>d.lines.push(typeof x==='object'?x:{t:x,c}));if(d.lines.length>600)d.lines.splice(0,d.lines.length-600)}
 const tut=(d,t)=>push(d,'[tutor] '+t,'tut');
 
 /* ---------- effective state (vendor-agnostic) ---------- */
@@ -55,9 +57,9 @@ function linkUp(sw,n){const v=VEND[sw.vendor];if(!eff(sw).ifs[n]?.up)return fals
 function checks(){
   const r=[];
   for(const sw of[S1,S2]){const e=eff(sw),v=VEND[sw.vendor],p=e.ifs[v.pc],u=e.ifs[v.up];
-    r.push({sw,k:'vlan',t:'VLAN 10 creada con nombre VENTAS',ok:!!e.vlans[10]&&e.vlans[10].toUpperCase()==='VENTAS'});
-    r.push({sw,k:'pc',t:`${v.pcS} hacia la PC: acceso, VLAN 10, encendido`,ok:p.up&&p.mode==='access'&&p.access===10&&!!e.vlans[10]});
-    r.push({sw,k:'up',t:`${v.upS} hacia el otro switch: trunk que permite la VLAN 10`,ok:u.up&&u.mode==='trunk'&&allows(u,10)&&!!e.vlans[10]})}
+    const V=SC.vid;r.push({sw,k:'vlan',t:`VLAN ${V} creada con nombre ${SC.name}`,ok:!!e.vlans[V]&&e.vlans[V].toUpperCase()===SC.name});
+    r.push({sw,k:'pc',t:`${v.pcS} hacia la PC: acceso, VLAN ${V}, encendido`,ok:p.up&&p.mode==='access'&&p.access===V&&!!e.vlans[V]});
+    r.push({sw,k:'up',t:`${v.upS} hacia el otro switch: trunk que permite la VLAN ${V}`,ok:u.up&&u.mode==='trunk'&&allows(u,V)&&!!e.vlans[V]})}
   return r;
 }
 const allOk=()=>checks().every(c=>c.ok)&&linkUp(S1,VEND[S1.vendor].up);
@@ -276,7 +278,7 @@ function pcExec(p,line){
   if(cl==='ipconfig'){push(p,['','Ethernet adapter Ethernet0:','','   IPv4 Address. . . . . . . . . . . : '+p.ip,'   Subnet Mask . . . . . . . . . . . : 255.255.255.0','   Default Gateway . . . . . . . . . :']);return}
   if(cl!=='ping'){push(p,`'${c}' is not recognized as an internal or external command.`,'err');return}
   if(!arg||!/^\d+\.\d+\.\d+\.\d+$/.test(arg)){push(p,'Ping request could not find host '+(arg||'')+'. Please check the name and try again.','err');return}
-  const ok=arg===p.ip||(arg===p.peer&&allOk());const inNet=arg.startsWith('192.168.10.');
+  const ok=arg===p.ip||(arg===p.peer&&allOk());const inNet=arg.startsWith(NET());
   push(p,['','Pinging '+arg+' with 32 bytes of data:']);busy=true;render();let i=0;
   drawScore();const tick=()=>{if(i<4){push(p,inNet?(ok?`Reply from ${arg}: bytes=32 time=${i?1:2}ms TTL=128`:'Request timed out.'):'PING: transmit failed. General failure.',ok?'okl':'err');i++;render();setTimeout(tick,ok?380:700)}
     else{push(p,['','Ping statistics for '+arg+':',`    Packets: Sent = 4, Received = ${ok?4:0}, Lost = ${ok?0:4} (${ok?0:100}% loss),`]);
@@ -297,7 +299,7 @@ function render(){
 }
 function drawTopo(){
   const a=VEND[S1.vendor],b=VEND[S2.vendor],e1=eff(S1),e2=eff(S2);
-  const l1=linkUp(S1,a.pc),l2=linkUp(S2,b.pc),lt=linkUp(S1,a.up),tr=lt&&e1.ifs[a.up].mode==='trunk'&&e2.ifs[b.up].mode==='trunk';
+  const l1=linkUp(S1,a.pc),l2=linkUp(S2,b.pc),lt=linkUp(S1,a.up),tr=!SC.exam&&lt&&e1.ifs[a.up].mode==='trunk'&&e2.ifs[b.up].mode==='trunk';
   const ln=(x1,x2,on,col,w)=>`<line x1="${x1}" y1="80" x2="${x2}" y2="80" stroke="${on?col:'#9aa4ad'}" stroke-width="${w}" ${on?'':'stroke-dasharray="6 5"'} stroke-linecap="round"/>`;
   const led=(x,on)=>`<circle cx="${x}" cy="80" r="5" fill="${on?'var(--ok)':'#9aa4ad'}"/>`;
   const sw=(d,x,v)=>`<g class="dev" data-dev="${d.name}" tabindex="0" role="button" aria-label="Abrir consola de ${d.name}"><rect class="hit" x="${x-52}" y="52" width="104" height="56" rx="10" fill="transparent" stroke="${cur===d?'var(--blue)':'transparent'}" stroke-width="2"/><rect x="${x-46}" y="64" width="92" height="32" rx="5" fill="${d.vendor==='aruba'?'#d7dce1':d.vendor==='juniper'?'#2b2e33':'#3c5a78'}"/>${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${x-38+i*9.5}" y="74" width="6" height="5" fill="#111"/><rect x="${x-38+i*9.5}" y="82" width="6" height="5" fill="#111"/>`).join('')}<text x="${x}" y="130" text-anchor="middle" font-size="16" font-weight="600" fill="currentColor">${d.name}</text><text x="${x}" y="149" text-anchor="middle" font-size="13" fill="var(--mut)">${v.label}</text></g>`;
@@ -313,7 +315,7 @@ function drawChecks(){
   $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.sw.name} · ${VEND[c.sw.vendor].label}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(HINT[c.sw.vendor][c.k])}</code></details></div></li>`).join('')+
     `<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-A</div>Ping exitoso a PC-B</div></li>`;
   const n=[];for(const sw of[S1,S2])if(sw.vendor==='juniper'&&JSON.stringify(sw.cand)!==JSON.stringify(sw.act))n.push(`<p class="warn">${sw.name} tiene cambios sin commit: aún no se aplican.</p>`);
-  if(!done&&cs.every(c=>c.ok))n.push('<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping 192.168.10.12</code>.</p>');
+  if(!done&&cs.every(c=>c.ok))n.push('<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping ${NET()}12</code>.</p>');
   $('#notes').innerHTML=n.join('');
   $('#chk').querySelectorAll('details').forEach((dt,i)=>{dt.addEventListener('toggle',()=>{if(dt.open){LS.hints.add(i);drawScore()}})});drawScore();
 }
@@ -332,6 +334,13 @@ for(const b of document.querySelectorAll('.keys button'))b.addEventListener('cli
 $('#clr').addEventListener('click',()=>{cur.lines=[];render()});
 $('#rst').addEventListener('click',()=>{reset()});
 addEventListener('lab-reset',()=>{reset();scrollTo(0,0)});
+const TK0=document.querySelector('.ticket p').innerHTML,GOAL0=document.querySelector('.goal').innerHTML,H0=document.querySelector('#v-lab1 header h1').textContent,TKH0=document.querySelector('.ticket .tk').textContent;
+window.LAB={
+ start(cfg){SC={vid:cfg.vid,name:cfg.name,exam:true};$('#v1').value=cfg.v1;$('#v2').value=cfg.v2;$('#v1').disabled=$('#v2').disabled=true;document.body.classList.add('labexam');
+  document.querySelector('.ticket p').innerHTML=`"Necesitamos que el área de ${cfg.label} tenga su propia red: la VLAN ${cfg.vid} (${cfg.name}), con una PC en cada piso." Configura SW1 y SW2 para que PC-A (${NET()}11) y PC-B (${NET()}12) se vean. Sin pistas ni guía: como en el trabajo.`;
+  document.querySelector('.goal').innerHTML=`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${cfg.vid} (${cfg.name}).`;document.querySelector('#v-lab1 header h1').textContent='Certificación: parte práctica';document.querySelector('.ticket .tk').textContent=`CERT-1 · de: ${cfg.label}`;cur=null;reset()},
+ stop(){if(!SC.exam)return;SC={vid:10,name:'VENTAS',exam:false};$('#v1').disabled=$('#v2').disabled=false;document.body.classList.remove('labexam');document.querySelector('.ticket p').innerHTML=TK0;document.querySelector('.goal').innerHTML=GOAL0;document.querySelector('#v-lab1 header h1').textContent=H0;document.querySelector('.ticket .tk').textContent=TKH0;cur=null;reset()},
+ passed(){return checks().filter(c=>c.ok).length},total(){return checks().length},score:()=>labScore()};
 for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
 
 /* ---------- solutions ---------- */
@@ -373,7 +382,7 @@ $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-cop
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
 function build3D(){
   const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}

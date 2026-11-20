@@ -126,7 +126,7 @@ x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:10,min:12,pool:[
  {q:'¿Cómo salen los frames por un access port hacia una PC?',o:['Untagged (sin tag)','Con tag 802.1Q','Cifrados','Duplicados'],a:0,topic:'l0-3'},
  {q:'¿Qué rango de VLAN ID se puede usar en 802.1Q?',o:['1 a 4094','0 a 255','1 a 1024','1 a 65535'],a:0,topic:'l0-3'}
 ]},
-x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,pool:[
+x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,lab:true,labMin:20,pool:[
  {q:'Cisco IOS: ¿qué par de comandos deja Gi0/1 como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set interfaces ge-0/0/1 vlan 10','switchport trunk vlan 10'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando pone una interfaz como access en la VLAN 10?',o:['vlan access 10','switchport access vlan 10','set vlan members 10','access vlan 10 enable'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando permite la VLAN 10 en un trunk?',o:['vlan trunk allowed 10','switchport trunk allowed vlan 10','set trunk 10','trunk vlan 10 allow'],a:0,topic:'lab1'},

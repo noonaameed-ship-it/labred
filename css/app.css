@@ -284,3 +284,7 @@ td code{font:13px "IBM Plex Mono",monospace}
 .pasos{margin:0 0 14px;padding-left:22px;max-width:70ch}.pasos li{margin:8px 0}
 .guide{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-top:14px;max-width:1000px}.guide summary{font-weight:600;font-size:15px;color:var(--ink)}.guide p{color:var(--ink);font-size:14px}.guide table{font-size:13px}
 .lec h3{font-size:17px;margin:20px 0 6px}
+.exbar{display:none}
+.labexam .exbar{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 14px;margin:6px 0 10px;font-size:14px}
+.labexam .exbar b{font:600 18px "IBM Plex Mono",monospace;color:var(--trunk)}
+.labexam .guide,.labexam #lscore,.labexam #chk,.labexam #notes,.labexam #done,.labexam .vend small,.labexam #rst{display:none!important}

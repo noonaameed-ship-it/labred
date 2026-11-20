@@ -66,7 +66,7 @@ const allIds=()=>LEVELS.flatMap(L=>L.items||[]).map(i=>i.id);
 function save(quiet){const p=calcPts();st.pts=p;st.badges=st.badges||{};
  if(prevPts===null||quiet){prevPts=p;prevPassed=new Set(allIds().filter(isPassed));BADGES.forEach(b=>{if(b.f()&&!st.badges[b.id])st.badges[b.id]=today()})}
  else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak()}
-  if(rankTitle(p)!==rankTitle(prevPts))celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle(p))}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle(p)}`);
+  if(!isOwner&&rankTitle(p)!==rankTitle(prevPts))celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle(p))}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle(p)}`);
   const np=allIds().filter(isPassed).filter(i=>!prevPassed.has(i));if(np.length){confetti();sfx('win')}
   for(const b of BADGES)if(!st.badges[b.id]&&b.f()){st.badges[b.id]=today();celebrate(b.ic,'Insignia: '+b.n,esc(b.d),'Continuar','%LABRED-6-BADGE: '+b.n)}
   prevPts=p;prevPassed=new Set(allIds().filter(isPassed))}
@@ -138,7 +138,7 @@ function renderMap(){
  const desc=C?(C.exam?DESC_T.exam(cur):cur==='lab1'?DESC_T.lab:DESC_T.lesson):'';
  const stChip=id=>isPassed(id)?'<span class="chip ok">Cerrado</span>':!itemOpen(id)?'<span class="chip lock">Bloqueado</span>':st.done[id]?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>';
  $('#v-mapa').innerHTML=`<div class="console"><aside class="op">
-  <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${esc(rankTitle(p))}</span></div></div><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><div class="small">${n?`${n[0]-p} XP para ${esc(n[1])}`:'Rango máximo'} · ${saved}</div></div>
+  <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle(p))}</span></div></div><div class="xpbar"><i style="width:${xpPct(p)}%"></i></div><div class="small">${n?`${n[0]-p} XP para ${esc(n[1])}`:'Rango máximo'} · ${saved}</div></div>
   <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${Object.keys(st.badges||{}).length}/${BADGES.length}</b><span>Insignias</span></div></div>
   ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
   ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:''}
@@ -150,7 +150,7 @@ function renderMap(){
 
 /* ---------- insignias ---------- */
 function renderLogros(){const p=calcPts(),stars=ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),nb=Object.keys(st.badges||{}).length;
- $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${esc(rankTitle(p))}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct(p)}%"></i></div><p class="small">${p} XP${nextT(p)?` · ${nextT(p)[0]-p} XP para ${esc(nextT(p)[1])}`:''}</p></div></header>
+ $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${isOwner?'Instructor':esc(rankTitle(p))}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct(p)}%"></i></div><p class="small">${p} XP${nextT(p)?` · ${nextT(p)[0]-p} XP para ${esc(nextT(p)[1])}`:''}</p></div></header>
  <div class="wrap" style="padding-bottom:40px"><div class="stats"><div class="stat"><b>${p}</b><span>XP total</span></div><div class="stat"><b>${stars}</b><span>Barras de señal</span></div><div class="stat"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="stat"><b>${nb}/${BADGES.length}</b><span>Insignias</span></div></div>
  <h2>Insignias</h2><div class="badges">${BADGES.map(b=>{const on=st.badges&&st.badges[b.id];return`<div class="badge ${on?'on':''}"><div class="bi">${ico(on?b.ic:'lock')}</div><div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div></div>`}).join('')}</div>
  <h2 style="margin-top:24px">Rangos</h2><p>${TITLES.map(t=>`${esc(t[1])} (${t[0]} XP)`).join(' · ')}</p>
@@ -362,12 +362,12 @@ function showLesson(key){
 /* ---------- certificaciones de zona ---------- */
 let EX=null;
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-function examAbort(){if(EX){clearInterval(EX.tmr);document.removeEventListener('visibilitychange',EX.vis);const r=item(EX.id);r.attempts=(r.attempts||0)+1;r.abandoned=(r.abandoned||0)+1;save(true);EX=null}}
+function examAbort(){if(EX){clearInterval(EX.tmr);if(EX.phase==='lab'||EX.phase==='labintro'){try{LAB.stop()}catch(e){}}document.removeEventListener('visibilitychange',EX.vis);const r=item(EX.id);r.attempts=(r.attempts||0)+1;r.abandoned=(r.abandoned||0)+1;save(true);EX=null}}
 function renderExam(z){
  const id='x'+z,E=EXAMS[id],L=LEVELS[z],r=item(id),others=L.items.filter(i=>i.id!==id),pend=others.filter(i=>!isPassed(i.id)),v=$('#v-examen');
  const head=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${z} / ${TID[id]}</p><h1>${esc(E.t)}</h1></div></header>`;
  if(!unlocked(z)||(pend.length&&!cOn())){v.innerHTML=head+`<div class="lecw"><div class="res"><h3 style="margin:0 0 6px">Primero cierra los tickets de la zona</h3><p>La certificación evalúa todo lo de la Zona ${z}. Te falta:</p><ul>${pend.map(i=>`<li><a href="${i.h}">${esc(TID[i.id]+' · '+i.t)}</a></li>`).join('')}</ul></div></div>`;return}
- v.innerHTML=head+`<div class="lecw"><div class="card"><h2>Reglas</h2><ul><li>${E.n} preguntas al azar de un banco de ${E.pool.length}: cada intento es distinto.</li><li>${E.min} minutos. Al acabarse el tiempo, se califica lo que lleves.</li><li>Se aprueba con <strong>${EXPASS}%</strong>.</li><li>No se muestran las respuestas correctas, solo los temas que debes repasar.</li><li>Salir de la pestaña durante el examen queda registrado para tu instructor.</li></ul>
+ v.innerHTML=head+`<div class="lecw"><div class="card"><h2>Reglas</h2>${E.lab?`<p><strong>Dos partes, cada una vale 50%:</strong> 1) teoría y 2) un lab práctico sin ninguna ayuda. Necesitas <strong>${EXPASS} en total</strong>.</p>`:''}<ul><li>${E.lab?'Parte 1: ':''}${E.n} preguntas al azar de un banco de ${E.pool.length}: cada intento es distinto.</li>${E.lab?`<li>Parte 2: configuras dos switches con otra VLAN y otros vendors elegidos al azar, en ${E.labMin} minutos. Sin guía, sin pistas, sin lista de objetivos y sin mensajes del tutor. Puedes usar <code>?</code> y <code>Tab</code>, como en un equipo real. Si se acaba el tiempo, cuenta lo que hayas dejado bien configurado.</li>`:''}<li>${E.min} minutos. Al acabarse el tiempo, se califica lo que lleves.</li><li>Se aprueba con <strong>${EXPASS}%</strong>.</li><li>No se muestran las respuestas correctas, solo los temas que debes repasar.</li><li>Salir de la pestaña durante el examen queda registrado para tu instructor.</li></ul>
  <p class="small">Intentos: ${r.attempts||0} · Mejor resultado: ${r.examBest||0}%</p><button class="btnl" id="exgo">${isPassed(id)?'Volver a presentar (para mejorar tu señal)':'Comenzar'}</button></div></div>`;
  $('#exgo').addEventListener('click',()=>startExam(id));
 }
@@ -381,7 +381,28 @@ function showQ(){const q=EX.qs[EX.i],E=EXAMS[EX.id],v=$('#v-examen');
  v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb">${TID[EX.id]} · pregunta ${EX.i+1} de ${EX.qs.length} · ${ico('clock')} <span id="exclock"></span></p><h1>${esc(E.t)}</h1><div class="xpbar" style="max-width:520px"><i style="width:${100*EX.i/EX.qs.length}%"></i></div></div></header>
  <div class="lecw"><div class="q"><p>${esc(q.q)}</p><div class="opts">${q.o.map((o,j)=>`<button data-j="${j}">${esc(o.t)}</button>`).join('')}</div></div></div>`;
  v.querySelectorAll('.opts button').forEach(b=>b.addEventListener('click',()=>{EX.ans[EX.i]=q.o[+b.dataset.j].ok;EX.i++;sfx('xp');EX.i<EX.qs.length?showQ():finishExam()}))}
-function finishExam(){if(!EX)return;clearInterval(EX.tmr);document.removeEventListener('visibilitychange',EX.vis);
+const LABSC=[{vid:20,name:'CONTABILIDAD',label:'Contabilidad'},{vid:30,name:'CAMARAS',label:'Seguridad (cámaras)'},{vid:40,name:'RRHH',label:'Recursos Humanos'},{vid:50,name:'SOPORTE',label:'Soporte técnico'},{vid:60,name:'COMPRAS',label:'Compras'}];
+function labIntro(){const E=EXAMS[EX.id],sc=LABSC[Math.random()*LABSC.length|0],vs=['cisco','aruba','juniper'],v1=vs[Math.random()*3|0],v2=vs[Math.random()*3|0];
+ EX.phase='labintro';EX.sc={...sc,v1,v2};const VN={cisco:'Cisco IOS',aruba:'Aruba AOS-CX',juniper:'Juniper Junos'};
+ $('#v-examen').innerHTML=`<header class="band hero"><div class="in"><p class="crumb">${TID[EX.id]} · parte 2 de 2</p><h1>Parte práctica: sin ayuda</h1></div></header><div class="lecw"><div class="card"><p>Terminaste la teoría. Tu resultado se muestra al final, junto con la práctica.</p><h2>Tu ticket</h2><p>El área de <strong>${esc(sc.label)}</strong> necesita su propia red: <strong>VLAN ${sc.vid} (${sc.name})</strong>, con PC-A (192.168.${sc.vid}.11) y PC-B (192.168.${sc.vid}.12) en switches distintos.</p><p>SW1: <strong>${VN[v1]}</strong> · SW2: <strong>${VN[v2]}</strong></p><ul><li>Tienes ${E.labMin} minutos desde que empiezas.</li><li>No hay guía, pistas ni mensajes del tutor. Puedes usar <code>?</code> y <code>Tab</code>.</li><li>Termina cuando el ping de PC-A a PC-B funcione.</li><li>No cambies de página: si sales, la certificación se cancela.</li></ul><button class="btnl" id="labgo">Comenzar la práctica</button></div></div>`;
+ $('#labgo').addEventListener('click',()=>{EX.phase='lab';EX.labEnd=Date.now()+E.labMin*60000;LAB.start(EX.sc);location.hash='lab-1';
+  EX.tmr=setInterval(()=>{if(!EX||EX.phase!=='lab')return;const left=Math.max(0,EX.labEnd-Date.now());$('#exbar').innerHTML=`<span>${TID[EX.id]} · parte práctica · sin ayuda</span><span>${ico('clock')} <b>${Math.floor(left/60000)}:${String(Math.floor(left/1000)%60).padStart(2,'0')}</b></span><span>VLAN ${EX.sc.vid} (${esc(EX.sc.name)})</span>`;if(!left)labTimeout()},500)})}
+function labTimeout(){if(!EX)return;const n=LAB.passed(),t=LAB.total();finishCert(Math.round(60*n/t),{timeout:true,checks:n,total:t,err:(window.LAB_STATS||{}).err||0})}
+addEventListener('lab-done',e=>{if(!e.detail.exam||!EX||EX.phase!=='lab')return;finishCert(e.detail.score,{err:e.detail.err,fails:e.detail.fails,s:Math.round(e.detail.ms/1000),paste:e.detail.paste})});
+function finishCert(labScore,info){clearInterval(EX.tmr);document.removeEventListener('visibilitychange',EX.vis);
+ const id=EX.id,E=EXAMS[id],r=item(id),theory=EX.theory,total=Math.round((theory+labScore)/2),leaves=EX.leaves,miss=EX.miss||[];
+ r.attempts=(r.attempts||0)+1;r.lastScore=total;r.lastTheory=theory;r.lastLab=labScore;r.lastLabInfo=info;r.leaves=(r.leaves||0)+leaves;if(total>(r.examBest||0)){r.examBest=total;r.examPts=Math.round(total*1.5)}
+ EX.phase='done';EX=null;LAB.stop();checkLevels();save();location.hash='examen-'+E.zone;
+ setTimeout(()=>{const pass=total>=EXPASS,topicT=t=>{const it=itemById(t);return`<li><a href="${it.h}">${esc(TID[t]+' · '+it.t)}</a></li>`};
+  $('#v-examen').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / ${TID[id]}</p><h1>${esc(E.t)}</h1></div></header><div class="lecw">
+  <div class="${pass?'closed':'res'}" ${pass?'':'style="border-color:var(--bad)"'}>${pass?`<div class="log">%LABRED-5-CERT: ${TID[id]} aprobada con ${total}</div><div class="in">${sig(starsPct(total),true)}<div><h3>Certificación aprobada: ${total}/100</h3>`:`<div class="sc" style="color:var(--bad)">${total}/100</div><div class="meter"><i style="width:${total}%;background:var(--bad)"></i></div><div><p><strong>Necesitas ${EXPASS} para certificar.</strong></p>`}
+  <table class="stack"><thead><tr><th>Parte</th><th>Resultado</th><th>Vale</th></tr></thead><tbody><tr><td>Teoría</td><td>${theory}/100 (${EX?'':''}${Math.round(theory/10)} de 10 correctas)</td><td>50%</td></tr><tr><td>Práctica sin ayuda</td><td>${labScore}/100${info.timeout?` · se acabó el tiempo con ${info.checks} de ${info.total} configuraciones bien`:` · errores de comando: ${info.err}, pings fallidos: ${info.fails}`}</td><td>50%</td></tr></tbody></table>
+  ${pass?`<p style="margin-top:10px">La siguiente zona queda en línea.</p><a class="btnl" href="#mapa">Ver mi red →</a></div></div>`:`${miss.length?`<h4>Repasa estos tickets</h4><ul>${miss.map(topicT).join('')}</ul>`:''}${labScore<EXPASS?'<p class="tip">En la práctica: repite el Lab 1 hasta que te salga sin pistas y sin errores, y prueba con otros vendors.</p>':''}<button class="btnl" id="exretry">Volver a presentar</button></div></div>`}
+  ${leaves?`<p class="warn">Saliste de la pestaña ${leaves} ${leaves===1?'vez':'veces'} durante la certificación. Queda registrado para tu instructor.</p>`:''}</div>`;
+  $('#exretry')?.addEventListener('click',()=>renderExam(E.zone))},50)}
+function finishExam(){if(!EX)return;clearInterval(EX.tmr);
+ const E0=EXAMS[EX.id];if(E0.lab&&EX.phase!=='done'){const okq=EX.qs.filter((_,k)=>EX.ans[k]).length;EX.theory=Math.round(100*okq/EX.qs.length);EX.okq=okq;EX.miss=[...new Set(EX.qs.filter((_,k)=>!EX.ans[k]).map(q=>q.topic))];return labIntro()}
+ document.removeEventListener('visibilitychange',EX.vis);
  const E=EXAMS[EX.id],r=item(EX.id),ok=EX.qs.filter((_,k)=>EX.ans[k]).length,score=Math.round(100*ok/EX.qs.length),miss=[...new Set(EX.qs.filter((_,k)=>!EX.ans[k]).map(q=>q.topic))];
  r.attempts=(r.attempts||0)+1;r.lastScore=score;r.leaves=(r.leaves||0)+EX.leaves;if(score>(r.examBest||0)){r.examBest=score;r.examPts=Math.round(score*1.5)}
  const leaves=EX.leaves,id=EX.id;EX=null;checkLevels();save();
@@ -407,7 +428,7 @@ async function renderRank(){
 }
 
 /* ---------- lab 1 ---------- */
-addEventListener('lab-done',e=>{const r=item('lab1'),d=e.detail,prevPts=r.labPts||0;r.lab=true;r.labRuns=(r.labRuns||0)+1;r.labLast={score:d.score,err:d.err,hints:d.hints,fails:d.fails,s:Math.round(d.ms/1000),paste:d.paste,mixed:d.mixed};
+addEventListener('lab-done',e=>{if(e.detail.exam)return;const r=item('lab1'),d=e.detail,prevPts=r.labPts||0;r.lab=true;r.labRuns=(r.labRuns||0)+1;r.labLast={score:d.score,err:d.err,hints:d.hints,fails:d.fails,s:Math.round(d.ms/1000),paste:d.paste,mixed:d.mixed};
  if(d.score>(r.labScore||0))r.labScore=d.score;r.labPts=Math.max(prevPts,d.score*2+(d.mixed?50:0));checkLevels();save();
  const ok=d.score>=LABPASS;$('#labres').innerHTML=`<div class="${ok?'closed':'res'}" ${ok?'':'style="border-color:var(--bad)"'}>${ok?`<div class="log">%LABRED-5-TICKET: TK-1042 resuelto con ${d.score}/100</div><div class="in">${sig(starsPct(d.score),true)}<div><h3>Configuración aprobada: ${d.score}/100</h3><p>Errores de comando: ${d.err} · pistas: ${d.hints} · pings fallidos: ${d.fails}. Para cerrar el ticket, explica abajo lo que hiciste (mínimo ${PASS}/10).</p></div></div>`:`<div class="sc" style="color:var(--bad)">${d.score}/100</div><div class="meter"><i style="width:${d.score}%;background:var(--bad)"></i></div><p><strong>El ping funcionó, pero necesitas ${LABPASS}/100 para aprobar el lab.</strong> Errores de comando: ${d.err} (−${Math.min(20,d.err)}) · pistas: ${d.hints} (−${10*d.hints}) · pings fallidos: ${d.fails} (−${5*d.fails}).</p><p class="tip">Así se practica en la vida real: repítelo hasta que te salga limpio. Reinicia el lab y hazlo sin pistas y con menos errores.</p><button class="btnl" id="labagain">Reiniciar el lab</button>`}</div>`;
  $('#labagain')?.addEventListener('click',()=>dispatchEvent(new Event('lab-reset')));
@@ -419,9 +440,9 @@ function renderLock(){$('#v-lock').innerHTML=`<header class="band hero"><div cla
 /* ---------- router ---------- */
 function route(){
  const h=location.hash.slice(1)||'mapa';let id='v-mapa';
- if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=unlocked(1)?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes'].includes(h))id='v-'+h;
+ if(h.startsWith('leccion-')&&LES[h.slice(8)])id='v-lec';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=unlocked(1)||(EX&&EX.phase==='lab')?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes'].includes(h))id='v-'+h;
  if(sb&&!uid&&!guest)id='v-entrar';
- if(EX&&id!=='v-examen')examAbort();
+ if(EX&&id!=='v-examen'&&!(EX.phase==='lab'&&id==='v-lab1'))examAbort();
  $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));renderMe();
  if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();if(id==='v-mensajes')renderMensajes();
  if(id==='v-lab1')dispatchEvent(new Event('lab-show'));
@@ -515,7 +536,7 @@ async function renderInstructor(){
   ${fl.length?`<div class="res" style="border-color:var(--trunk)"><strong>Señales a revisar</strong><ul>${fl.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`:''}
   ${ids.map(id=>{const r=(d.done||{})[id],I=itemById(id);if(!r)return`<h3 style="margin:16px 0 2px">${TID[id]} · ${esc(I.t)}</h3><p class="small">Sin empezar</p>${revForm(x,id)}`;const m=r.lastMetrics||{},ok=passIn(d.done,id);
    return`<h3 style="margin:16px 0 2px">${TID[id]} · ${esc(I.t)} ${ok?'<span class="chip ok">Cerrado</span>':'<span class="chip go">En curso</span>'}</h3>
-   ${EXAMS[id]?`<p class="small">Mejor: ${r.examBest||0}% · último: ${r.lastScore??'—'}% · intentos: ${r.attempts||0} · abandonados: ${r.abandoned||0} · salidas de pestaña: ${r.leaves||0}</p>`:''}
+   ${EXAMS[id]?`<p class="small">Mejor: ${r.examBest||0} · último: ${r.lastScore??'—'}${r.lastLab!==undefined?` (teoría ${r.lastTheory}, práctica ${r.lastLab}${r.lastLabInfo&&r.lastLabInfo.timeout?', se acabó el tiempo':''})`:''} · intentos: ${r.attempts||0} · abandonados: ${r.abandoned||0} · salidas de pestaña: ${r.leaves||0}</p>`:''}
    ${id==='lab1'&&r.labLast?`<p class="small">Lab mejor: ${r.labScore||0}/100 · último intento: ${r.labLast.score}/100 (errores ${r.labLast.err}, pistas ${r.labLast.hints}, pings fallidos ${r.labLast.fails}, ${Math.round((r.labLast.s||0)/60)} min${r.labLast.mixed?', multivendor':''}) · intentos: ${r.labRuns||0}</p>`:''}
    ${LES[Object.keys(LES).find(k=>LES[k].id===id)]?`<p class="small">Quiz: ${Object.keys(r.qok||{}).length}/2</p>`:''}
    ${r.exp!==undefined&&!EXAMS[id]?`<p class="small">Explicación: mejor ${r.exp||0}/10 · intentos ${r.tries||0}${m.segundos!==undefined?` · último: ${m.palabras} palabras en ${Math.round(m.segundos/60)} min ${m.segundos%60}s · intentos de pegar: ${m.pegados||0}`:''}</p>${r.lastText?`<div class="real" style="margin:6px 0"><p style="margin:0;white-space:pre-wrap">${esc(r.lastText)}</p></div>`:''}`:''}${revForm(x,id)}`}).join('')}</div>`;
