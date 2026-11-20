@@ -280,3 +280,5 @@ ul.chk .sw{font:500 12px "IBM Plex Mono",monospace;color:var(--mut)}
 td code{font:13px "IBM Plex Mono",monospace}
 @media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mut)}.stack td:empty{display:none}.term{border-radius:0 0 10px 10px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.pasos{margin:0 0 14px;padding-left:22px;max-width:70ch}.pasos li{margin:8px 0}

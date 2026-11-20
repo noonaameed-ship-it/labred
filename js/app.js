@@ -231,17 +231,24 @@ const FIGS={
    const g=envelope(svg,'#1a5fd0');await move(g,pathTo('A').slice().reverse().concat([SWC]),900);blink(svg,'A');stt.innerHTML=`El switch lee la MAC destino <code>${MAC.C}</code>: sabe que está en el puerto 3.`;await wait(1100);
    blink(svg,'C');await move(g,[SWC].concat(pathTo('C')),900);stt.innerHTML='PC-C ve que el frame es para ella y lo acepta. PC-B y PC-D ni se enteran.';await wait(600);g.remove();busy=false});
  },
- learn(el){const tbl={};let busy=false;
-  el.innerHTML=`<div class="netfig">${netSVG()}<div class="ctrl"><label>Origen <select id="lsrc">${'ABCD'.split('').map(k=>`<option value="${k}">PC-${k}</option>`).join('')}</select></label><label>Destino <select id="ldst">${'ABCD'.split('').map(k=>`<option value="${k}" ${k==='C'?'selected':''}>PC-${k}</option>`).join('')}<option value="F">Broadcast</option></select></label><button class="btn pri" id="lgo">Enviar</button><button class="btn" id="lclr">Borrar tabla</button></div><div class="status" id="lst">La tabla está vacía: el switch acaba de encender.</div><table class="mtab"><thead><tr><th>MAC</th><th>Puerto</th></tr></thead><tbody id="ltb"></tbody></table></div>`;
+ learn(el){const tbl={};let busy=false,last=null;const AG=300000;
+  el.innerHTML=`<div class="netfig">${netSVG()}<div class="ctrl"><label>Origen <select id="lsrc">${'ABCD'.split('').map(k=>`<option value="${k}">PC-${k}</option>`).join('')}</select></label><label>Destino <select id="ldst">${'ABCD'.split('').map(k=>`<option value="${k}" ${k==='C'?'selected':''}>PC-${k}</option>`).join('')}<option value="F">Broadcast</option></select></label><button class="btn pri" id="lgo">Enviar</button><button class="btn" id="lage">${ico('clock')} Adelantar 5 minutos</button><button class="btn" id="lclr">Reiniciar switch</button></div><div class="status" id="lst">La libreta está vacía: el switch acaba de encender. Manda un frame de PC-A a PC-C.</div><table class="mtab"><thead><tr><th>MAC</th><th>Puerto</th><th>Se borra en (aging)</th></tr></thead><tbody id="ltb"></tbody></table></div>`;
   const svg=el.querySelector('svg'),stt=el.querySelector('#lst');
-  const draw=nw=>{el.querySelector('#ltb').innerHTML=Object.keys(tbl).length?Object.entries(tbl).map(([k,p])=>`<tr class="${k===nw?'new':''}"><td>${MAC[k]}</td><td>${p}</td></tr>`).join(''):'<tr><td colspan="2">Vacía</td></tr>'};draw();
-  el.querySelector('#lclr').addEventListener('click',()=>{for(const k in tbl)delete tbl[k];draw();stt.textContent='Tabla borrada. Como si el switch acabara de encender.'});
-  el.querySelector('#lgo').addEventListener('click',async()=>{if(busy)return;const s=el.querySelector('#lsrc').value,d=el.querySelector('#ldst').value;if(s===d){stt.textContent='Elige un destino distinto del origen.';return}busy=true;
-   const known=d!=='F'&&tbl[d],isNew=!tbl[s];tbl[s]=PORTN[s];draw(isNew?s:null);
-   const learnTxt=isNew?`Aprende: <code>${MAC[s]}</code> está en el puerto ${PORTN[s]}. `:`Ya conocía a PC-${s} en el puerto ${PORTN[s]}. `;
+  const mmss=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`};
+  const prune=()=>{let gone=[];for(const k in tbl)if(tbl[k].exp<=Date.now()){gone.push(k);delete tbl[k]}return gone};
+  const draw=nw=>{prune();el.querySelector('#ltb').innerHTML=Object.keys(tbl).length?Object.entries(tbl).map(([k,v])=>`<tr class="${k===nw?'new':''}"><td>${MAC[k]} (PC-${k})</td><td>${v.port}</td><td>${mmss(v.exp-Date.now())}</td></tr>`).join(''):'<tr><td colspan="3">Vacía</td></tr>'};draw();
+  const tk=setInterval(()=>{if(!el.isConnected){clearInterval(tk);return}if(!busy)draw()},1000);
+  const send=async(s,d)=>{if(busy)return;if(s===d){stt.textContent='Elige un destino distinto del origen.';return}busy=true;prune();
+   const known=d!=='F'&&tbl[d],isNew=!tbl[s],isReply=last&&last.s===d&&last.d===s;tbl[s]={port:PORTN[s],exp:Date.now()+AG};draw(isNew?s:null);
+   const learnTxt=isNew?(isReply?`<strong>Learning con la respuesta:</strong> la MAC origen de este frame es la de PC-${s}, así que el switch anota que PC-${s} está en el puerto ${PORTN[s]}. `:`<strong>Learning:</strong> la MAC origen es la de PC-${s}; el switch anota que vive en el puerto ${PORTN[s]}. `):`Ya conocía a PC-${s}: renueva su línea y el reloj de aging vuelve a 5:00. `;
    const outs=known?[d]:'ABCD'.split('').filter(k=>k!==s);
-   stt.innerHTML=learnTxt+(d==='F'?'Es broadcast: hace flooding por todos los puertos menos el '+PORTN[s]+'.':known?`Conoce el destino: lo manda solo por el puerto ${tbl[d]}.`:`No conoce a <code>${MAC[d]}</code>: hace flooding por todos los puertos menos el ${PORTN[s]}. Los que no son destino la descartan.`);
-   await fwd(svg,s,outs,'#1a5fd0',d==='F'?null:d);if(d==='F')outs.forEach(k=>{});busy=false});
+   stt.innerHTML=learnTxt+(d==='F'?`Es broadcast: <strong>flooding</strong> por todos los puertos menos el ${PORTN[s]}.`:known?`<strong>Forwarding:</strong> ya sabe que PC-${d} está en el puerto ${tbl[d].port}, así que lo manda solo por ahí.`:`No tiene a PC-${d} en su libreta: <strong>flooding</strong> por todos los puertos menos el ${PORTN[s]}. Las PCs que no son el destino lo ignoran.`);
+   await fwd(svg,s,outs,'#1a5fd0',d==='F'?null:d);busy=false;last={s,d};
+   if(d!=='F'&&!known){stt.insertAdjacentHTML('beforeend',` <button class="btn" id="lrep" style="margin-top:6px">Ahora PC-${d} responde</button>`);el.querySelector('#lrep').addEventListener('click',()=>{el.querySelector('#lsrc').value=d;el.querySelector('#ldst').value=s;send(d,s)})}};
+  el.querySelector('#lgo').addEventListener('click',()=>send(el.querySelector('#lsrc').value,el.querySelector('#ldst').value));
+  el.querySelector('#lage').addEventListener('click',()=>{if(busy)return;const had=Object.keys(tbl).length;for(const k in tbl)tbl[k].exp-=AG;const gone=prune();draw();last=null;
+   stt.innerHTML=had?`Pasaron 5 minutos sin que ${gone.length>1?'esas PCs mandaran':'esa PC mandara'} nada. Se cumplió el tiempo de <strong>aging</strong> y el switch borró ${gone.map(k=>'PC-'+k).join(', ')} de su libreta. Si alguien les escribe ahora, el switch tendrá que hacer flooding otra vez hasta que contesten. Pruébalo.`:'La libreta ya está vacía: no hay nada que borrar. Manda unos frames primero.'});
+  el.querySelector('#lclr').addEventListener('click',()=>{for(const k in tbl)delete tbl[k];last=null;draw();stt.textContent='Switch reiniciado: la libreta queda vacía, como recién encendido.'});
  },
  vlan(el){const vl={A:10,B:20,C:10,D:20};let busy=false;
   const mount=()=>{el.querySelector('.net').innerHTML=netSVG({vlan:vl})};
@@ -332,7 +339,7 @@ function showLesson(key){
  const L=LES[key];if(!L){location.hash='mapa';return}
  const r=item(L.id),keys=Object.keys(LES),i=keys.indexOf(key),prev=keys[i-1],next=keys[i+1],nextH=next?'#leccion-'+next:'#examen-0',nextT=next?'Siguiente ticket':'Ir a la certificación';
  $('#v-lec').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${L.lv} / ${TID[L.id]}</p><h1>${esc(L.t)}</h1></div></header>
- <div class="lgrid"><article class="lec">${L.body.map(p=>`<p>${p}</p>`).join('')}<div id="lfig"></div><div class="real">${L.real}</div>
+ <div class="lgrid"><article class="lec">${L.body.map(p=>p.startsWith('<')?p:`<p>${p}</p>`).join('')}<div id="lfig"></div><div class="real">${L.real}</div>
  <h2>Comprueba</h2><div id="lquiz"></div><div id="lexp" style="margin-top:24px"></div><div id="lpass"></div>
  <div class="nextnav">${prev?`<a class="btn" href="#leccion-${prev}">← Anterior</a>`:'<span></span>'}<a id="lnext" class="btnl" href="${nextH}">${nextT} →</a></div><div id="lgate"></div></article>
  <aside class="side"><div class="card" id="lside"></div><div class="card vocab"><h3 style="margin:0">Vocabulario</h3><p class="tip" style="margin:2px 0 6px">En el trabajo todo está en inglés:</p><dl>${(VOCAB[key]||[]).map(([e,t])=>`<div><dt>${esc(e)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl></div></aside></div>`;
