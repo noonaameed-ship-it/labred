@@ -42,6 +42,7 @@ const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const BASE={done:{},unlocked:0,placed:null,pts:0};
 let st=clone(BASE);
 
+let authNote='';{const h=location.hash;if(/error_code=/.test(h)){const c=(h.match(/error_code=([^&]+)/)||[])[1];authNote=c==='otp_expired'?'El enlace de confirmación ya no es válido (expiró o ya se usó). Escribe tu correo abajo y toca "Reenviar correo de confirmación".':'No se pudo confirmar tu cuenta con ese enlace. Pide otro abajo.';history.replaceState(null,'',location.pathname+'#entrar')}}
 const sb=(window.supabase&&window.LABRED_CONFIG&&LABRED_CONFIG.supabaseKey)?window.supabase.createClient(LABRED_CONFIG.supabaseUrl,LABRED_CONFIG.supabaseKey):null;
 let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
@@ -325,14 +326,17 @@ function renderEntrar(){
  <form id="af" novalidate>${mode==='signup'?'<label>Tu nombre (así sale en el ranking)<input id="an" autocomplete="name" maxlength="40" required></label>':''}
  <label>Correo<input id="ae" type="email" autocomplete="email" required></label>
  <label>Contraseña${mode==='signup'?' (mínimo 8 caracteres)':''}<input id="ap" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" required></label>
- <button class="bigbtn" type="submit" id="ab">${mode==='signup'?'Crear mi cuenta':'Entrar'}</button><p id="amsg" class="amsg" role="alert"></p></form>
+ <button class="bigbtn" type="submit" id="ab">${mode==='signup'?'Crear mi cuenta':'Entrar'}</button><p id="amsg" class="amsg" role="alert">${esc(authNote)}</p></form>
+ <button class="guest" id="resend" style="background:none;border:0;cursor:pointer;width:100%;font-size:15px;text-decoration:underline">Reenviar correo de confirmación</button>
  <a href="#mapa" id="guest" class="guest">Probar sin cuenta (no se guarda tu progreso)</a></div></div>`;
  v.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{v.dataset.mode=b.dataset.m;renderEntrar()}));
+ $('#resend').addEventListener('click',async()=>{const em=$('#ae').value.trim(),msg=$('#amsg');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){msg.style.color='';msg.textContent='Escribe tu correo arriba y vuelve a tocar "Reenviar".';return}
+  const r=await sb.auth.resend({type:'signup',email:em,options:{emailRedirectTo:location.origin+location.pathname}});if(r.error){msg.style.color='';msg.textContent=authErr(r.error)}else{msg.style.color='var(--ok)';msg.textContent='Te reenviamos el correo. Ábrelo desde este mismo navegador y usa el enlace más reciente.'}});
  $('#guest').addEventListener('click',()=>{guest=true;try{sessionStorage.setItem('labred_guest','1')}catch(e){}});
  $('#af').addEventListener('submit',async e=>{e.preventDefault();const em=$('#ae').value.trim(),pw=$('#ap').value,msg=$('#amsg'),bt=$('#ab');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){msg.textContent='Escribe un correo válido.';return}
   if(mode==='signup'){const nm=$('#an').value.trim();if(nm.length<2){msg.textContent='Escribe tu nombre.';return}if(pw.length<8){msg.textContent='La contraseña debe tener al menos 8 caracteres.';return}
-   bt.disabled=true;bt.textContent='Creando…';const r=await sb.auth.signUp({email:em,password:pw,options:{data:{name:nm}}});bt.disabled=false;bt.textContent='Crear mi cuenta';
+   bt.disabled=true;bt.textContent='Creando…';const r=await sb.auth.signUp({email:em,password:pw,options:{data:{name:nm},emailRedirectTo:location.origin+location.pathname}});bt.disabled=false;bt.textContent='Crear mi cuenta';
    if(r.error){msg.textContent=authErr(r.error);return}if(!r.data.session){msg.style.color='var(--ok)';msg.textContent='¡Listo! Te mandamos un correo para confirmar tu cuenta. Ábrelo (revisa también spam) y después entra aquí con "Entrar".'}}
   else{bt.disabled=true;bt.textContent='Entrando…';const r=await sb.auth.signInWithPassword({email:em,password:pw});bt.disabled=false;bt.textContent='Entrar';if(r.error)msg.textContent=authErr(r.error)}});
 }
