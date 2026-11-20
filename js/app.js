@@ -342,9 +342,18 @@ function mountExplain(el,id,cfg,onDone){
   const rb=out.querySelector('[data-goto="re"]');
   rb?.addEventListener('click',async()=>{const box=out.querySelector('.reout');rb.disabled=true;rb.textContent='Preparando…';const t=await reExplain(cfg,id,tx,v);rb.disabled=false;rb.textContent='Otra explicación distinta';
    box.innerHTML=t?`<p style="white-space:pre-wrap">${esc(t)}</p><p class="src">Explicado por Claude</p>`:`<p class="tip">Esta opción llega pronto. Mientras, usa la comparación y las preguntas guía, o pregúntale a tu instructor.</p>`});
+  evalPopup(v,prev,r.tries,ok,cfg,out);
   onDone&&onDone();
  });
 }
+function evalPopup(v,prev,tries,ok,cfg,out){const el=$('#celeb'),miss=v.hit?v.hit.filter(x=>!x).length:0,tot=v.hit?v.hit.length:0,diff=v.puntaje-prev;
+ const head=ok?'¡Aprobado!':v.puntaje>=5?'Vas bien, pero aún hay fallas':'Todavía hay fallas importantes';
+ const cmp=tries>1?(diff>0?`Subiste de ${prev}/10 a <strong>${v.puntaje}/10</strong>. ¡Vas mejorando!`:diff===0&&v.puntaje===prev?`Sacaste <strong>${v.puntaje}/10</strong>, igual que tu mejor intento.`:`Esta vez sacaste <strong>${v.puntaje}/10</strong>; tu mejor intento sigue siendo ${prev}/10.`):`Tu calificación: <strong>${v.puntaje}/10</strong>.`;
+ el.innerHTML=`<div class="card"><div class="log">%LABRED-6-EVAL: explicación recibida · intento ${tries}</div><div class="body"><div class="big" style="background:${ok?'var(--ok)':'var(--ink)'};color:${ok?'#fff':'var(--trunk)'}">${ico(ok?'check':'mail')}</div><h2 id="celt">${head}</h2>
+ <p>Tu explicación <strong>sí se envió y se evaluó</strong>. ${cmp}</p>
+ ${ok?`<p>Ya cerraste esta parte del ticket.</p>`:`<p>${[v.mis&&v.mis.length?`hay ${v.mis.length===1?'una idea equivocada':v.mis.length+' ideas equivocadas'} que corregir`:'',miss?`te ${miss===1?'falta 1 idea':`faltan ${miss} ideas`} de ${tot}`:''].filter(Boolean).join(' y ').replace(/^./,c=>c.toUpperCase())}${(v.mis&&v.mis.length)||miss?'.':''} Necesitas ${PASS}/10. Abajo te explicamos qué te faltó.</p>`}
+ <button id="evok">${ok?'Continuar':'Ver qué me faltó'}</button></div></div>`;
+ el.classList.add('on');sfx(ok?'win':'ok');const b=el.querySelector('#evok');b.focus();b.addEventListener('click',()=>{el.classList.remove('on');if(!ok)out.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})})}
 
 /* ---------- lección ---------- */
 function showLesson(key){
