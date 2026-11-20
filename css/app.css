@@ -297,3 +297,11 @@ td code{font:13px "IBM Plex Mono",monospace}
 .ladder{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px;max-width:560px}
 .ladder li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px}
 .ladder li span{color:var(--mut);font-size:13px}.ladder li.ok{border-color:var(--ok)}.ladder li.ok b::before{content:"✓ ";color:var(--ok)}.ladder li.cur{border-color:var(--trunk);background:color-mix(in srgb,var(--trunk) 10%,var(--paper))}
+body.exguard #v-examen,body.exguard #v-lab1{-webkit-user-select:none;user-select:none}
+body.exguard #v-lab1 #cmd{-webkit-user-select:text;user-select:text}
+#exwm{position:fixed;inset:0;pointer-events:none;z-index:15;display:flex;flex-wrap:wrap;gap:60px 40px;padding:20px;overflow:hidden;opacity:.07;transform:rotate(-18deg) scale(1.3)}
+#exwm span{font:600 14px "IBM Plex Mono",monospace;color:var(--ink);white-space:nowrap}
+body.exhid #v-examen .lecw,body.exhid #v-lab1 main,body.exhid #v-lab1 .ticket{filter:blur(14px)}
+#exshield{position:fixed;inset:0;z-index:18;display:none;place-items:center;background:rgba(5,12,14,.6);padding:16px}
+#exshield>div{background:var(--paper);color:var(--ink);border-radius:14px;padding:22px;max-width:420px;text-align:center}
+@media print{body.exguard *{display:none!important}}
