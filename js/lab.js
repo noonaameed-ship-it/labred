@@ -63,11 +63,10 @@ function checks(){
   return r;
 }
 const allOk=()=>checks().every(c=>c.ok)&&linkUp(S1,VEND[S1.vendor].up);
-const HINT={
-  cisco:{vlan:'enable\nconfigure terminal\nvlan 10\n name VENTAS',pc:'interface g0/1\n switchport mode access\n switchport access vlan 10',up:'interface g0/24\n switchport mode trunk'},
-  aruba:{vlan:'configure terminal\nvlan 10\n name VENTAS',pc:'interface 1/1/1\n no shutdown\n vlan access 10',up:'interface 1/1/24\n no shutdown\n vlan trunk allowed 10'},
-  juniper:{vlan:'configure\nset vlans VENTAS vlan-id 10\ncommit',pc:'set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access\nset interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members VENTAS\ncommit',up:'set interfaces ge-0/0/23 unit 0 family ethernet-switching interface-mode trunk\nset interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members VENTAS\ncommit'}
-};
+const HINTF=()=>{const V=SC.vid,N=SC.name;return{
+  cisco:{vlan:`enable\nconfigure terminal\nvlan ${V}\n name ${N}`,pc:`interface g0/1\n switchport mode access\n switchport access vlan ${V}`,up:`interface g0/24\n switchport mode trunk`},
+  aruba:{vlan:`configure terminal\nvlan ${V}\n name ${N}`,pc:`interface 1/1/1\n no shutdown\n vlan access ${V}`,up:`interface 1/1/24\n no shutdown\n vlan trunk allowed ${V}`},
+  juniper:{vlan:`configure\nset vlans ${N} vlan-id ${V}\ncommit`,pc:`set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access\nset interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members ${N}\ncommit`,up:`set interfaces ge-0/0/23 unit 0 family ethernet-switching interface-mode trunk\nset interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members ${N}\ncommit`}}};
 
 /* ---------- command tables (Cisco / Aruba) ---------- */
 const TY={vid:s=>/^\d+$/.test(s)&&+s>=1&&+s<=4094,word:s=>s.length>0,vlist:s=>!!parseList(s),if:(s,v)=>!!normIf(v,s)};
@@ -334,10 +333,10 @@ function drawTopo(){
 function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: errores de comando (−1, máx −20), cada pista (−10), cada ping fallido (−5).`}
 function drawChecks(){
   const cs=checks();
-  $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.sw.name} · ${VEND[c.sw.vendor].label}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(HINT[c.sw.vendor][c.k])}</code></details></div></li>`).join('')+
+  $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.sw.name} · ${VEND[c.sw.vendor].label}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(HINTF()[c.sw.vendor][c.k])}</code></details></div></li>`).join('')+
     `<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-A</div>Ping exitoso a PC-B</div></li>`;
   const n=[];for(const sw of[S1,S2])if(sw.vendor==='juniper'&&JSON.stringify(sw.cand)!==JSON.stringify(sw.act))n.push(`<p class="warn">${sw.name} tiene cambios sin commit: aún no se aplican.</p>`);
-  if(!done&&cs.every(c=>c.ok))n.push('<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping ${NET()}12</code>.</p>');
+  if(!done&&cs.every(c=>c.ok))n.push(`<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping ${NET()}12</code>.</p>`);
   $('#notes').innerHTML=n.join('');
   $('#chk').querySelectorAll('details').forEach((dt,i)=>{dt.addEventListener('toggle',()=>{if(dt.open){LS.hints.add(i);drawScore()}})});drawScore();
 }
@@ -360,51 +359,56 @@ const TK0=document.querySelector('.ticket p').innerHTML,GOAL0=document.querySele
 window.LAB={
  start(cfg){SC={vid:cfg.vid,name:cfg.name,exam:true};$('#v1').value=cfg.v1;$('#v2').value=cfg.v2;$('#v1').disabled=$('#v2').disabled=true;document.body.classList.add('labexam');
   document.querySelector('.ticket p').innerHTML=`"Necesitamos que el área de ${cfg.label} tenga su propia red: la VLAN ${cfg.vid} (${cfg.name}), con una PC en cada piso." Configura SW1 y SW2 para que PC-A (${NET()}11) y PC-B (${NET()}12) se vean. Sin pistas ni guía: como en el trabajo.`;
-  document.querySelector('.goal').innerHTML=`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${cfg.vid} (${cfg.name}).`;document.querySelector('#v-lab1 header h1').textContent='Certificación: parte práctica';document.querySelector('.ticket .tk').textContent=`CERT-1 · de: ${cfg.label}`;cur=null;reset()},
+  document.querySelector('.goal').innerHTML=`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${cfg.vid} (${cfg.name}).`;document.querySelector('#v-lab1 header h1').textContent='Certificación: parte práctica';document.querySelector('.ticket .tk').textContent=`CERT-1 · de: ${cfg.label}`;cur=null;reset();drawSol()},
  stop(){if(!SC.exam)return;SC={vid:10,name:'VENTAS',exam:false};$('#v1').disabled=$('#v2').disabled=false;document.body.classList.remove('labexam');document.querySelector('.ticket p').innerHTML=TK0;document.querySelector('.goal').innerHTML=GOAL0;document.querySelector('#v-lab1 header h1').textContent=H0;document.querySelector('.ticket .tk').textContent=TKH0;cur=null;reset()},
+ practice(cfg){if(SC.exam)return;const def=!cfg||cfg.vid===10;SC={vid:def?10:cfg.vid,name:def?'VENTAS':cfg.name,exam:false};
+  document.querySelector('.ticket p').innerHTML=def?TK0:`"Necesitamos que el área de ${cfg.label} tenga su propia red: la VLAN ${cfg.vid} (${cfg.name}), con una PC en cada piso." Configura SW1 y SW2 para que PC-A (${NET()}11) y PC-B (${NET()}12) se vean a través del enlace entre switches.`;
+  document.querySelector('.goal').innerHTML=def?GOAL0:`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${cfg.vid} (${cfg.name}).`;cur=null;reset();drawSol()},
+ solution(v){return SOLF()[v]},scenario(){return{...SC}},vendors(){return[S1.vendor,S2.vendor]},
  passed(){return checks().filter(c=>c.ok).length},total(){return checks().length},score:()=>labScore()};
 for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
 
 /* ---------- solutions ---------- */
-const SOL={cisco:`enable
+const SOLF=()=>{const V=SC.vid,N=SC.name;return{cisco:`enable
 configure terminal
-vlan 10
- name VENTAS
+vlan ${V}
+ name ${N}
  exit
 interface GigabitEthernet0/1
  switchport mode access
- switchport access vlan 10
+ switchport access vlan ${V}
  exit
 interface GigabitEthernet0/24
  switchport mode trunk
- switchport trunk allowed vlan 10
+ switchport trunk allowed vlan ${V}
  end
 write memory`,aruba:`configure terminal
-vlan 10
- name VENTAS
+vlan ${V}
+ name ${N}
  exit
 interface 1/1/1
  no shutdown
- vlan access 10
+ vlan access ${V}
  exit
 interface 1/1/24
  no shutdown
  vlan trunk native 1
- vlan trunk allowed 10
+ vlan trunk allowed ${V}
  end
 write memory`,juniper:`configure
-set vlans VENTAS vlan-id 10
+set vlans ${N} vlan-id ${V}
 set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access
-set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members VENTAS
+set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members ${N}
 set interfaces ge-0/0/23 unit 0 family ethernet-switching interface-mode trunk
-set interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members VENTAS
-commit`};
-$('#sol').innerHTML=Object.entries(SOL).map(([k,s])=>`<div><h3>${VEND[k].label}<button class="btn" data-copy="${k}">Copiar</button></h3><pre>${esc(s)}</pre></div>`).join('');
+set interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members ${N}
+commit`}};
+let SOL=SOLF();
+const drawSol=()=>{SOL=SOLF();$('#sol').innerHTML=Object.entries(SOL).map(([k,s])=>`<div><h3>${VEND[k].label}<button class="btn" data-copy="${k}">Copiar</button></h3><pre>${esc(s)}</pre></div>`).join('')};drawSol();
 $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-copy]');if(!b)return;try{await navigator.clipboard.writeText(SOL[b.dataset.copy]);b.textContent='Copiado'}catch{b.textContent='Selecciona el texto'}setTimeout(()=>b.textContent='Copiar',1600)});
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
 function build3D(){
   const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}

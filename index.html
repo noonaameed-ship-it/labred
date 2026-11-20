@@ -7,7 +7,7 @@
 <meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=202611201418">
+<link rel="stylesheet" href="css/app.css?v=202611201423">
 <script>try{var t=localStorage.getItem('labred_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -34,6 +34,7 @@
   <div id="exbar" class="exbar" role="status"></div>
   <h1>Tu primera VLAN entre dos switches</h1>
   <div class="ticket"><span class="tk">Ticket #1042 · prioridad media · de: Gerencia de Ventas</span><p>"Pusimos una PC de Ventas en cada piso y no se ven entre ellas. Necesitamos que estén en su propia red, la VLAN 10 (VENTAS)." Configura SW1 y SW2 para que PC-A y PC-B se vean a través del enlace entre switches. El ticket se cierra cuando el ping funciona y explicas lo que hiciste.</p></div>
+  <div id="labprog"></div>
   <div class="vend">
     <label>SW1 <select id="v1"><option value="cisco">Cisco IOS</option><option value="aruba">Aruba AOS-CX</option><option value="juniper">Juniper Junos</option></select></label>
     <label>SW2 <select id="v2"><option value="cisco">Cisco IOS</option><option value="aruba">Aruba AOS-CX</option><option value="juniper">Juniper Junos</option></select></label>
@@ -104,9 +105,9 @@
 </div>
 
 
-<script src="js/config.js?v=202611201418"></script>
-<script src="js/content.js?v=202611201418"></script>
-<script src="js/lab.js?v=202611201418"></script>
-<script src="js/app.js?v=202611201418"></script>
+<script src="js/config.js?v=202611201423"></script>
+<script src="js/content.js?v=202611201423"></script>
+<script src="js/lab.js?v=202611201423"></script>
+<script src="js/app.js?v=202611201423"></script>
 </body>
 </html>
