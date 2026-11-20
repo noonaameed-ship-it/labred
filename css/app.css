@@ -219,3 +219,5 @@ nav.top a{color:#fff;text-decoration:none;min-height:36px;display:inline-flex;al
 .amsg{color:var(--bad);min-height:24px;margin:10px 0 0}
 .guest{display:block;text-align:center;margin-top:8px;color:var(--mut);min-height:36px}
 .rate{display:flex;gap:6px;justify-content:center}.rate button{background:none!important;box-shadow:none!important;color:var(--line)!important;padding:0!important;margin:0!important;min-height:44px}.rate button .ic{width:38px;height:38px}.rate button.on{color:#ffc21a!important}.rate button.on .ic{fill:#ffc21a}
+#v-entrar .world,#v-mapa .world{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px)}
+body{background:var(--bg)}
