@@ -96,6 +96,7 @@ create table if not exists public.reviews (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
+alter table public.reviews add column if not exists verdict text check (verdict in ('ok','redo'));
 alter table public.reviews enable row level security;
 drop policy if exists "reviews: instructor crea" on public.reviews;
 drop policy if exists "reviews: instructor lee" on public.reviews;
