@@ -333,7 +333,7 @@ function renderEntrar(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){msg.textContent='Escribe un correo válido.';return}
   if(mode==='signup'){const nm=$('#an').value.trim();if(nm.length<2){msg.textContent='Escribe tu nombre.';return}if(pw.length<8){msg.textContent='La contraseña debe tener al menos 8 caracteres.';return}
    bt.disabled=true;bt.textContent='Creando…';const r=await sb.auth.signUp({email:em,password:pw,options:{data:{name:nm}}});bt.disabled=false;bt.textContent='Crear mi cuenta';
-   if(r.error){msg.textContent=authErr(r.error);return}if(!r.data.session){msg.textContent='Te mandamos un correo para confirmar tu cuenta. Ábrelo y después entra aquí.'}}
+   if(r.error){msg.textContent=authErr(r.error);return}if(!r.data.session){msg.style.color='var(--ok)';msg.textContent='¡Listo! Te mandamos un correo para confirmar tu cuenta. Ábrelo (revisa también spam) y después entra aquí con "Entrar".'}}
   else{bt.disabled=true;bt.textContent='Entrando…';const r=await sb.auth.signInWithPassword({email:em,password:pw});bt.disabled=false;bt.textContent='Entrar';if(r.error)msg.textContent=authErr(r.error)}});
 }
 function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos.';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Primero confirma tu correo con el enlace que te mandamos.';if(m.includes('signups')&&m.includes('disabled'))return'El registro de cuentas está apagado. Pídele al administrador que lo active en Supabase.';if(m.includes('rate'))return'Demasiados intentos. Espera unos minutos.';return'No se pudo: '+(e.message||'error desconocido')}
