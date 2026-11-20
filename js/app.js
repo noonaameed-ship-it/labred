@@ -283,8 +283,8 @@ Responde solo con un objeto JSON: {"puntaje": entero de 0 a 10, "entendiste": "1
   const r=await s.json(prompt,{modelTier:'default'});
   return{puntaje:Math.max(0,Math.min(10,Math.round(+r.puntaje||0))),entendiste:String(r.entendiste||''),falta:String(r.falta||''),pista:String(r.pista||''),ejemplo:String(r.ejemplo||cfg.model),fuente:'Evaluado por Claude'};
  }catch(e){if(e&&e.code==='rate_limited')return{error:'Hiciste muchas evaluaciones seguidas. Espera un minuto y vuelve a intentar.'}}}
- const t=norm(text),hit=cfg.kw.map(g=>g.some(k=>t.includes(norm(k)))),n=hit.filter(Boolean).length,sc=n===cfg.kw.length?8:Math.min(7,Math.round(10*n/cfg.kw.length));
- return{puntaje:sc,entendiste:hit.some(Boolean)?'Hablas de '+cfg.short.filter((_,i)=>hit[i]).join(', ')+'.':'',falta:hit.some(x=>!x)?'Te faltó: '+cfg.short.filter((_,i)=>!hit[i]).join(', ')+'.':'',pista:'',ejemplo:cfg.model,fuente:'Evaluación automática por conceptos clave. Tu explicación queda guardada para que tu instructor la revise.'};
+ const t=norm(text),hit=cfg.kw.map(g=>g.some(k=>t.includes(norm(k)))),n=hit.filter(Boolean).length,mis=(cfg.mis||[]).filter(m=>new RegExp(m.re,'i').test(t)).map(m=>m.t);let sc=n===cfg.kw.length?8:Math.min(7,Math.round(10*n/cfg.kw.length));if(mis.length)sc=Math.max(0,Math.min(6,sc-2*mis.length));
+ return{hit,mis,puntaje:sc,entendiste:hit.some(Boolean)?'Hablas de '+cfg.short.filter((_,i)=>hit[i]).join(', ')+'.':'',falta:hit.some(x=>!x)?'Te faltó: '+cfg.short.filter((_,i)=>!hit[i]).join(', ')+'.':'',pista:'',ejemplo:cfg.model,fuente:'Evaluación automática por conceptos clave. Tu explicación queda guardada para que tu instructor la revise.'};
 }
 async function reExplain(cfg,id,text,v){
  const s=await getSample();const A=ALT[id];
@@ -309,6 +309,8 @@ function mountExplain(el,id,cfg,onDone){
   const secs=M.t0?(Date.now()-M.t0)/1000:0,fresh=tx!==(r.evalText||'');
   if(fresh&&M.typed<tx.length*0.6){out.innerHTML='<p class="warn">Buena parte de este texto no se escribió aquí. Escribe tu explicación tú mismo en este cuadro.</p>';return}
   if(fresh&&secs<(wc(tx)-wc(init))*0.5){out.innerHTML='<p class="warn">Lo escribiste demasiado rápido para ser tuyo. Tómate tu tiempo y explícalo con calma.</p>';return}
+  const toks=t=>new Set(norm(t).split(/[^a-zñ0-9]+/).filter(w=>w.length>3)),A1=toks(tx),B1=toks(cfg.mine||cfg.model),inter=[...A1].filter(w=>B1.has(w)).length;
+  if(fresh&&A1.size&&inter/Math.min(A1.size,B1.size)>0.7){out.innerHTML='<p class="warn">Tu explicación se parece demasiado a "Así lo diría yo". Está bien que la hayas leído, pero ahora escríbela con tus propias palabras y tu propio ejemplo: así es como se te queda.</p>';return}
   r.lastMetrics={palabras:wc(tx),segundos:Math.round(secs),tecleado:M.typed,largo:tx.length,pegados:M.paste};r.evalText=tx;
   btn.disabled=true;btn.textContent='Evaluando…';out.innerHTML='';
   const v=await evaluate(cfg,tx);btn.textContent='Evaluar de nuevo';upd();
@@ -318,8 +320,8 @@ function mountExplain(el,id,cfg,onDone){
   const ok=v.puntaje>=PASS;
   out.innerHTML=`<div class="res"><div class="sc" style="color:${ok?'var(--ok)':'var(--bad)'}">${v.puntaje}/10</div><div class="meter"><i style="width:${v.puntaje*10}%;background:${ok?'var(--ok)':'var(--bad)'}"></i></div>
    <p><strong>${ok?'Aprobado. Lo entendiste.':v.puntaje>=6?`Tu evaluación es ${v.puntaje} de 10. Vas bien, pero no es suficiente: necesitas ${PASS}/10 para avanzar.`:`Tu evaluación es ${v.puntaje} de 10. Todavía no lo dominas, y está bien: abajo tienes otras formas de aprenderlo.`}</strong>${v.puntaje>prev?` +${(v.puntaje-prev)*10} XP.`:''}</p>
-   ${v.entendiste?`<h4>Lo que entendiste</h4><p>${esc(v.entendiste)}</p>`:''}${v.falta?`<h4>Lo que falta</h4><p>${esc(v.falta)}</p>`:''}${!ok&&v.pista?`<h4>Piénsalo así</h4><p>${esc(v.pista)}</p>`:''}
-   ${ok?`<h4>Otra forma de decirlo</h4><p>${esc(v.ejemplo)}</p>`:''}<p class="src">${esc(v.fuente)}</p></div>
+   ${v.entendiste?`<h4>Lo que entendiste</h4><p>${esc(v.entendiste)}</p>`:''}${v.mis&&v.mis.length?`<h4 style="color:var(--bad)">Cuidado con esto</h4><ul>${v.mis.map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`:''}${v.hit&&cfg.fix&&v.hit.some(x=>!x)?`<h4>Lo que te faltó, explicado</h4><ul>${cfg.fix.filter((_,i)=>!v.hit[i]).map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:v.falta?`<h4>Lo que falta</h4><p>${esc(v.falta)}</p>`:''}${!ok&&v.pista?`<h4>Piénsalo así</h4><p>${esc(v.pista)}</p>`:''}
+   <div class="real" style="margin:12px 0 0"><h4 style="margin:0 0 4px">Así lo diría yo</h4><p style="margin:0">${esc(cfg.mine||v.ejemplo)}</p>${ok?'':'<p class="small" style="margin-top:6px">Léelo, entiéndelo y después escribe el tuyo con tus palabras y tu propio ejemplo. Si lo copias casi igual, no se califica.</p>'}</div><p class="src">${esc(v.fuente)}</p></div>
    ${ok?'':`<div class="res alt"><h3 style="margin:0 0 6px">Otras formas de aprenderlo</h3>
     <details open><summary>1. Con una comparación de la vida diaria</summary><p>${esc(A.analog)}</p></details>
     <details><summary>2. Repite la práctica, con una tarea concreta</summary><p>${esc(A.fig)}</p><button class="btn" data-goto="fig">Ir a la práctica</button></details>
