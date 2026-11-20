@@ -29,6 +29,7 @@ function nextCeleb(){const c=celebQ.shift(),el=$('#celeb');if(!c){celebOn=false;
 const BADGES=[
  {id:'primera',n:'Primer paquete',d:'Responde bien tu primera pregunta',ic:'packet',f:()=>Object.values(st.done).some(r=>r.qok&&Object.values(r.qok).some(Boolean))},
  {id:'ubicado',n:'Sé dónde estoy',d:'Haz el examen de ubicación',ic:'map',f:()=>st.placed!==null&&st.placed!==undefined},
+ {id:'experto',n:'Ruta rápida',d:'El examen de ubicación te dio nivel avanzado',ic:'bolt',f:()=>(st.placed||0)>=2},
  {id:'cartero',n:'Cartero',d:'Aprueba la misión del frame y la MAC',ic:'mail',f:()=>isPassed('l0-1')},
  {id:'memoria',n:'Memoria de switch',d:'Aprueba la misión de la MAC address table',ic:'table',f:()=>isPassed('l0-2')},
  {id:'vlan',n:'Arquitecto de VLAN',d:'Aprueba la misión de VLAN',ic:'layers',f:()=>isPassed('l0-3')},
@@ -57,7 +58,8 @@ let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
-const calcPts=()=>Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0),0);
+const calcPts=()=>(st.placePts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0),0);
+const fastZone=z=>(st.fast||0)>z;
 const passIn=(done,id)=>{const r=(done||{})[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&labPasses(r)>=LABRUNS&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
 const isPassed=id=>{const r=st.done[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&labPasses(r)>=LABRUNS&&r.exp>=PASS;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&r.exp>=PASS};
 const lesById=id=>Object.values(LES).find(l=>l.id===id);
@@ -107,8 +109,8 @@ const LAY={
  t:{vb:[360,1170],zones:{0:[10,20,340,310],1:[10,350,340,180],2:[10,550,340,140],3:[10,705,340,140],4:[10,860,340,140],5:[10,1015,340,140]},
    pos:{'l0-1':[95,105],'l0-2':[265,105],'l0-3':[95,250],'x0':[265,250],'lab1':[95,440],'x1':[265,440],z2:[180,612],z3:[180,767],z4:[180,922],z5:[180,1077]},off:{}}};
 function itemById(id){for(const L of LEVELS)for(const i of(L.items||[]))if(i.id===id)return{...i,L};const n=+id.slice(1);return{id,t:LEVELS[n].t,L:LEVELS[n],soon:true}}
-function itemOpen(id){const I=itemById(id);if(I.soon||I.L.soon)return false;if(!unlocked(I.L.n))return false;if(I.exam&&!cOn())return I.L.items.filter(i=>i.id!==id).every(i=>isPassed(i.id));return true}
-const nextOpen=()=>ORDER.find(id=>itemOpen(id)&&!isPassed(id));
+function itemOpen(id){const I=itemById(id);if(I.soon||I.L.soon)return false;if(!unlocked(I.L.n))return false;if(I.exam&&!cOn()&&!fastZone(I.L.n))return I.L.items.filter(i=>i.id!==id).every(i=>isPassed(i.id));return true}
+const nextOpen=()=>ORDER.find(id=>{const I=id[0]==='z'?null:itemById(id);return itemOpen(id)&&!isPassed(id)&&!(I&&!I.exam&&fastZone(I.L.n)&&!isPassed('x'+I.L.n))});
 function glyph(t,x,y,stt){const ink=stt==='lock'?'var(--line)':'var(--ink)',fill=stt==='done'?'var(--ink)':stt==='lock'?'var(--soft)':'var(--paper)',in2=stt==='done'?'var(--paper)':ink;
  const sw=(cx,cy,w,h,cols)=>`<rect x="${cx-w/2}" y="${cy-h/2}" width="${w}" height="${h}" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3,4,5].map(i=>`<rect x="${cx-w/2+7+i*((w-14)/6)}" y="${cy-3}" width="${(w-14)/6-3}" height="6" rx="1" fill="${cols?cols[i%2]:in2}"/>`).join('')}`;
  switch(t){
@@ -143,7 +145,8 @@ function drawNet(card){
 }
 let netRO=null;
 const DESC_T={lesson:'Lección corta con práctica interactiva, quiz y tu explicación con tus palabras (aprueba con 8/10).',lab:'Configura dos switches en consola. Tienes que resolverlo bien 3 veces (90/100 o más), cada vez con otra VLAN, y explicarlo con 8/10.',exam:n=>EXAMS[n].lab?`${EXAMS[n].n} preguntas de teoría y un lab sin ayuda. Aprueba con 80; con 90 o más ganas bono de XP.`:`${EXAMS[n].n} preguntas al azar de todo lo visto en la zona, ${EXAMS[n].min} minutos. Aprueba con 80; con 90 o más ganas bono de XP.`};
-function renderMap(){
+function migrateFast(){if(st.placed>=1&&st.fast===undefined){st.fast=Math.min(st.placed,2);if(st.placePts===undefined)st.placePts=st.placed>=2?75:st.placed>=1?40:0;save()}}
+function renderMap(){migrateFast();
  const p=calcPts(),n=nextT(p),cur=nextOpen(),C=cur&&itemById(cur),ids=ORDER.filter(id=>id[0]!=='z'),closed=ids.filter(isPassed).length;
  const saved=sb&&uid?'Progreso guardado en tu cuenta':'Sin cuenta: progreso solo en este navegador';
  const desc=C?(C.exam?DESC_T.exam(cur):cur==='lab1'?DESC_T.lab:DESC_T.lesson):'';
@@ -152,7 +155,7 @@ function renderMap(){
   <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle())}</span></div></div><div class="xpbar"><i style="width:${xpPct()}%"></i></div><div class="small">${nextTxt()} · ${saved}</div></div>
   <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${Object.keys(st.badges||{}).length}/${BADGES.length}</b><span>Insignias</span></div></div>
   ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
-  ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:''}
+  ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:fastZone(0)?`<div class="card"><strong>Ruta rápida activa</strong><p class="small" style="margin:4px 0 0">Puedes certificar directo: ${[...Array(Math.min(st.fast,2)).keys()].map(z=>`<a href="#examen-${z}">${TID['x'+z]}</a>${isPassed('x'+z)?' ✓':''}`).join(' · ')}</p></div>`:''}
  </aside><section><div class="netcard"><div class="nethead"><h2>Tu red</h2><div class="nleg"><span><i style="background:var(--ok)"></i>enlace up</span><span><i style="background:var(--line)"></i>pendiente</span><span><i style="background:var(--trunk)"></i>siguiente</span></div></div><div class="netbox"></div></div>
  <div class="netcard queue"><h2>Cola de tickets</h2>${ids.map(id=>{const I=itemById(id);return`<a class="qrow ${itemOpen(id)?'':'lock'}" href="${itemOpen(id)?I.h:'#mapa'}" data-q="${id}"><span class="qid">${esc(TID[id])}</span><span class="qt"><b>${esc(I.t)}</b><span>Zona ${I.L.n} · ${esc(I.L.t)}</span></span>${sig(starsFor(id))}${stChip(id)}</a>`}).join('')}</div></section></div>`;
  const card=$('#v-mapa .netcard');drawNet(card);if(netRO)netRO.disconnect();netRO=new ResizeObserver(()=>drawNet(card));netRO.observe(card);
@@ -199,10 +202,18 @@ function renderPlace(){
   v.querySelectorAll('.opts button').forEach(b=>b.addEventListener('click',()=>{ans[i]=+b.dataset.j;if(i<PLACE.length-1){i++;show()}else show()}));
   $('#pprev').addEventListener('click',()=>{i--;show()});$('#pgo')?.addEventListener('click',result)};
  const result=()=>{const by=[0,1,2].map(l=>{const qs=PLACE.map((q,k)=>[q,k]).filter(([q])=>q.lv===l);return{ok:qs.filter(([q,k])=>ans[k]===q.a).length,n:qs.length}});
-  const pass=b=>b.ok>=Math.ceil(b.n*0.8);let lv=0;if(pass(by[0])){lv=1;if(pass(by[1]))lv=2}
-  const msg=['Empieza por la <strong>Zona 0</strong>. Son tickets cortos y van a hacer que todo lo demás tenga sentido.','Dominas lo básico: empiezas en la <strong>Zona 1</strong>, directo al lab. La Zona 0 queda abierta por si quieres repasar o certificarla para subir de rango.',`Ya manejas switching: tu nivel es la <strong>Zona ${by[2].ok>=Math.ceil(by[2].n*0.8)?'3 o más':'2'}</strong>. Esas zonas están en construcción; mientras, certifica la Zona 0 y la Zona 1 para subir de rango.`][lv];
-  v.innerHTML=head+`<div class="lecw"><div class="res"><h2>Tu resultado</h2><table class="stack"><thead><tr><th>Preguntas</th><th>Correctas</th></tr></thead><tbody>${by.map((b,k)=>`<tr><td>${LV[k]}</td><td>${b.ok} de ${b.n}</td></tr>`).join('')}</tbody></table><p style="margin-top:12px">${msg}</p><div class="cta"><a href="${lv?'#lab-1':'#leccion-0-1'}">${lv?'Ir a la Zona 1':'Ir a la Zona 0'}</a><a class="sec" href="#mapa">Ver mi red</a></div></div></div>`;
-  st.placed=lv;st.unlocked=Math.max(st.unlocked,Math.min(lv,1));save()};
+  const pass=b=>b.ok>=Math.ceil(b.n*0.8);let lv=0;if(pass(by[0])){lv=1;if(pass(by[1])){lv=2;if(pass(by[2]))lv=3}}
+  const okAll=by.reduce((a,b)=>a+b.ok,0),pts=okAll*5,fast=Math.min(lv,2),prevPP=st.placePts||0;
+  const certLinks=[...Array(fast).keys()].map(z=>`<a href="#examen-${z}">Certificar la Zona ${z}</a>`).join('');
+  const msg=[`Empieza por la <strong>Zona 0</strong>. Son tickets cortos y van a hacer que todo lo demás tenga sentido.`,
+   `Dominas lo básico. <strong>Ruta rápida:</strong> puedes presentar directo la <strong>certificación de la Zona 0</strong> sin hacer sus tickets; al aprobarla subes a Técnico de cableado. La Zona 1 ya está abierta.`,
+   `Nivel avanzado. <strong>Ruta rápida:</strong> puedes presentar directo las <strong>certificaciones de la Zona 0 y la Zona 1</strong> (teoría y lab sin ayuda), sin hacer los tickets. Cada una te sube de rango.`,
+   `Nivel experto: dominas hasta temas de zonas que todavía estamos construyendo. <strong>Ruta rápida:</strong> certifica ya la Zona 0 y la Zona 1 para subir de rango. Las zonas 2 en adelante se abrirán aquí mismo conforme salgan.`][lv];
+  v.innerHTML=head+`<div class="lecw"><div class="res"><h2>Tu resultado: ${okAll} de ${PLACE.length}</h2><table class="stack"><thead><tr><th>Preguntas</th><th>Correctas</th></tr></thead><tbody>${by.map((b,k)=>`<tr><td>${LV[k]}</td><td>${b.ok} de ${b.n}</td></tr>`).join('')}</tbody></table>
+  <p style="margin-top:12px"><strong>+${Math.max(0,pts-prevPP)} XP</strong> por tus respuestas (5 XP por cada correcta${prevPP?'; solo cuenta tu mejor resultado':''}).</p><p>${msg}</p>
+  ${lv>=2?`<p class="small">Con tu nivel también puedes ayudar a otros: platica con tu instructor sobre ser mentor o proponer labs para las siguientes zonas.</p>`:''}
+  <div class="cta">${lv?certLinks:'<a href="#leccion-0-1">Ir a la Zona 0</a>'}<a class="sec" href="#mapa">Ver mi red</a></div></div></div>`;
+  st.placed=lv;st.fast=Math.max(st.fast||0,fast);st.placePts=Math.max(prevPP,pts);st.unlocked=Math.max(st.unlocked,Math.min(lv,1));save()};
  show();
 }
 
@@ -405,7 +416,7 @@ function examAbort(){if(EX){clearInterval(EX.tmr);if(EX.phase==='lab'||EX.phase=
 function renderExam(z){
  const id='x'+z,E=EXAMS[id],L=LEVELS[z],r=item(id),others=L.items.filter(i=>i.id!==id),pend=others.filter(i=>!isPassed(i.id)),v=$('#v-examen');
  const head=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${z} / ${TID[id]}</p><h1>${esc(E.t)}</h1></div></header>`;
- if(!unlocked(z)||(pend.length&&!cOn())){v.innerHTML=head+`<div class="lecw"><div class="res"><h3 style="margin:0 0 6px">Primero cierra los tickets de la zona</h3><p>La certificación evalúa todo lo de la Zona ${z}. Te falta:</p><ul>${pend.map(i=>`<li><a href="${i.h}">${esc(TID[i.id]+' · '+i.t)}</a></li>`).join('')}</ul></div></div>`;return}
+ if(!unlocked(z)||(pend.length&&!cOn()&&!fastZone(z))){v.innerHTML=head+`<div class="lecw"><div class="res"><h3 style="margin:0 0 6px">Primero cierra los tickets de la zona</h3><p>La certificación evalúa todo lo de la Zona ${z}. Te falta:</p><ul>${pend.map(i=>`<li><a href="${i.h}">${esc(TID[i.id]+' · '+i.t)}</a></li>`).join('')}</ul></div></div>`;return}
  const allowed=MAXTRY+approvedExtra(id),used=r.attempts||0,out=!isOwner&&!isPassed(id)&&used>=allowed;
  if(out){const pend=REQS.find(q=>q.module===id&&q.status==='pendiente'),rej=REQS.filter(q=>q.module===id&&q.status==='rechazada').length;
   v.innerHTML=head+`<div class="lecw"><div class="res" style="border-color:var(--bad)"><h3 style="margin:0 0 6px">Usaste tus ${allowed} ${allowed===1?'intento':'intentos'}</h3><p>Tu mejor resultado: ${r.examBest||0}/100. Para presentar otra vez necesitas que tu instructor te dé un intento más.</p>
