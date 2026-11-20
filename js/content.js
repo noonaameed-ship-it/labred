@@ -94,16 +94,28 @@ const LABEXP={q:'En el Lab 1, ¿por qué el enlace entre SW1 y SW2 se configura 
  mine:'El cable entre SW1 y SW2 es un trunk porque es el camino que van a compartir todas las VLAN: hoy solo pasa Ventas, pero mañana pasarán Compras o las cámaras. Por ese cable cada frame viaja con su tag 802.1Q que dice "soy de la VLAN 10"; hacia la PC sale sin tag, porque la PC no sabe de VLANs. Para que funcione, la VLAN 10 tiene que existir en los dos switches y estar permitida en el trunk de los dos lados.',
  model:'El trunk permite que varias VLAN compartan el cable entre switches. Por ahí los frames de la VLAN 10 viajan con tag (tagged) 802.1Q; hacia la PC salen sin tag (untagged) por el access port. El switch de enfrente lee el tag para meter el frame en la VLAN 10, que debe existir y estar permitida en los dos lados.'};
 
+/* Examen de ubicación: 20 preguntas. lv 0 = básica, 1 = media, 2 = difícil */
 const PLACE=[
  {lv:0,q:'¿Qué identifica una dirección MAC?',o:['Una red completa','Una tarjeta o interfaz de red','Un sitio web','A un usuario'],a:1},
  {lv:0,q:'¿En qué capa del modelo OSI trabaja principalmente un switch de acceso?',o:['Capa 1, física','Capa 2, enlace de datos','Capa 3, red','Capa 7, aplicación'],a:1},
  {lv:0,q:'¿Qué hace un switch con un frame cuyo destino no conoce?',o:['Lo descarta','Lo manda por todos los puertos menos por el que llegó','Lo manda al gateway','Lo guarda hasta conocer el destino'],a:1},
- {lv:1,q:'Un access port…',o:['Lleva varias VLAN con tag','Pertenece a una sola VLAN y manda frames sin tag (untagged)','Solo sirve para administrar el switch','Siempre está en la VLAN 1'],a:1},
- {lv:1,q:'¿Qué estándar agrega el tag a los frames en un trunk?',o:['IEEE 802.3ad','IEEE 802.1D','IEEE 802.1Q','IEEE 802.11'],a:2},
+ {lv:0,q:'¿Cuántos bits tiene una dirección MAC?',o:['32','48','64','128'],a:1},
+ {lv:0,q:'¿Cuál es la dirección MAC de broadcast?',o:['00:00:00:00:00:00','ff:ff:ff:ff:ff:ff','192.168.1.255','La MAC del router'],a:1},
+ {lv:0,q:'¿Qué separa una VLAN?',o:['Broadcast domains dentro del mismo switch','La velocidad de los puertos','Los cables por color','Las direcciones MAC de fábrica'],a:0},
+ {lv:0,q:'¿Cuál es la diferencia principal entre MAC e IP?',o:['La MAC entrega dentro de la red local; la IP sirve para llegar de una red a otra','Son lo mismo','La IP viene de fábrica','La MAC solo existe en Wi-Fi'],a:0},
+ {lv:1,q:'Un access port…',o:['Lleva varias VLAN con tag','Pertenece a una sola VLAN y manda frames sin tag','Solo sirve para administrar el switch','Siempre está en la VLAN 1'],a:1},
+ {lv:1,q:'¿Qué estándar agrega el tag de VLAN a los frames en un trunk?',o:['IEEE 802.3ad','IEEE 802.1D','IEEE 802.1Q','IEEE 802.11'],a:2},
  {lv:1,q:'Dos PCs en la VLAN 10, en switches distintos, no se ven. El trunk está arriba. ¿Qué revisas primero?',o:['Que la VLAN 10 exista en ambos switches y esté permitida en el trunk','El cable de consola','La prioridad de STP','El DNS'],a:0},
- {lv:2,q:'En un trunk 802.1Q, ¿cómo viajan los frames de la VLAN nativa?',o:['Con doble tag','Sin tag','Cifrados','No viajan'],a:1},
- {lv:2,q:'¿Qué pasa si la VLAN nativa no coincide en los dos extremos de un trunk?',o:['El trunk se apaga siempre','El tráfico sin tag (untagged) termina en VLANs distintas en cada lado','Nada, se ignora','Se duplica el ancho de banda'],a:1},
- {lv:2,q:'En STP, ¿cómo se elige el root bridge?',o:['El de más puertos','El de menor bridge ID (prioridad + MAC)','El más nuevo','El que tenga más VLAN'],a:1}
+ {lv:1,q:'Cisco IOS: ¿qué par de comandos deja una interfaz como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set vlan members 10','switchport trunk vlan 10'],a:0},
+ {lv:1,q:'Juniper Junos: configuraste con set, pero nada cambia. ¿Qué falta?',o:['commit','write memory','reload','no shutdown'],a:0},
+ {lv:1,q:'¿Qué lleva un trunk que no lleva un access port?',o:['Varias VLAN, con tag 802.1Q','Energía para teléfonos','Una sola VLAN sin tag','Direcciones IP'],a:0},
+ {lv:1,q:'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?',o:['VLAN 1, que viaja sin tag','VLAN 10','La VLAN más alta','No existe'],a:0},
+ {lv:2,q:'¿Qué pasa si la VLAN nativa no coincide en los dos extremos de un trunk?',o:['El trunk se apaga siempre','El tráfico sin tag termina en VLANs distintas en cada lado','Nada, se ignora','Se duplica el ancho de banda'],a:1},
+ {lv:2,q:'¿Para qué sirve Spanning Tree (STP)?',o:['Para evitar bucles de capa 2 bloqueando enlaces redundantes','Para asignar direcciones IP','Para cifrar el tráfico','Para crear VLANs'],a:0},
+ {lv:2,q:'En STP, ¿cómo se elige el root bridge?',o:['El de más puertos','El de menor bridge ID (prioridad + MAC)','El más nuevo','El que tenga más VLAN'],a:1},
+ {lv:2,q:'¿Qué hace LACP?',o:['Agrupa varios enlaces físicos para que funcionen como uno solo','Elige el root bridge','Asigna la VLAN nativa','Filtra direcciones MAC'],a:0},
+ {lv:2,q:'Dos VLANs necesitan comunicarse. ¿Qué hace falta?',o:['Un router o un switch capa 3 que rutee entre ellas','Poner las dos en el mismo trunk','Cambiar la VLAN nativa','Subir el aging'],a:0},
+ {lv:2,q:'¿Qué es una SVI en un switch capa 3?',o:['Una interfaz virtual de una VLAN que puede tener IP y servir de gateway','Un puerto físico de fibra','Un tipo de cable','Una VLAN sin puertos'],a:0}
 ];
 
 
@@ -113,7 +125,7 @@ const GLYPH={'l0-1':'pc','l0-2':'sw','l0-3':'vlan','x0':'cert','lab1':'pair','x1
 
 /* Certificaciones de zona: preguntas al azar del banco, opciones barajadas, con tiempo. Se aprueba con 90%. */
 const EXAMS={
-x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:10,min:12,pool:[
+x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:20,min:20,pool:[
  {q:'¿Qué identifica una dirección MAC?',o:['Una tarjeta o interfaz de red (NIC)','Una red completa','Un usuario','Un sitio web'],a:0,topic:'l0-1'},
  {q:'¿Cuántos bits tiene una dirección MAC?',o:['48','32','64','128'],a:0,topic:'l0-1'},
  {q:'¿Qué indica el OUI de una MAC?',o:['El fabricante de la tarjeta','La VLAN del puerto','La IP del equipo','El número de puerto'],a:0,topic:'l0-1'},
@@ -132,7 +144,19 @@ x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:10,min:12,pool:[
  {q:'¿Qué hace un trunk?',o:['Lleva varias VLAN por un mismo enlace usando tags 802.1Q','Conecta una sola PC','Une dos VLANs en una','Apaga las VLANs sin uso'],a:0,topic:'l0-3'},
  {q:'¿Qué dato importante lleva el tag 802.1Q?',o:['El número de VLAN (VID) al que pertenece el frame','La IP de la PC','La contraseña del switch','El nombre del usuario'],a:0,topic:'l0-3'},
  {q:'¿Cómo salen los frames por un access port hacia una PC?',o:['Untagged (sin tag)','Con tag 802.1Q','Cifrados','Duplicados'],a:0,topic:'l0-3'},
- {q:'¿Qué rango de VLAN ID se puede usar en 802.1Q?',o:['1 a 4094','0 a 255','1 a 1024','1 a 65535'],a:0,topic:'l0-3'}
+ {q:'¿Qué rango de VLAN ID se puede usar en 802.1Q?',o:['1 a 4094','0 a 255','1 a 1024','1 a 65535'],a:0,topic:'l0-3'},
+ {q:'¿Qué es la NIC?',o:['La tarjeta de red de un equipo','El cable de red','El nombre del switch','Una VLAN especial'],a:0,topic:'l0-1'},
+ {q:'¿En qué sistema numérico se escribe una MAC?',o:['Hexadecimal (0-9 y a-f)','Binario solo con 0 y 1','Romano','Decimal de 0 a 255'],a:0,topic:'l0-1'},
+ {q:'Un paquete cruza un router hacia otra red. ¿Qué cambia?',o:['La MAC cambia en cada salto; la IP de destino se mantiene','La IP cambia y la MAC se mantiene','Cambian las dos','No cambia nada'],a:0,topic:'l0-1'},
+ {q:'¿Cómo ves la MAC de tu computadora en Windows?',o:['Con ipconfig /all, en "Dirección física"','Con ping','En el navegador','No se puede ver'],a:0,topic:'l0-1'},
+ {q:'La tabla está vacía y PC-A le manda un frame a PC-C. ¿Qué pasa?',o:['El switch anota a PC-A en su puerto y hace flooding','El switch descarta el frame','El switch anota a PC-C','El switch le pregunta al router'],a:0,topic:'l0-2'},
+ {q:'PC-C le contesta a PC-A. ¿Qué aprende el switch?',o:['Que PC-C está en el puerto por donde entró su respuesta','Nada nuevo','Que PC-A cambió de puerto','La IP de PC-C'],a:0,topic:'l0-2'},
+ {q:'Durante un flooding, ¿qué hacen las PCs que no son el destino?',o:['Ignoran el frame sin avisarle nada al switch','Le avisan al switch que no es para ellas','Lo reenvían al destino','Se desconectan'],a:0,topic:'l0-2'},
+ {q:'¿Cuándo se renueva el tiempo de aging de una entrada?',o:['Cada vez que esa MAC manda un frame','Cada 24 horas','Solo cuando se reinicia el switch','Nunca'],a:0,topic:'l0-2'},
+ {q:'¿En qué VLAN están todos los puertos de un switch nuevo?',o:['VLAN 1','VLAN 10','VLAN 4094','En ninguna'],a:0,topic:'l0-3'},
+ {q:'Una PC conectada a un access port, ¿sabe en qué VLAN está?',o:['No: manda y recibe frames normales, sin tag','Sí, siempre pone el tag','Sí, se lo dice el router','Solo si es Linux'],a:0,topic:'l0-3'},
+ {q:'¿Para qué usa una empresa varias VLANs?',o:['Para separar PCs, teléfonos, cámaras e invitados en redes distintas','Para que el internet sea más rápido','Para no tener que usar cables','Para cambiar las MAC'],a:0,topic:'l0-3'},
+ {q:'Cuando un frame sale del trunk hacia la PC destino, ¿qué pasa con el tag 802.1Q?',o:['El switch se lo quita antes de entregarlo por el access port','Se queda puesto','Se cambia por otro','Se duplica'],a:0,topic:'l0-3'}
 ]},
 x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,lab:true,labMin:20,pool:[
  {q:'Cisco IOS: ¿qué par de comandos deja Gi0/1 como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set interfaces ge-0/0/1 vlan 10','switchport trunk vlan 10'],a:0,topic:'lab1'},
@@ -148,5 +172,12 @@ x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:10,min:12,lab:tr
  {q:'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?',o:['VLAN 1, que viaja sin tag','VLAN 10','La VLAN más alta','No existe VLAN nativa'],a:0,topic:'lab1'},
  {q:'Cisco IOS: ¿cómo guardas la configuración para que sobreviva un reinicio?',o:['copy running-config startup-config (o write memory)','commit','save all','exit'],a:0,topic:'lab1'},
  {q:'En el Lab 1, ¿por qué el enlace entre switches se configura como trunk?',o:['Para que pueda llevar varias VLAN con tag, hoy la 10 y mañana más','Porque es más rápido','Porque las PCs lo necesitan','Porque así se apaga STP'],a:0,topic:'lab1'},
- {q:'Junos: tu PC está en ge-0/0/1. ¿Qué dos cosas necesita esa interfaz en el lab?',o:['interface-mode access y vlan members VENTAS','interface-mode trunk y native-vlan 10','solo description','vlan-id 10 y commit check'],a:0,topic:'lab1'}
+ {q:'Junos: tu PC está en ge-0/0/1. ¿Qué dos cosas necesita esa interfaz en el lab?',o:['interface-mode access y vlan members VENTAS','interface-mode trunk y native-vlan 10','solo description','vlan-id 10 y commit check'],a:0,topic:'lab1'},
+ {q:'Aruba AOS-CX (en el simulador): el puerto de la PC no levanta. ¿Qué comando falta en la interfaz?',o:['no shutdown','commit','switchport enable','interface up'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: abres la consola y ves SW1>. ¿Qué haces para poder configurar?',o:['enable y luego configure terminal','configure y luego commit','set mode config','write memory'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: el prompt dice SW1(config-if)#. ¿Dónde estás?',o:['Configurando una interfaz','En modo usuario','Configurando una VLAN','Viendo la tabla MAC'],a:0,topic:'lab1'},
+ {q:'Cisco IOS: ¿qué comando muestra las VLANs y qué puertos de acceso tiene cada una?',o:['show vlan brief','show interfaces trunk','show mac','show ip route'],a:0,topic:'lab1'},
+ {q:'Junos: antes de hacer commit, ¿cómo ves qué vas a cambiar?',o:['show | compare','show changes','diff config','commit check all'],a:0,topic:'lab1'},
+ {q:'En SW1 el enlace entre switches es trunk, pero en SW2 ese mismo puerto quedó como access en la VLAN 1. ¿Qué pasa con la VLAN 10?',o:['No cruza: los dos lados deben ser trunk y permitir la VLAN 10','Cruza normal','Se convierte en VLAN 1 y funciona igual','El switch lo corrige solo'],a:0,topic:'lab1'},
+ {q:'Junos: ¿qué dos líneas convierten ge-0/0/23 en trunk que lleva VENTAS?',o:['interface-mode trunk y vlan members VENTAS','interface-mode access y vlan members all','port-mode trunk y native VENTAS','set trunk VENTAS'],a:0,topic:'lab1'}
 ]}};

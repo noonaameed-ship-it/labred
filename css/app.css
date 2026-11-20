@@ -210,7 +210,7 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-a
 .rank td.n,.rank th.n{text-align:right;white-space:nowrap;font-family:"IBM Plex Mono",monospace}.rank tr.mine{background:color-mix(in srgb,var(--trunk) 18%,transparent)}
 .cmods{list-style:none;padding:0;margin:8px 0}.cmods li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
 .sw2{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer}.sw2 input{width:20px;height:20px}
-.lec .wrap,.lecw{max-width:860px;margin:0 auto;padding:0 max(3vw,14px) 40px}
+.lec .wrap,.lecw{max-width:1180px;margin:0 auto;padding:10px max(3vw,14px) 40px}.lecw>*{max-width:780px}
 
 /* ---------- auth ---------- */
 .authw{min-height:calc(100dvh - 54px);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,440px);gap:40px;align-items:center;max-width:1100px;margin:0 auto;padding:28px max(3vw,14px)}
