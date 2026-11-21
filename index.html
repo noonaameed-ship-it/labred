@@ -2,12 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://xjqusoxqtwawvzuzndho.supabase.co wss://xjqusoxqtwawvzuzndho.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LabRed · Aprende redes</title>
 <meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=202611210904">
+<link rel="stylesheet" href="css/app.css?v=202611210919">
 <script>try{var t=localStorage.getItem('labred_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -18,6 +20,8 @@
 <div id="celeb" role="dialog" aria-modal="true" aria-labelledby="celt"></div>
 <div id="toast" role="status"></div>
 <div class="view" id="v-mapa"></div>
+<div class="view" id="v-ayuda"></div>
+<div class="view" id="v-privacidad"></div>
 <div class="view" id="v-ubicacion"></div>
 <div class="view" id="v-ranking"></div>
 <div class="view" id="v-lec"></div>
@@ -117,11 +121,11 @@
 </div>
 
 
-<script src="js/config.js?v=202611210904"></script>
-<script src="js/content.js?v=202611210904"></script>
-<script src="js/content0.js?v=202611210904"></script>
-<script src="js/content2.js?v=202611210904"></script>
-<script src="js/lab.js?v=202611210904"></script>
-<script src="js/app.js?v=202611210904"></script>
+<script src="js/config.js?v=202611210919"></script>
+<script src="js/content.js?v=202611210919"></script>
+<script src="js/content0.js?v=202611210919"></script>
+<script src="js/content2.js?v=202611210919"></script>
+<script src="js/lab.js?v=202611210919"></script>
+<script src="js/app.js?v=202611210919"></script>
 </body>
 </html>

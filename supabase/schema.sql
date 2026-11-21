@@ -228,3 +228,198 @@ update public.ranking r set pub = coalesce(r.pub, '{}'::jsonb) || jsonb_build_ob
   'rev',    coalesce((p.data->>'revDone')::int, 0),
   'lema',   coalesce(p.data->>'lema', ''))
 from public.progress p where p.user_id = r.user_id;
+
+-- 13. Seguridad: alertas para el instructor, validaciones del lado del servidor,
+--     moderación y recuperación de contraseña sin correo (la aprueba el instructor)
+create table if not exists public.alerts (
+  id bigint generated always as identity primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  kind text not null,
+  detail jsonb,
+  day date not null default current_date,
+  seen boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists alerts_una_al_dia on public.alerts (user_id, kind, day);
+alter table public.alerts enable row level security;
+drop policy if exists "alertas: instructor ve" on public.alerts;
+drop policy if exists "alertas: instructor marca" on public.alerts;
+drop policy if exists "alertas: instructor borra" on public.alerts;
+drop policy if exists "alertas: la página reporta" on public.alerts;
+create policy "alertas: instructor ve" on public.alerts for select to authenticated using (public.is_admin());
+create policy "alertas: instructor marca" on public.alerts for update to authenticated using (public.is_admin());
+create policy "alertas: instructor borra" on public.alerts for delete to authenticated using (public.is_admin());
+create policy "alertas: la página reporta" on public.alerts for insert to authenticated
+  with check (user_id = auth.uid() and kind like 'cliente:%' and pg_column_size(detail) < 2000);
+
+create or replace function public.raise_alert(p_user uuid, p_kind text, p_detail jsonb)
+returns void language sql security definer set search_path = public as $$
+  insert into public.alerts (user_id, kind, detail) values (p_user, p_kind, p_detail)
+  on conflict (user_id, kind, day) do nothing $$;
+revoke all on function public.raise_alert(uuid, text, jsonb) from public, anon, authenticated;
+
+-- Revisa cada guardado de avance: saltos de XP imposibles, certificaciones sin examen, labs inconsistentes
+create or replace function public.check_progress() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  oldp int := coalesce((old.data->>'pts')::numeric, 0)::int;
+  newp int := coalesce((new.data->>'pts')::numeric, 0)::int;
+  k text; e jsonb;
+begin
+  if pg_column_size(new.data) > 500000 then raise exception 'Progreso demasiado grande'; end if;
+  if public.is_admin() then return new; end if;
+  if tg_op = 'UPDATE' and newp - oldp > 1500 then
+    perform public.raise_alert(new.user_id, 'xp_salto', jsonb_build_object('antes', oldp, 'despues', newp));
+  end if;
+  if tg_op = 'INSERT' and newp > 3000 then
+    perform public.raise_alert(new.user_id, 'xp_inicial', jsonb_build_object('xp', newp));
+  end if;
+  for k, e in select * from jsonb_each(coalesce(new.data->'done', '{}'::jsonb)) loop
+    if jsonb_typeof(e) <> 'object' then continue; end if;
+    if k ~ '^x[0-9]$' and coalesce(e->>'v','') = '2' and coalesce((e->>'examBest')::numeric, 0) >= 80
+       and coalesce((e->>'attempts')::int, 0) = 0 then
+      perform public.raise_alert(new.user_id, 'cert_sin_intento', jsonb_build_object('cert', k, 'calificacion', e->>'examBest'));
+    end if;
+    if coalesce((e->>'examBest')::numeric, 0) > 100 or coalesce((e->>'labScore')::numeric, 0) > 100 then
+      perform public.raise_alert(new.user_id, 'calificacion_imposible', jsonb_build_object('modulo', k));
+    end if;
+    if coalesce((e->>'labPasses')::int, 0) > coalesce((e->>'labRuns')::int, 0) then
+      perform public.raise_alert(new.user_id, 'lab_inconsistente', jsonb_build_object('lab', k));
+    end if;
+  end loop;
+  return new;
+end $$;
+drop trigger if exists progress_guard on public.progress;
+create trigger progress_guard before insert or update on public.progress
+  for each row execute function public.check_progress();
+
+-- El ranking ya no confía en lo que manda la página: copia los números del avance guardado
+create or replace function public.ranking_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare d jsonb;
+begin
+  select data into d from public.progress where user_id = new.user_id;
+  if d is not null then
+    new.xp := least(100000, greatest(0, coalesce((d->>'pts')::numeric, 0)::int));
+    new.certs := (select count(*) from jsonb_each(coalesce(d->'done','{}'::jsonb)) x
+                  where x.key ~ '^x[0-9]$' and jsonb_typeof(x.value) = 'object'
+                    and coalesce((x.value->>'examBest')::numeric, 0) >= 80 and x.value->>'v' = '2');
+    new.streak := least(3650, greatest(0, coalesce((d->>'streak')::int, 0)));
+    new.nivel := least(50, greatest(0, coalesce((d->>'unlocked')::int, 0)));
+    if d->'wk'->>'id' is not null then
+      new.week := d->'wk'->>'id';
+      new.week_xp := least(new.xp, greatest(0, coalesce((d->'wk'->>'xp')::numeric, 0)::int));
+    end if;
+  end if;
+  new.stars := least(coalesce(new.stars, 0), 200);
+  if new.avatar is not null and new.avatar !~ '^[^|<>"]{1,16}\|#[0-9a-fA-F]{6}$' then new.avatar := null; end if;
+  if new.pub is not null and pg_column_size(new.pub) > 8000 then new.pub := null; end if;
+  return new;
+end $$;
+drop trigger if exists ranking_guard on public.ranking;
+create trigger ranking_guard before insert or update on public.ranking
+  for each row execute function public.ranking_guard();
+
+-- Moderación de la revisión entre compañeros
+drop policy if exists "pares: instructor borra explicaciones" on public.peer_pool;
+drop policy if exists "pares: instructor borra revisiones" on public.peer_reviews;
+create policy "pares: instructor borra explicaciones" on public.peer_pool for delete to authenticated using (public.is_admin());
+create policy "pares: instructor borra revisiones" on public.peer_reviews for delete to authenticated using (public.is_admin());
+alter table public.peer_reviews add column if not exists reported boolean not null default false;
+create or replace function public.report_peer_review(p_id bigint) returns void
+language sql security definer set search_path = public as $$
+  update public.peer_reviews r set reported = true
+   where r.id = p_id and exists (select 1 from public.peer_pool p where p.id = r.pool_id and p.user_id = auth.uid()) $$;
+revoke all on function public.report_peer_review(bigint) from public, anon;
+grant execute on function public.report_peer_review(bigint) to authenticated;
+
+-- Olvidé mi contraseña: el becario lo pide desde la página, el instructor lo aprueba en su panel
+-- y la contraseña temporal aparece en la misma página del becario.
+create table if not exists public.pw_requests (
+  id bigint generated always as identity primary key,
+  email text not null,
+  name text,
+  token_hash text not null,
+  status text not null default 'pendiente' check (status in ('pendiente','aprobada','rechazada','entregada')),
+  temp_pass text,
+  note text,
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+alter table public.pw_requests enable row level security;
+drop policy if exists "contraseñas: instructor ve" on public.pw_requests;
+create policy "contraseñas: instructor ve" on public.pw_requests for select to authenticated using (public.is_admin());
+
+create or replace function public.pw_request_create(p_email text, p_name text)
+returns table (req_id bigint, req_token text)
+language plpgsql security definer set search_path = public, extensions as $$
+declare t text := encode(extensions.gen_random_bytes(18), 'hex'); n int; new_id bigint;
+begin
+  p_email := lower(trim(p_email));
+  if p_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or length(p_email) > 120 then raise exception 'Correo inválido'; end if;
+  select count(*) into n from public.pw_requests where email = p_email and created_at > now() - interval '1 hour';
+  if n >= 3 then raise exception 'Ya pediste varias veces. Espera a tu instructor.'; end if;
+  select count(*) into n from public.pw_requests where created_at > now() - interval '10 minutes';
+  if n >= 30 then raise exception 'Demasiadas solicitudes. Intenta en unos minutos.'; end if;
+  insert into public.pw_requests (email, name, token_hash)
+    values (p_email, left(coalesce(p_name, ''), 60), encode(extensions.digest(t, 'sha256'), 'hex'))
+    returning id into new_id;
+  return query select new_id, t;
+end $$;
+
+create or replace function public.pw_request_status(p_id bigint, p_token text)
+returns table (status text, temp_pass text)
+language plpgsql security definer set search_path = public, extensions as $$
+declare r public.pw_requests;
+begin
+  select * into r from public.pw_requests
+   where id = p_id and token_hash = encode(extensions.digest(coalesce(p_token,''), 'sha256'), 'hex');
+  if not found then return query select 'no_existe'::text, null::text; return; end if;
+  if r.status = 'aprobada' then
+    update public.pw_requests set status = 'entregada', temp_pass = null where id = r.id;
+    return query select 'aprobada'::text, r.temp_pass; return;
+  end if;
+  return query select r.status, null::text;
+end $$;
+
+create or replace function public.admin_pw_approve(p_id bigint) returns text
+language plpgsql security definer set search_path = public, extensions as $$
+declare r public.pw_requests; u uuid; temp text;
+begin
+  if not public.is_admin() then raise exception 'Solo el instructor puede hacer esto'; end if;
+  select * into r from public.pw_requests where id = p_id and status = 'pendiente';
+  if not found then raise exception 'La solicitud ya no está pendiente'; end if;
+  select id into u from auth.users where lower(email) = r.email;
+  if u is null then
+    update public.pw_requests set status = 'rechazada', note = 'No existe una cuenta con ese correo', resolved_at = now() where id = p_id;
+    return null;
+  end if;
+  temp := 'Red' || (10 + floor(random() * 89))::int || '-' || encode(extensions.gen_random_bytes(3), 'hex') || '!';
+  update auth.users
+     set encrypted_password = extensions.crypt(temp, extensions.gen_salt('bf')),
+         email_confirmed_at = coalesce(email_confirmed_at, now()),
+         raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"must_change": true}'::jsonb
+   where id = u;
+  update public.pw_requests set status = 'aprobada', temp_pass = temp, resolved_at = now() where id = p_id;
+  return temp;
+end $$;
+
+create or replace function public.admin_pw_reject(p_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Solo el instructor puede hacer esto'; end if;
+  update public.pw_requests set status = 'rechazada', resolved_at = now() where id = p_id and status = 'pendiente';
+end $$;
+
+revoke all on function public.pw_request_create(text, text) from public;
+revoke all on function public.pw_request_status(bigint, text) from public;
+revoke all on function public.admin_pw_approve(bigint) from public, anon;
+revoke all on function public.admin_pw_reject(bigint) from public, anon;
+grant execute on function public.pw_request_create(text, text) to anon, authenticated;
+grant execute on function public.pw_request_status(bigint, text) to anon, authenticated;
+grant execute on function public.admin_pw_approve(bigint) to authenticated;
+grant execute on function public.admin_pw_reject(bigint) to authenticated;
+
+-- Confirma de una vez a quien se registró cuando "Confirm email" estaba encendido
+update auth.users set email_confirmed_at = now() where email_confirmed_at is null;
+notify pgrst, 'reload schema';
