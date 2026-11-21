@@ -589,7 +589,7 @@ function mountExplain(el,id,cfg,onDone){
  const init=r.lastText||'',M={typed:init.length,t0:0,paste:0};
  ['paste','drop'].forEach(ev=>ta.addEventListener(ev,e=>{e.preventDefault();M.paste++;out.innerHTML='<p class="warn">Aquí no se pega texto: escríbelo tú, con tus palabras. Así es como se aprende.</p>'}));
  ta.addEventListener('beforeinput',e=>{if(!M.t0)M.t0=Date.now();if(/^insert(Text|ReplacementText|CompositionText|LineBreak)$/.test(e.inputType))M.typed+=(e.data||' ').length});
- ta.addEventListener('input',()=>{r.lastText=ta.value;upd()});
+ ta.addEventListener('input',()=>{r.lastText=ta.value;upd();clearTimeout(ta._sv);ta._sv=setTimeout(()=>save(true),1200)});
  btn.addEventListener('click',async()=>{const tx=ta.value.trim();if(wc(tx)<MINW){out.innerHTML=`<p class="warn">Te faltan ${MINW-wc(tx)} palabras. Una explicación de pocas palabras no demuestra que lo entiendes.</p>`;return}
   const secs=M.t0?(Date.now()-M.t0)/1000:0,fresh=tx!==(r.evalText||'');
   if(!fresh&&r.redo){out.innerHTML='<p class="warn">Es la misma explicación que tu instructor reabrió. Corrígela con lo que te comentó antes de reenviarla.</p>';return}
@@ -812,7 +812,7 @@ function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('inva
 async function onSession(session){
  const u=session&&session.user;
  if(u&&u.id===uid)return;
- uid=u?u.id:null;userEmail=u?u.email:'';myName=u?((u.user_metadata&&u.user_metadata.name)||u.email.split('@')[0]):'';
+ uid=u?u.id:null;window.LABRED_UID=uid||'';userEmail=u?u.email:'';myName=u?((u.user_metadata&&u.user_metadata.name)||u.email.split('@')[0]):'';
  isOwner=!!(u&&(LABRED_CONFIG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase()));
  if(u&&!isOwner){try{const ad=await sb.from('admins').select('user_id').eq('user_id',u.id).maybeSingle();isOwner=!!(ad.data)}catch(e){}}
  st=clone(BASE);prevPts=null;lastRank=null;

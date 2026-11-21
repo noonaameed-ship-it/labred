@@ -38,6 +38,13 @@ const NET=()=>'192.168.'+SC.vid+'.';
 const LS={err:0,hints:new Set(),fails:0,t0:Date.now(),paste:0};window.LAB_STATS=LS;
 const labScore=()=>Math.max(0,100-Math.min(20,LS.err)-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
 function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);if(L3()){preL2(S1);preL2(S2);PCA=mkPC('PC-A',NET()+'11',NET()+'3');PCB=mkPC('PC-B','192.168.'+(SC.vid+100)+'.12',NET()+'2');PCB.gw='192.168.'+(SC.vid+100)+'.1'}else{PCA=mkPC('PC-A',NET()+'11',NET()+'12');PCB=mkPC('PC-B',NET()+'12',NET()+'11')}devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
+/* Autoguardado del lab en práctica: sobrevive a recargar la página o salir y volver */
+const LKEY=()=>'labred_lab_'+(window.LABRED_UID||'')+'_'+SC.kind;
+function saveLab(){if(SC.exam||!S1)return;try{if(done){localStorage.removeItem(LKEY());return}localStorage.setItem(LKEY(),JSON.stringify({vid:SC.vid,name:SC.name,S1,S2,PCA,PCB,cur:cur&&cur.name,LS:{err:LS.err,hints:[...LS.hints],fails:LS.fails,t0:LS.t0,paste:LS.paste}}))}catch(e){}}
+function loadLab(){if(SC.exam)return false;try{const o=JSON.parse(localStorage.getItem(LKEY())||'null');if(!o||o.vid!==SC.vid||o.name!==SC.name||!o.S1)return false;
+  S1=o.S1;S2=o.S2;PCA=o.PCA;PCB=o.PCB;devs=[S1,S2,PCA,PCB];done=false;$('#v1').value=S1.vendor;$('#v2').value=S2.vendor;
+  Object.assign(LS,o.LS,{hints:new Set(o.LS.hints||[])});$('#done').classList.remove('show');select(devs.find(d=>d.name===o.cur)||S1);return true}catch(e){return false}}
+const clearLab=()=>{try{localStorage.removeItem(LKEY())}catch(e){}};
 const other=sw=>sw===S1?S2:S1;
 function push(d,t,c){if(SC.exam){t=(Array.isArray(t)?t:[t]).filter(x=>!(x&&typeof x==='object'&&x.c==='tut')&&!(typeof x==='string'&&c==='tut'));if(c==='tut')return}(Array.isArray(t)?t:[t]).forEach(x=>d.lines.push(typeof x==='object'?x:{t:x,c}));if(d.lines.length>600)d.lines.splice(0,d.lines.length-600)}
 const tut=(d,t)=>push(d,'[tutor] '+t,'tut');
@@ -392,7 +399,7 @@ function render(){
   $('#pr').textContent=busy?'':prompt(cur);cmd.disabled=busy;
   $('#tinfo').textContent=cur.type==='pc'?cur.name+' · '+cur.ip:cur.name+' · '+VEND[cur.vendor].label+' · modo '+MODE_ES[cur.mode];
   $('#tabs').innerHTML=devs.map(d=>`<button role="tab" aria-selected="${d===cur}" data-dev="${d.name}">${d.name}</button>`).join('');
-  drawTopo();drawChecks();
+  drawTopo();drawChecks();clearTimeout(render._t);render._t=setTimeout(saveLab,300);
 }
 function drawTopo(){
   const a=VEND[S1.vendor],b=VEND[S2.vendor],e1=eff(S1),e2=eff(S2);
@@ -429,8 +436,8 @@ cmd.addEventListener('input',()=>{if(cmd.value.endsWith('?')){const v=cmd.value.
 function hist(dir){const h=cur.hist;if(!h.length)return;cur.hp=Math.max(0,Math.min(h.length,cur.hp+dir));cmd.value=h[cur.hp]||''}
 for(const b of document.querySelectorAll('.keys button'))b.addEventListener('click',()=>{const k=b.dataset.k;if(k==='?'){help(cur,cmd.value);render()}else if(k==='tab')cmd.value=complete(cur,cmd.value);else hist(k==='up'?-1:1);cmd.focus()});
 $('#clr').addEventListener('click',()=>{cur.lines=[];render()});
-$('#rst').addEventListener('click',()=>{reset()});
-addEventListener('lab-reset',()=>{reset();scrollTo(0,0)});
+$('#rst').addEventListener('click',()=>{clearLab();reset()});
+addEventListener('lab-reset',()=>{clearLab();reset();scrollTo(0,0)});
 const TK0=document.querySelector('.ticket p').innerHTML,GOAL0=document.querySelector('.goal').innerHTML,H0=document.querySelector('#v-lab1 header h1').textContent,TKH0=document.querySelector('.ticket .tk').textContent,
  CR0=$('#labcrumb').innerHTML,GU0=$('#labguide').innerHTML,TB0=$('#labtbl').innerHTML,LG0=$('#lableg').innerHTML;
 const GU3=()=>`<summary>Antes de empezar: cómo se resuelve este ticket</summary><ol class="pasos"><li><strong>La capa 2 ya está hecha:</strong> la VLAN ${SC.vid} existe en los dos switches, los puertos de las PCs son access y el enlace entre switches es trunk. No la toques.</li><li><strong>Crea la SVI</strong> de la VLAN ${SC.vid} en cada switch y ponle su IP: SW1 <code>${NET()}2/24</code> y SW2 <code>${NET()}3/24</code>.</li><li><strong>Revisa PC-B con <code>ipconfig</code>:</strong> algo en su IP no corresponde a su VLAN. Corrígelo con <code>netsh</code>.</li><li><strong>Prueba:</strong> desde PC-B haz <code>ping ${NET()}2</code>. Desde los switches también puedes hacer <code>ping</code>.</li></ol>
@@ -458,8 +465,8 @@ window.LAB={
  start(cfg){SC={kind:cfg.kind||'l2',vid:cfg.vid,name:cfg.name,exam:true};$('#v1').value=cfg.v1;$('#v2').value=cfg.v2;$('#v1').disabled=$('#v2').disabled=true;document.body.classList.add('labexam');
   setKind(cfg,`${cfg.cert||'CERT-1'} · de: ${cfg.label}`);cur=null;reset();drawSol()},
  stop(){if(!SC.exam)return;SC={kind:'l2',vid:10,name:'VENTAS',exam:false};$('#v1').disabled=$('#v2').disabled=false;document.body.classList.remove('labexam');setKind(null);cur=null;reset()},
- practice(cfg){if(SC.exam)return;const kind=cfg&&cfg.kind||'l2',def=!cfg||!cfg.vid||cfg.vid===10;SC={kind,vid:def?10:cfg.vid,name:def?'VENTAS':cfg.name,exam:false};
-  setKind(def?null:cfg);cur=null;reset();drawSol()},
+ practice(cfg){if(SC.exam)return;const kind=cfg&&cfg.kind||'l2',def=!cfg||!cfg.vid||cfg.vid===10;if(S1&&!done&&devs.some(d=>d.hist&&d.hist.length)&&SC.kind===kind&&SC.vid===(def?10:cfg.vid)&&SC.name===(def?'VENTAS':cfg.name)){saveLab();return}SC={kind,vid:def?10:cfg.vid,name:def?'VENTAS':cfg.name,exam:false};
+  setKind(def?null:cfg);cur=null;if(!loadLab())reset();drawSol()},
  solution(v){return SOLF()[v]},scenario(){return{...SC}},vendors(){return[S1.vendor,S2.vendor]},
  passed(){return checks().filter(c=>c.ok).length},total(){return checks().length},score:()=>labScore()};
 for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);if(L3())preL2(n);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
@@ -504,7 +511,7 @@ $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-cop
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;clearLab();drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
 function build3D(){
   const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}
