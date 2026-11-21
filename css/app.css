@@ -412,3 +412,9 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 .recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}.card.rec .tid{display:flex;gap:6px;align-items:center;font:12px 'IBM Plex Mono',monospace;color:var(--mut)}.card.rec ol{list-style:none;margin:8px 0 0;padding:0}.card.rec li{display:flex;align-items:center;gap:8px;margin:6px 0}.card.rec li b{flex:1}.card.rec li span:last-child{font:600 13px 'IBM Plex Mono',monospace}
 .card.empty{text-align:center;padding:28px}
 @media(max-width:700px){.rrow{grid-template-columns:28px 34px 1fr 70px}.rrow .meta{display:none}.podium2{gap:6px}.pod2 .who b{font-size:13px}.av.big{width:44px;height:44px;font-size:16px}.pod2.p1 .step{height:110px}.pod2.p2 .step{height:80px}.pod2.p3 .step{height:60px}}
+.rankwrap{max-width:900px;margin:0 auto;padding:26px 20px 0}.rankhead{text-align:center;display:flex;flex-direction:column;align-items:center}.rankhead .crumb{align-self:flex-start}.rankhead h1{margin:4px 0 6px}
+.rankwrap .mecard{margin:8px auto 0;width:100%;max-width:620px;text-align:left}
+.rankwrap .rtabs{justify-content:center;margin:20px 0 10px}.rankwrap .rnote{text-align:center;margin:0 0 6px}
+.rankwrap .podium2{max-width:640px;margin:46px auto 22px}.rankwrap .rlist,.rankwrap .ladder{max-width:none}.rankwrap .wkbar{justify-content:center}
+.cchip{font:600 11px 'IBM Plex Mono',monospace;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:1px 8px;margin:2px 0}.cc{color:var(--ok);font-weight:600}
+.rankwrap .rrow{grid-template-columns:36px 40px 1fr auto 100px}
