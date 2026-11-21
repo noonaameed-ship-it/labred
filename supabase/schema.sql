@@ -202,3 +202,14 @@ create policy "pares: compartir la mía" on public.peer_pool for insert to authe
 create policy "pares: ver revisiones" on public.peer_reviews for select to authenticated using (reviewer = auth.uid() or public.is_admin() or exists (select 1 from public.peer_pool p where p.id = pool_id and p.user_id = auth.uid()));
 create policy "pares: revisar" on public.peer_reviews for insert to authenticated with check (reviewer = auth.uid() and exists (select 1 from public.peer_pool p where p.id = pool_id and p.user_id <> auth.uid()));
 notify pgrst, 'reload schema';
+
+-- 10. Rellenar el ranking con lo que ya tiene cada becario (certificaciones, racha, semana y zona)
+update public.ranking r set
+  certs   = (select count(*) from jsonb_each(coalesce(p.data->'done','{}'::jsonb)) e
+             where e.key in ('x0','x1','x2','x3','x4','x5','x6')
+               and coalesce((e.value->>'examBest')::numeric,0) >= 80 and e.value->>'v' = '2'),
+  streak  = coalesce((p.data->>'streak')::int, 0),
+  week    = p.data->'wk'->>'id',
+  week_xp = coalesce((p.data->'wk'->>'xp')::int, 0),
+  nivel   = least(50, coalesce((p.data->>'unlocked')::int, 0))
+from public.progress p where p.user_id = r.user_id;

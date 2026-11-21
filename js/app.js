@@ -111,7 +111,7 @@ function save(quiet){const p=calcPts();st.pts=p;st.ts=Date.now();st.badges=st.ba
 async function flush(){if(writing){again=true;return}writing=true;
  try{const r1=await sb.from('progress').upsert({user_id:uid,name:(myName||'').slice(0,60),email:userEmail,data:clone(st),updated_at:new Date().toISOString()});if(r1.error)throw r1.error;
   if(st.noRank){if(lastRank!=='off'){await sb.from('ranking').delete().eq('user_id',uid);lastRank='off'}}
-  else{const sig2=JSON.stringify([st.pts,certCount(st.done),st.streak,st.wk]);if(sig2!==lastRank){const base={user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:Math.max(st.unlocked||0,st.placed||0),updated_at:new Date().toISOString()},wk=st.wk&&st.wk.id===isoWeek()?st.wk:{id:isoWeek(),xp:0};
+  else{const sig2=JSON.stringify([st.pts,certCount(st.done),st.streak,st.wk]);if(sig2!==lastRank){const base={user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:st.unlocked||0,updated_at:new Date().toISOString()},wk=st.wk&&st.wk.id===isoWeek()?st.wk:{id:isoWeek(),xp:0};
    let r2=await sb.from('ranking').upsert({...base,certs:certCount(st.done),stars:ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),streak:st.streak||0,week:wk.id,week_xp:wk.xp});if(r2.error)r2=await sb.from('ranking').upsert(base);if(!r2.error)lastRank=sig2}}
  }catch(e){console.warn('No se pudo guardar',e)}
  writing=false;if(again){again=false;flush()}}
@@ -1029,20 +1029,40 @@ r.lastScore=score;r.lastFlags=EX.flags||{};exGuard(false);r.leaves=(r.leaves||0)
 /* ---------- ranking ---------- */
 let rank=[],rankNote='',rankTab='general';
 function rankLadder(){const n=certCount(st.done);return`<ol class="ladder">${RANKS.map((t,i)=>`<li class="${i<n?'ok':i===n?'cur':''}"><b>${esc(t)}</b><span>${i===0?'Al empezar':`Certificar la Zona ${i-1}${LEVELS[i-1]&&!LEVELS[i-1].soon?'':' (próximamente)'}`}</span></li>`).join('')}</ol>`}
+const AVC=['#3b82f6','#16a35c','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6'];
+const avatar=(n,big)=>{const t=(n||'?').trim(),h=[...t].reduce((a,c)=>a*31+c.charCodeAt(0)>>>0,7);return`<span class="av${big?' big':''}" style="background:${AVC[h%AVC.length]}">${esc((t.split(/\s+/).map(w=>w[0]).join('').slice(0,2)||'?').toUpperCase())}</span>`};
+function weekLeft(){const n=new Date(),d=(7-((n.getDay()+6)%7))-1,end=new Date(n.getFullYear(),n.getMonth(),n.getDate()+d,23,59,59),ms=end-n,dd=Math.floor(ms/864e5),hh=Math.floor(ms/36e5)%24;return dd?`${dd} d ${hh} h`:`${hh} h ${Math.floor(ms/6e4)%60} min`}
+const miniBars=n=>`<span class="mbars">${[1,2,3,4].map(i=>`<i class="${n>=i*Math.max(1,Math.ceil(ORDER.length/4))?'on':''}" style="height:${4+i*3}px"></i>`).join('')}</span>`;
+function countUp(root){root.querySelectorAll('[data-count]').forEach(e=>{const to=+e.dataset.count,t0=performance.now(),dur=900;if(matchMedia('(prefers-reduced-motion:reduce)').matches){e.textContent=to.toLocaleString('es-MX');return}const f=t=>{const k=Math.min(1,(t-t0)/dur);e.textContent=Math.round(to*(1-Math.pow(1-k,3))).toLocaleString('es-MX');if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)})}
 async function renderRank(){
  const v=$('#v-ranking');if(!v.classList.contains('on'))return;
- if(sb&&uid){const r=await sb.from('ranking').select('*').limit(500);if(r.error){rankNote='No se pudo cargar el ranking.';rank=[]}else{rank=r.data||[];rankNote=''}}
- const wk=isoWeek(),W=rankTab==='semana';
- const list=rank.map(x=>({...x,xp:+x.xp||0,certs:+x.certs||0,wxp:x.week===wk?(+x.week_xp||0):0,stars:+x.stars||0,streak:+x.streak||0}))
-  .sort((a,b)=>W?(b.wxp-a.wxp||b.xp-a.xp):(b.certs-a.certs||b.xp-a.xp));
- const shown=W?list.filter(x=>x.wxp>0):list,me=shown.findIndex(x=>x.user_id===uid),p=calcPts();
- const pod=shown.slice(0,3).map((x,i)=>`<div class="pod p${i+1}"><span class="pos">${i+1}</span><b>${esc(x.name||'Alguien')}${x.user_id===uid?' (tú)':''}</b><span>${esc(rankOfCerts(x.certs))}</span><strong>${W?x.wxp+' XP esta semana':x.xp+' XP'}</strong></div>`).join('');
- const rows=shown.map((x,i)=>`<tr class="${x.user_id===uid?'mine':''}"><td class="n">${i+1}</td><td><strong>${esc(x.name||'Alguien')}</strong>${x.user_id===uid?' (tú)':''}</td><td>${esc(rankOfCerts(x.certs))}</td><td class="n">${x.certs}</td><td class="n">Zona ${+x.nivel||0}</td><td class="n">${x.stars}</td><td class="n">${x.streak}d</td><td class="n">${W?x.wxp:x.xp}</td></tr>`).join('');
- v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / ranking</p><h1>Ranking</h1><p>Primero cuentan las certificaciones; a empate, la XP. ${isOwner?'Como instructor no apareces en el ranking.':me>=0?`Vas en el lugar <strong>#${me+1}</strong> de ${shown.length}.`:''}</p></div></header>
- <div class="wrap" style="padding-bottom:40px"><div class="atabs" role="tablist" style="max-width:380px"><button role="tab" aria-selected="${!W}" data-rt="general">General</button><button role="tab" aria-selected="${W}" data-rt="semana">Esta semana</button></div>
- ${shown.length?`<div class="podium">${pod}</div><table class="rank stack"><thead><tr><th class="n">#</th><th>Nombre</th><th>Rango</th><th class="n">Certificaciones</th><th class="n">Zona</th><th class="n">Señal</th><th class="n">Uptime</th><th class="n">${W?'XP semana':'XP'}</th></tr></thead><tbody>${rows}</tbody></table>`:`<p>${sb&&uid?esc(rankNote||(W?'Nadie ha ganado XP esta semana todavía. ¡Sé el primero!':'Aún no hay nadie. Termina un ticket y serás el primero.')):'Para aparecer en el ranking, <a href="#entrar">entra con tu cuenta</a>.'}</p>`}
+ if(sb&&uid){const r=await sb.from('ranking').select('*').limit(500);if(r.error){rankNote='No se pudo cargar el ranking.';rank=[]}else{rank=r.data||[];rankNote=''}if(!TEAM)loadTeam().then(()=>{if(rankTab==='semana'&&$('#rteam'))$('#rteam').innerHTML=teamHTML()})}
+ const wk=isoWeek(),T=rankTab,W=T==='semana';
+ const all=rank.map(x=>({...x,xp:+x.xp||0,certs:+x.certs||0,wxp:x.week===wk?(+x.week_xp||0):0,stars:+x.stars||0,streak:+x.streak||0,nivel:+x.nivel||0}));
+ if(uid&&!isOwner&&!st.noRank){const m=all.find(x=>x.user_id===uid),mine={user_id:uid,name:myName,xp:calcPts(),certs:certCount(st.done),wxp:st.wk&&st.wk.id===wk?st.wk.xp:0,stars:ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),streak:st.streak||0,nivel:st.unlocked||0};if(m)Object.assign(m,mine);else all.push(mine)}
+ const list=all.slice().sort((a,b)=>W?(b.wxp-a.wxp||b.xp-a.xp):(b.certs-a.certs||b.xp-a.xp));
+ const shown=W?list.filter(x=>x.wxp>0):list,meI=shown.findIndex(x=>x.user_id===uid),me=shown[meI];
+ let prev={};try{prev=JSON.parse(localStorage.getItem('labred_rankpos_'+T)||'{}')}catch(e){}
+ const mv=(x,i)=>{const p=prev[x.user_id];if(p===undefined||p===i)return'';return p>i?`<span class="mv up" title="Subió ${p-i}">▲${p-i}</span>`:`<span class="mv down" title="Bajó ${i-p}">▼${i-p}</span>`};
+ try{localStorage.setItem('labred_rankpos_'+T,JSON.stringify(Object.fromEntries(shown.map((x,i)=>[x.user_id,i]))))}catch(e){}
+ const top=shown[0]||{},val=x=>W?x.wxp:x.xp,maxv=Math.max(1,...shown.map(val));
+ let chase='';if(me&&meI>0){const a=shown[meI-1];chase=!W&&a.certs>me.certs?`Para pasar a <strong>${esc(a.name)}</strong> necesitas certificar una zona más.`:`Te faltan <strong>${(val(a)-val(me)+1).toLocaleString('es-MX')} XP</strong> para pasar a <strong>${esc(a.name)}</strong> (#${meI}).`}else if(me&&meI===0)chase=shown.length>1?`¡Vas en primer lugar! ${esc(shown[1].name)} está a ${(val(me)-val(shown[1])).toLocaleString('es-MX')} XP.`:'¡Vas en primer lugar!';
+ const crown='<svg class="crown" viewBox="0 0 24 16" aria-hidden="true"><path d="M2 14 L4 4 L9 9 L12 2 L15 9 L20 4 L22 14 Z" fill="#f5c542" stroke="#b8860b" stroke-width="1"/></svg>';
+ const podOrder=[1,0,2].filter(i=>shown[i]);
+ const pod=podOrder.map(i=>{const x=shown[i];return`<div class="pod2 p${i+1}${x.user_id===uid?' me':''}"><div class="who">${i===0?crown:''}${avatar(x.name,true)}<b>${esc(x.name||'Alguien')}${x.user_id===uid?' (tú)':''}</b><span class="small">${esc(rankOfCerts(x.certs))}</span><strong><span data-count="${val(x)}">0</span> XP${W?' esta semana':''}</strong></div><div class="step"><span>${i+1}</span></div></div>`}).join('');
+ const rows=shown.map((x,i)=>`<li class="rrow${x.user_id===uid?' mine':''}" style="animation-delay:${Math.min(i,15)*35}ms"><span class="pos">${i+1}</span>${avatar(x.name)}<div class="nm"><b>${esc(x.name||'Alguien')}${x.user_id===uid?' <span class="small">(tú)</span>':''}</b> ${mv(x,i)}<span class="small">${esc(rankOfCerts(x.certs))} · Zona ${x.nivel}</span><span class="xpline"><i style="width:${Math.round(100*val(x)/maxv)}%"></i></span></div>
+  <div class="meta"><span title="Certificaciones" class="cert3">${CERTS().map((c,k)=>`<i class="${k<x.certs?'on':''}"></i>`).join('')}</span><span title="Uptime: días seguidos" class="flm">${x.streak>=3?'🔥':''}${x.streak}d</span>${miniBars(x.stars)}</div><span class="xpv"><span data-count="${val(x)}">0</span><span class="small"> XP</span></span></li>`).join('');
+ const rec=(t,ic,f,u)=>{const L=list.filter(x=>f(x)>0).sort((a,b)=>f(b)-f(a)).slice(0,3);return`<div class="card rec"><span class="tid">${ico(ic)} ${t}</span>${L.length?`<ol>${L.map(x=>`<li>${avatar(x.name)}<b>${esc(x.name)}</b><span>${f(x)} ${u}</span></li>`).join('')}</ol>`:'<p class="small">Nadie todavía.</p>'}</div>`};
+ const body=T==='records'?`<div class="recs">${rec('Más certificaciones','cert',x=>x.certs,'cert.')}${rec('Mayor uptime','flame',x=>x.streak,'días')}${rec('Más señal','check',x=>x.stars,'barras')}${rec('Más XP esta semana','bolt',x=>x.wxp,'XP')}${rec('Más XP total','trophy',x=>x.xp,'XP')}</div>`
+  :shown.length?`${shown.length>=2?`<div class="podium2">${pod}</div>`:''}<ol class="rlist">${rows}</ol>`
+  :`<div class="card empty"><h2>${W?'La semana está en blanco':'Aún no hay nadie'}</h2><p>${sb&&uid?esc(rankNote||(W?'Quien gane el primer XP de la semana se lleva el primer lugar. El reto del día y el Turno NOC son la forma más rápida.':'Termina un ticket y serás el primero.')):'Para aparecer en el ranking, <a href="#entrar">entra con tu cuenta</a>.'}</p>${W?'<a class="btnl" href="#reto">Hacer el reto del día</a> <a class="btn" href="#noc">Turno NOC</a>':''}</div>`;
+ v.innerHTML=`<header class="band hero rankhero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / ranking</p><h1>Ranking</h1>
+  ${me&&!isOwner?`<div class="mecard">${avatar(me.name,true)}<div><span class="small">${W?'Tu lugar esta semana':'Tu lugar'}</span><b class="bigpos">#${meI+1}<span class="small"> de ${shown.length}</span></b><span>${esc(rankTitle())} · ${val(me).toLocaleString('es-MX')} XP${W?' esta semana':''}</span><p class="small" style="margin:4px 0 0">${chase}</p></div></div>`:isOwner?'<p>Como instructor no apareces en el ranking.</p>':''}</div></header>
+ <div class="wrap" style="padding-bottom:40px"><div class="rtabs" role="tablist">${[['general','General'],['semana','Esta semana'],['records','Récords']].map(([k,t])=>`<button role="tab" aria-selected="${T===k}" data-rt="${k}">${t}</button>`).join('')}</div>
+ ${W?`<div class="wkbar"><span>${ico('clock')} La semana cierra en <strong>${weekLeft()}</strong>. El lunes empieza de cero.</span></div><div id="rteam">${teamHTML()}</div>`:T==='general'?'<p class="small">Primero cuentan las certificaciones; a empate, la XP.</p>':''}
+ ${body}
  <h2 style="margin-top:28px">Rangos</h2><p class="tip" style="margin-top:0">Subes de rango certificando zonas. Cada zona nueva que agreguemos abre un rango más.</p>${rankLadder()}</div>`;
- v.querySelectorAll('[data-rt]').forEach(b=>b.addEventListener('click',()=>{rankTab=b.dataset.rt;renderRank()}));
+ v.querySelectorAll('[data-rt]').forEach(b=>b.addEventListener('click',()=>{rankTab=b.dataset.rt;renderRank()}));countUp(v);
 }
 
 /* ---------- lab 1 ---------- */
