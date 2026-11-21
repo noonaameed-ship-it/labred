@@ -36,7 +36,7 @@ let SC={kind:'l2',vid:10,name:'VENTAS',exam:false};
 const L3=()=>SC.kind==='l3';
 const NET=()=>'192.168.'+SC.vid+'.';
 const LS={err:0,hints:new Set(),fails:0,t0:Date.now(),paste:0};window.LAB_STATS=LS;
-const labScore=()=>Math.max(0,100-Math.min(20,LS.err)-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
+const labScore=()=>Math.max(0,100-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
 function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);if(L3()){preL2(S1);preL2(S2);PCA=mkPC('PC-A',NET()+'11',NET()+'3');PCB=mkPC('PC-B','192.168.'+(SC.vid+100)+'.12',NET()+'2');PCB.gw='192.168.'+(SC.vid+100)+'.1'}else{PCA=mkPC('PC-A',NET()+'11',NET()+'12');PCB=mkPC('PC-B',NET()+'12',NET()+'11')}devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
 /* Autoguardado del lab en práctica: sobrevive a recargar la página o salir y volver */
 const LKEY=()=>'labred_lab_'+(window.LABRED_UID||'')+'_'+SC.kind;
@@ -413,7 +413,7 @@ function drawTopo(){
   ${t(133,40,a.pcS,'end')}${t(237,40,a.upS,'start')}${t(323,178,b.upS,'end')}${t(427,178,b.pcS,'start')}
   ${pc(PCA,45)}${sw(S1,185,a)}${sw(S2,375,b)}${pc(PCB,515)}</g>`;
 }
-function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: errores de comando (−1, máx −20), cada pista (−10), cada ping fallido (−5).`}
+function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: cada pista (−10) y cada ping fallido al objetivo (−5). Equivocarte de comando no resta: ${LS.err?`llevas ${LS.err} y está bien, así se aprende.`:'así se aprende.'}`}
 function drawChecks(){
   const cs=checks();
   $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.who.name}${c.who.type==='sw'?' · '+VEND[c.who.vendor].label:''}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(c.hint)}</code></details></div></li>`).join('')+
