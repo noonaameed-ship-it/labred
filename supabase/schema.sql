@@ -218,3 +218,13 @@ from public.progress p where p.user_id = r.user_id;
 alter table public.ranking add column if not exists avatar text check (avatar is null or char_length(avatar) <= 40);
 alter table public.ranking add column if not exists pub jsonb;
 notify pgrst, 'reload schema';
+
+-- 12. Rellenar los perfiles con lo que ya está guardado (insignias, récords y frase)
+update public.ranking r set pub = coalesce(r.pub, '{}'::jsonb) || jsonb_build_object(
+  'badges', coalesce((select jsonb_agg(k) from jsonb_object_keys(coalesce(p.data->'badges','{}'::jsonb)) k), '[]'::jsonb),
+  'noc',    coalesce((p.data->'noc'->>'best')::int, 0),
+  'duels',  (select count(*) from jsonb_object_keys(coalesce(p.data->'duelWon','{}'::jsonb))),
+  'bosses', (select count(*) from jsonb_object_keys(coalesce(p.data->'boss','{}'::jsonb))),
+  'rev',    coalesce((p.data->>'revDone')::int, 0),
+  'lema',   coalesce(p.data->>'lema', ''))
+from public.progress p where p.user_id = r.user_id;
