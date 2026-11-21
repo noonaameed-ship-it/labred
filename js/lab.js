@@ -30,18 +30,18 @@ function mkSwitch(name,vendor){
   tut(sw,`${name} · ${VEND[vendor].label} · consola simulada. Escribe ? para ver comandos.`);
   return sw;
 }
-const mkPC=(name,ip,peer)=>{const p={type:'pc',name,ip,len:24,gw:ip.replace(/\d+$/,'1'),peer,lines:[],hist:[],hp:0};tut(p,`${name} · ${ip}/24 · comandos: ping, ipconfig, cls${SC.kind==='l3'?', netsh':''}`);return p};
+const mkPC=(name,ip,peer)=>{const p={type:'pc',name,ip,len:24,gw:ip.replace(/\d+$/,'1'),peer,lines:[],hist:[],hp:0};tut(p,`${name} · ${ip}/24 · comandos: ping, ipconfig, cls${SC.kind!=='l2'?', netsh':''}`);return p};
 let S1,S2,PCA,PCB,devs,cur,done=false,busy=false;
 let SC={kind:'l2',vid:10,name:'VENTAS',exam:false};
 const L3=()=>SC.kind==='l3';
 const NET=()=>'192.168.'+SC.vid+'.';
 const LS={err:0,hints:new Set(),fails:0,t0:Date.now(),paste:0};window.LAB_STATS=LS;
 const labScore=()=>Math.max(0,100-10*LS.hints.size-5*LS.fails);window.LAB_SCORE=labScore;
-function reset(){S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);if(L3()){preL2(S1);preL2(S2);PCA=mkPC('PC-A',NET()+'11',NET()+'3');PCB=mkPC('PC-B','192.168.'+(SC.vid+100)+'.12',NET()+'2');PCB.gw='192.168.'+(SC.vid+100)+'.1'}else{PCA=mkPC('PC-A',NET()+'11',NET()+'12');PCB=mkPC('PC-B',NET()+'12',NET()+'11')}devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
+function reset(){if(TP()){buildT(topoDef(SC.topo,SC.seed,SC.vend));devs=[...T.sws,...T.pcs];S1=T.sws[0];S2=T.sws[1];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');cur=null;select(T.sws[0]);return}S1=mkSwitch('SW1',$('#v1').value);S2=mkSwitch('SW2',$('#v2').value);if(L3()){preL2(S1);preL2(S2);PCA=mkPC('PC-A',NET()+'11',NET()+'3');PCB=mkPC('PC-B','192.168.'+(SC.vid+100)+'.12',NET()+'2');PCB.gw='192.168.'+(SC.vid+100)+'.1'}else{PCA=mkPC('PC-A',NET()+'11',NET()+'12');PCB=mkPC('PC-B',NET()+'12',NET()+'11')}devs=[S1,S2,PCA,PCB];done=false;LS.err=0;LS.hints=new Set();LS.fails=0;LS.t0=Date.now();LS.paste=0;$('#done').classList.remove('show');select(cur?devs.find(d=>d.name===cur.name):S1)}
 /* Autoguardado del lab en práctica: sobrevive a recargar la página o salir y volver */
-const LKEY=()=>'labred_lab_'+(window.LABRED_UID||'')+'_'+SC.kind;
-function saveLab(){if(SC.exam||!S1)return;try{if(done){localStorage.removeItem(LKEY());return}localStorage.setItem(LKEY(),JSON.stringify({vid:SC.vid,name:SC.name,S1,S2,PCA,PCB,cur:cur&&cur.name,LS:{err:LS.err,hints:[...LS.hints],fails:LS.fails,t0:LS.t0,paste:LS.paste}}))}catch(e){}}
-function loadLab(){if(SC.exam)return false;try{const o=JSON.parse(localStorage.getItem(LKEY())||'null');if(!o||o.vid!==SC.vid||o.name!==SC.name||!o.S1)return false;
+const LKEY=()=>'labred_lab_'+(window.LABRED_UID||'')+'_'+(TP()?SC.topo:SC.kind);
+function saveLab(){if(SC.exam||!S1)return;try{if(done){localStorage.removeItem(LKEY());return}if(TP()){localStorage.setItem(LKEY(),JSON.stringify({seed:SC.seed,T,cur:cur&&cur.name,LS:{err:LS.err,hints:[...LS.hints],fails:LS.fails,t0:LS.t0,paste:LS.paste}}));return}localStorage.setItem(LKEY(),JSON.stringify({vid:SC.vid,name:SC.name,S1,S2,PCA,PCB,cur:cur&&cur.name,LS:{err:LS.err,hints:[...LS.hints],fails:LS.fails,t0:LS.t0,paste:LS.paste}}))}catch(e){}}
+function loadLab(){if(SC.exam)return false;try{const o=JSON.parse(localStorage.getItem(LKEY())||'null');if(TP()){if(!o||o.seed!==SC.seed||!o.T)return false;T=o.T;devs=[...T.sws,...T.pcs];S1=T.sws[0];S2=T.sws[1];done=false;Object.assign(LS,o.LS,{hints:new Set(o.LS.hints||[])});$('#done').classList.remove('show');select(devs.find(d=>d.name===o.cur)||T.sws[0]);return true}if(!o||o.vid!==SC.vid||o.name!==SC.name||!o.S1)return false;
   S1=o.S1;S2=o.S2;PCA=o.PCA;PCB=o.PCB;devs=[S1,S2,PCA,PCB];done=false;$('#v1').value=S1.vendor;$('#v2').value=S2.vendor;
   Object.assign(LS,o.LS,{hints:new Set(o.LS.hints||[])});$('#done').classList.remove('show');select(devs.find(d=>d.name===o.cur)||S1);return true}catch(e){return false}}
 const clearLab=()=>{try{localStorage.removeItem(LKEY())}catch(e){}};
@@ -61,7 +61,7 @@ function eff(sw){
     ifs[n]={up,mode,access:mode==='access'?(m[0]||1):1,allowed:m.includes('all')?'all':m.filter(x=>x!=='all')}}
   return{vlans:vl,ifs};
 }
-function linkUp(sw,n){const v=VEND[sw.vendor];if(!eff(sw).ifs[n]?.up)return false;if(n===v.pc)return true;if(n===v.up){const o=other(sw);return !!eff(o).ifs[VEND[o.vendor].up].up}return false}
+function linkUp(sw,n){if(TP())return tLinkUp(sw,n);const v=VEND[sw.vendor];if(!eff(sw).ifs[n]?.up)return false;if(n===v.pc)return true;if(n===v.up){const o=other(sw);return !!eff(o).ifs[VEND[o.vendor].up].up}return false}
 /* ---------- Lab 2: capa 3 (SVI, IP de las PCs) ---------- */
 function preL2(sw){const V=SC.vid,N=SC.name,v=VEND[sw.vendor];
   if(sw.vendor==='juniper'){sw.act.vlans[N]={id:V};sw.act.ifs[v.pc]={es:true,mode:'access',members:[N]};sw.act.ifs[v.up]={es:true,mode:'trunk',members:[N]};sw.cand=clone(sw.act)}
@@ -82,13 +82,13 @@ function endpoints(){const t=l2c(S1).up&&l2c(S2).up&&linkUp(S1,VEND[S1.vendor].u
 function reach(dev,ip){const{o,t}=endpoints(),src=o.find(e=>e.dev===dev);if(!src)return{ok:false,why:'nosrc'};if(ip===src.ip)return{ok:true};
   if(!sameNet(src.ip,ip,src.len))return{ok:false,why:'offnet'};const dst=o.find(e=>e.ip===ip&&e.dev!==dev);if(!dst||!src.side||!dst.side)return{ok:false,why:'nohost'};
   if(src.side!==dst.side&&!t)return{ok:false,why:'nol2'};if(!sameNet(dst.ip,src.ip,dst.len))return{ok:false,why:'noreply'};return{ok:true}}
-function swPing(sw,ip){const x=sviOf(sw),r=x?reach(sw,ip):{ok:false},n=sw.vendor==='juniper'?4:5;
+function swPing(sw,ip){const x=TP()?svis(sw).find(s=>s.up):sviOf(sw),r=x?(TP()?reachT(sw,ip):reach(sw,ip)):{ok:false},n=sw.vendor==='juniper'?4:5;
   if(sw.vendor==='cisco')return['Type escape sequence to abort.',`Sending 5, 100-byte ICMP Echos to ${ip}, timeout is 2 seconds:`,{t:(r.ok?'!':'.').repeat(5),c:r.ok?'okl':'err'},`Success rate is ${r.ok?100:0} percent (${r.ok?5:0}/5)${r.ok?', round-trip min/avg/max = 1/1/2 ms':''}`].concat(x?[]:[{t:'[tutor] Este switch todavía no tiene una SVI con IP encendida en la VLAN '+SC.vid+'.',c:'tut'}]);
   if(sw.vendor==='aruba')return[`PING ${ip} (${ip}) 100(128) bytes of data.`,...(r.ok?[1,2,3,4,5].map(i=>({t:`108 bytes from ${ip}: icmp_seq=${i} ttl=64 time=0.${400+i*37} ms`,c:'okl'})):[]),'',`--- ${ip} ping statistics ---`,{t:`5 packets transmitted, ${r.ok?5:0} received, ${r.ok?0:100}% packet loss`,c:r.ok?'okl':'err'}].concat(x?[]:[{t:'[tutor] Este switch todavía no tiene una SVI con IP en la VLAN '+SC.vid+'.',c:'tut'}]);
   return[`PING ${ip} (${ip}): 56 data bytes`,...[0,1,2,3].map(i=>r.ok?{t:`64 bytes from ${ip}: icmp_seq=${i} ttl=64 time=1.${200+i*31} ms`,c:'okl'}:{t:`Request timeout for icmp_seq ${i}`,c:'err'}),'',`--- ${ip} ping statistics ---`,`4 packets transmitted, ${r.ok?4:0} packets received, ${r.ok?0:100}% packet loss`].concat(x?[]:[{t:'[tutor] Este switch todavía no tiene una irb con IP ligada a la VLAN '+SC.name+'.',c:'tut'}])}
 const SVIHINT=(sw,n)=>{const V=SC.vid,N=SC.name,ip=NET()+n;return{cisco:`enable\nconfigure terminal\ninterface vlan ${V}\n ip address ${ip} 255.255.255.0\n no shutdown`,aruba:`configure terminal\ninterface vlan ${V}\n ip address ${ip}/24`,juniper:`configure\nset interfaces irb unit ${V} family inet address ${ip}/24\nset vlans ${N} l3-interface irb.${V}\ncommit`}[sw.vendor]};
 const PCHINT=()=>`netsh interface ip set address "Ethernet0" static ${NET()}12 255.255.255.0 ${NET()}1`;
-function checks(){
+function checks(){if(TP())return tChecks();
   if(L3()){const r=[];for(const[sw,n]of[[S1,'2'],[S2,'3']]){const x=sviOf(sw);r.push({who:sw,k:'svi',t:`Interfaz VLAN ${SC.vid} (SVI) con IP ${NET()}${n}/24, encendida`,ok:!!x&&x.ip===NET()+n&&x.len===24,hint:SVIHINT(sw,n)})}
     r.push({who:PCB,k:'pcip',t:`IP de PC-B en la red de su VLAN: ${NET()}12, máscara 255.255.255.0`,ok:PCB.ip===NET()+'12'&&PCB.len===24,hint:PCHINT()});return r}
   const r=[];
@@ -98,7 +98,7 @@ function checks(){
     r.push({who:sw,k:'up',t:`${v.upS} hacia el otro switch: trunk que permite la VLAN ${V}`,ok:u.up&&u.mode==='trunk'&&allows(u,V)&&!!e.vlans[V],hint:H.up})}
   return r;
 }
-const allOk=()=>L3()?checks().every(c=>c.ok)&&reach(PCB,NET()+'2').ok:checks().every(c=>c.ok)&&linkUp(S1,VEND[S1.vendor].up);
+const allOk=()=>TP()?tAllOk():L3()?checks().every(c=>c.ok)&&reach(PCB,NET()+'2').ok:checks().every(c=>c.ok)&&linkUp(S1,VEND[S1.vendor].up);
 const HINTF=()=>{const V=SC.vid,N=SC.name;return{
   cisco:{vlan:`enable\nconfigure terminal\nvlan ${V}\n name ${N}`,pc:`interface g0/1\n switchport mode access\n switchport access vlan ${V}`,up:`interface g0/24\n switchport mode trunk`},
   aruba:{vlan:`configure terminal\nvlan ${V}\n name ${N}`,pc:`interface 1/1/1\n no shutdown\n vlan access ${V}`,up:`interface 1/1/24\n no shutdown\n vlan trunk allowed ${V}`},
@@ -158,7 +158,7 @@ const ARU={
 function enterSvi(sw,id){const k='Vlan'+id;if(!sw.ifs[k])sw.ifs[k]={svi:true,vid:id,ip:null,len:null,up:sw.vendor==='aruba',desc:'',mode:'svi',access:0,allowed:[],native:1};sw.ctx.if=k;sw.mode='config-if';
   if(!sw.vlans[id])return[{t:`[tutor] Ojo: la VLAN ${id} no existe en este switch; la SVI no subirá hasta que exista.`,c:'tut'}]}
 function ipBrief(sw){const S=Object.values(sw.ifs).filter(i=>i.svi);if(sw.vendor==='cisco'){const st=i=>!i.up?'administratively down down    ':sw.vlans[i.vid]?'up                    up      ':'up                    down    ';
-    return['Interface              IP-Address      OK? Method Status                Protocol','Vlan1                  unassigned      YES unset  administratively down down    ',...S.map(i=>('Vlan'+i.vid).padEnd(23)+(i.ip||'unassigned').padEnd(16)+'YES '+(i.ip?'manual ':'unset  ')+st(i)),...[VEND.cisco.pc,VEND.cisco.up].map(n=>shortIf(n).padEnd(23)+'unassigned'.padEnd(16)+'YES unset  '+(linkUp(sw,n)?'up                    up      ':'down                  down    '))]}
+    return['Interface              IP-Address      OK? Method Status                Protocol','Vlan1                  unassigned      YES unset  administratively down down    ',...S.map(i=>('Vlan'+i.vid).padEnd(23)+(i.ip||'unassigned').padEnd(16)+'YES '+(i.ip?'manual ':'unset  ')+st(i)),...(TP()?Object.keys(T.att[sw.name]):[VEND.cisco.pc,VEND.cisco.up]).map(n=>shortIf(n).padEnd(23)+'unassigned'.padEnd(16)+'YES unset  '+(linkUp(sw,n)?'up                    up      ':'down                  down    '))]}
   return['','Interface       IP Address          Interface Status','                                    link/admin','--------------- ------------------- --------------------',...S.map(i=>('vlan'+i.vid).padEnd(16)+(i.ip?i.ip+'/'+i.len:'No Address').padEnd(20)+(i.up&&sw.vlans[i.vid]?'up/up':i.up?'down/up':'down/down'))]}
 const MODE_ES={user:'usuario (>)',priv:'privilegiado (#)',config:'configuración global','config-vlan':'configuración de VLAN','config-if':'configuración de interfaz',op:'operacional (>)',conf:'configuración (#)'};
 function tbl(sw,mode=sw.mode){const V=sw.vendor==='cisco'?CIS:ARU;let own=V[mode]||[];if(mode.startsWith('config-')){const ps=new Set(own.map(x=>x[0]));own=own.concat(V.config.filter(x=>!ps.has(x[0])))}return own}
@@ -339,7 +339,7 @@ function jOptions(d,toks,part){
  return[['<Enter>','Ejecutar']]}
 function help(d,val){
   push(d,prompt(d)+val+'?','cmd');
-  if(d.type==='pc'){push(d,['ping <ip>   Probar conectividad','ipconfig    Ver la IP','cls         Limpiar pantalla'].concat(L3()?['netsh interface ip set address "Ethernet0" static <ip> <máscara> <gateway>','            Cambiar la IP de la PC']:[]));return}
+  if(d.type==='pc'){push(d,['ping <ip>   Probar conectividad','ipconfig    Ver la IP','cls         Limpiar pantalla'].concat(L3()||TP()?['netsh interface ip set address "Ethernet0" static <ip> <máscara> <gateway>','            Cambiar la IP de la PC']:[]));return}
   if(d.vendor==='juniper'){const endsSpace=val===''||/\s$/.test(val),toks=val.trim()?val.trim().split(/\s+/):[],part=endsSpace?'':toks.pop().toLowerCase();
     const o=jOptions(d,toks,part);if(!o||!o.length){push(d,{t:'syntax error, expecting <command>.',c:'err'});return}
     push(d,['Possible completions:',...o.map(([a,b])=>'  '+a.padEnd(22)+' '+b)]);return}
@@ -366,14 +366,14 @@ function exec(d,raw){
 function pcExec(p,line){
   const[c,arg]=line.split(/\s+/);const cl=c.toLowerCase();
   if(cl==='cls'){p.lines=[];return}
-  if(cl==='ipconfig'){push(p,['','Ethernet adapter Ethernet0:','','   IPv4 Address. . . . . . . . . . . : '+p.ip,'   Subnet Mask . . . . . . . . . . . : '+len2mask(p.len),'   Default Gateway . . . . . . . . . : '+(L3()?p.gw||'':'')]);return}
-  if(cl==='netsh'&&L3()){const m=line.match(/^netsh\s+int(?:erface)?\s+ip(?:v4)?\s+set\s+address\s+(?:name=)?"?[^"]*?"?\s+(?:source=)?static\s+(\S+)\s+(\S+)(?:\s+(\S+))?\s*$/i);
-    if(!m){push(p,[{t:'The syntax supplied for this command is not valid. Check help for the correct syntax.',c:'err'},{t:'[tutor] '+PCHINT(),c:'tut'}]);LS.err++;return}
+  if(cl==='ipconfig'){push(p,['','Ethernet adapter Ethernet0:','','   IPv4 Address. . . . . . . . . . . : '+p.ip,'   Subnet Mask . . . . . . . . . . . : '+len2mask(p.len),'   Default Gateway . . . . . . . . . : '+(L3()||TP()?p.gw||'':'')]);return}
+  if(cl==='netsh'&&(L3()||TP())){const m=line.match(/^netsh\s+int(?:erface)?\s+ip(?:v4)?\s+set\s+address\s+(?:name=)?"?[^"]*?"?\s+(?:source=)?static\s+(\S+)\s+(\S+)(?:\s+(\S+))?\s*$/i);
+    if(!m){push(p,[{t:'The syntax supplied for this command is not valid. Check help for the correct syntax.',c:'err'},{t:'[tutor] '+(TP()?pcHint(p):PCHINT()),c:'tut'}]);LS.err++;return}
     const[,ip,mk,gw]=m,l=mask2len(mk);if(!isIP(ip)||l===null||(gw&&!isIP(gw))){push(p,{t:'The parameter is incorrect.',c:'err'});LS.err++;return}
     p.ip=ip;p.len=l;p.gw=gw||'';push(p,'');tut(p,`Nueva IP: ${ip}/${l}${gw?' · gateway '+gw:''}. Revisa con ipconfig.`);return}
   if(cl!=='ping'){push(p,`'${c}' is not recognized as an internal or external command.`,'err');return}
   if(!arg||!/^\d+\.\d+\.\d+\.\d+$/.test(arg)){push(p,'Ping request could not find host '+(arg||'')+'. Please check the name and try again.','err');return}
-  if(L3())return pcPing3(p,arg);
+  if(TP())return tPing(p,arg);if(L3())return pcPing3(p,arg);
   const ok=arg===p.ip||(arg===p.peer&&allOk());const inNet=arg.startsWith(NET());
   push(p,['','Pinging '+arg+' with 32 bytes of data:']);busy=true;render();let i=0;
   drawScore();const tick=()=>{if(i<4){push(p,inNet?(ok?`Reply from ${arg}: bytes=32 time=${i?1:2}ms TTL=128`:'Request timed out.'):'PING: transmit failed. General failure.',ok?'okl':'err');i++;render();setTimeout(tick,ok?380:700)}
@@ -391,6 +391,155 @@ function pcPing3(p,arg){const r=reach(p,arg),goal=p===PCB&&arg===NET()+'2',gwOk=
       busy=false;render();drawScore();if(r.ok&&goal&&allOk())win()}};
   setTimeout(tick,500)}
 
+/* ================= Labs por topología: varios switches y varias VLAN ================= */
+const TP=()=>SC.kind==='topo';
+let T=null;
+const SLOT={cisco:{p1:['GigabitEthernet0/1','Gi0/1',1],p2:['GigabitEthernet0/2','Gi0/2',2],u1:['GigabitEthernet0/24','Gi0/24',24],u2:['GigabitEthernet0/23','Gi0/23',23]},
+ aruba:{p1:['1/1/1','1/1/1',1],p2:['1/1/2','1/1/2',2],u1:['1/1/24','1/1/24',24],u2:['1/1/23','1/1/23',23]},
+ juniper:{p1:['ge-0/0/1','ge-0/0/1',2],p2:['ge-0/0/2','ge-0/0/2',3],u1:['ge-0/0/23','ge-0/0/23',24],u2:['ge-0/0/22','ge-0/0/22',23]}};
+const PN=(sw,s)=>SLOT[sw.vendor][s][0],PSh=(sw,s)=>SLOT[sw.vendor][s][1];
+const VPAIRS=[[10,'VENTAS',20,'RRHH'],[30,'CAMARAS',40,'SOPORTE'],[50,'COMPRAS',60,'CONTABILIDAD'],[70,'VOZ',80,'INVITADOS'],[110,'ALMACEN',120,'GERENCIA']];
+const rng=seed=>{let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
+const swByName=n=>T.sws.find(s=>s.name===n),pcByName=n=>T.pcs.find(p=>p.name===n);
+const tnet=v=>'192.168.'+v.id+'.';
+/* Definición: posiciones, enlaces, intención (cómo debe quedar), qué viene hecho y qué se rompe */
+function topoDef(id,seed,forceV){const R=rng(seed),pick=a=>a[Math.floor(R()*a.length)],VS=['cisco','aruba','juniper'];
+ const P=pick(VPAIRS),A={id:P[0],name:P[1]},B={id:P[2],name:P[3]},three=id!=='tsh1';
+ const sws=three?[{name:'CORE',x:300,y:70,lab:'top'},{name:'ACC1',x:160,y:192,lab:'left'},{name:'ACC2',x:440,y:192,lab:'right'}]:[{name:'SW1',x:170,y:78,lab:'top'},{name:'SW2',x:430,y:78,lab:'top'}];
+ sws.forEach((s,i)=>s.vendor=forceV&&forceV[i]||pick(VS));
+ const acc=three?['ACC1','ACC2']:['SW1','SW2'],pcs=[];
+ acc.forEach((s,i)=>{const sx=sws.find(x=>x.name===s);[[A,'p1'],[B,'p2']].forEach(([v,slot],j)=>pcs.push({name:'PC-'+v.name.slice(0,3)+(i+1),sw:s,slot,vlan:v,ip:tnet(v)+(11+i),x:sx.x+(j?58:-58),y:sx.y+(three?118:138)}))});
+ const links=three?[{a:'CORE',as:'u1',b:'ACC1',bs:'u1'},{a:'CORE',as:'u2',b:'ACC2',bs:'u1'}]:[{a:'SW1',as:'u1',b:'SW2',bs:'u1'}];
+ const intent={};for(const s of sws)intent[s.name]={vlans:[A,B],access:{},trunk:{},svi:{}};
+ for(const p of pcs)intent[p.sw].access[p.slot]=p.vlan;
+ for(const l of links){intent[l.a].trunk[l.as]=[A,B];intent[l.b].trunk[l.bs]=[A,B]}
+ if(three&&id!=='tsh0'){intent.CORE.svi[A.id]=tnet(A)+'2';intent.CORE.svi[B.id]=tnet(B)+'2'}
+ const d={id,seed,A,B,three,sws,pcs,links,intent,pre:{},faults:[],brokenPC:null,goals:[]};
+ const pa=pcs.filter(p=>p.vlan===A),pb=pcs.filter(p=>p.vlan===B);
+ d.goals.push({from:pa[0].name,to:pa[1].ip,label:`${pa[0].name} → ${pa[1].name}`},{from:pb[0].name,to:pb[1].ip,label:`${pb[0].name} → ${pb[1].name}`});
+ if(id==='lab2'){const blank=pick(acc);d.blank=blank;for(const s of sws)d.pre[s.name]=s.name===blank?{}:{l2:true};
+  const bp=pick(pcs);d.brokenPC=bp.name;d.goals.push({from:bp.name,to:tnet(bp.vlan)+'2',label:`${bp.name} → CORE (${tnet(bp.vlan)}2)`})}
+ else{for(const s of sws)d.pre[s.name]={l2:true,svi:true};
+  if(three){d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`})}
+  const cat=['vlanmiss','accwrong','trunkprune','portdown'].concat(three?['pcip','pcmask','sviwrong','svishut']:[]);
+  const chosen=[],used=new Set();const shuffled=cat.map(x=>[R(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+  for(const k of shuffled){if(chosen.length>=3)break;const f=mkFault(k,d,R);if(!f||used.has(f.tgt))continue;used.add(f.tgt);chosen.push(f)}
+  if(three&&!chosen.some(f=>/^(pcip|pcmask|sviwrong|svishut)$/.test(f.k))){const f=mkFault(pick(['pcip','sviwrong']),d,R);if(f&&!used.has(f.tgt)){chosen.pop();chosen.push(f)}}
+  d.faults=chosen}
+ return d}
+function mkFault(k,d,R){const pick=a=>a[Math.floor(R()*a.length)],acc=d.three?['ACC1','ACC2']:['SW1','SW2'];
+ if(k==='vlanmiss'){const s=pick(acc),v=pick([d.A,d.B]);return{k,tgt:s+':vlan'+v.id,sw:s,v,hint:`Revisa las VLAN que existen en ${s} (show vlan / show vlans).`,fixed:`${s}: la VLAN ${v.id} (${v.name}) faltaba`}}
+ if(k==='accwrong'){const p=pick(d.pcs),o=p.vlan===d.A?d.B:d.A;return{k,tgt:p.sw+':'+p.slot,pc:p.name,sw:p.sw,slot:p.slot,v:p.vlan,o,hint:`Revisa en qué VLAN está el puerto de ${p.name} en ${p.sw}.`,fixed:`${p.sw}: el puerto de ${p.name} estaba en la VLAN ${o.id}`}}
+ if(k==='trunkprune'){const l=pick(d.links),side=pick(['a','b']),s=l[side],slot=l[side+'s'],v=pick([d.A,d.B]);return{k,tgt:s+':'+slot,sw:s,slot,v,hint:`Revisa qué VLAN deja pasar el trunk de ${s} (show interfaces trunk / show vlan / show vlans).`,fixed:`${s}: el trunk no dejaba pasar la VLAN ${v.id}`}}
+ if(k==='portdown'){const p=pick(d.pcs);return{k,tgt:p.sw+':'+p.slot,pc:p.name,sw:p.sw,slot:p.slot,hint:`Revisa el estado del puerto de ${p.name} en ${p.sw} (show interfaces status / show interface brief / show interfaces terse).`,fixed:`${p.sw}: el puerto de ${p.name} estaba apagado`}}
+ if(k==='pcip'){const p=pick(d.pcs);return{k,tgt:p.name,pc:p.name,bad:'192.168.'+((p.vlan.id+100)%250)+'.'+p.ip.split('.')[3],hint:`Revisa la IP de ${p.name} con ipconfig.`,fixed:`${p.name} tenía una IP de otra red`}}
+ if(k==='pcmask'){const p=pick(d.pcs);return{k,tgt:p.name,pc:p.name,len:30,hint:`Revisa la máscara de ${p.name} con ipconfig.`,fixed:`${p.name} tenía la máscara 255.255.255.252`}}
+ if(k==='sviwrong'){const v=pick([d.A,d.B]);return{k,tgt:'CORE:svi'+v.id,v,bad:'192.168.'+((v.id+100)%250)+'.2',hint:'Revisa las IP de las interfaces vlan del CORE (show ip interface brief / show interfaces terse).',fixed:`CORE: la SVI de la VLAN ${v.id} tenía una IP de otra red`}}
+ if(k==='svishut'){const v=pick([d.A,d.B]);return{k,tgt:'CORE:svi'+v.id,v,hint:'Revisa que las interfaces vlan del CORE estén arriba (show ip interface brief / show interfaces terse).',fixed:`CORE: la SVI de la VLAN ${v.id} estaba ${''}apagada o sin ligar`}}
+ return null}
+/* API de configuración por vendor (para dejar cosas hechas y para romperlas) */
+const CF={
+ vlan(sw,v,on){if(sw.vendor==='juniper'){if(on)sw.act.vlans[v.name]=Object.assign(sw.act.vlans[v.name]||{},{id:v.id});else delete sw.act.vlans[v.name]}else{if(on)sw.vlans[v.id]=v.name;else delete sw.vlans[v.id]}},
+ access(sw,slot,v){const n=PN(sw,slot);if(sw.vendor==='juniper'){const c=sw.act.ifs[n]=sw.act.ifs[n]||{};Object.assign(c,{es:true,mode:'access',members:[v.name]})}else Object.assign(sw.ifs[n],{mode:'access',access:v.id,up:true})},
+ trunk(sw,slot,vs){const n=PN(sw,slot);if(sw.vendor==='juniper'){const c=sw.act.ifs[n]=sw.act.ifs[n]||{};Object.assign(c,{es:true,mode:'trunk',members:vs.map(v=>v.name)})}else Object.assign(sw.ifs[n],{mode:'trunk',allowed:vs.map(v=>v.id).sort((a,b)=>a-b),native:1,up:true})},
+ up(sw,slot,on){const n=PN(sw,slot);if(sw.vendor==='juniper'){const c=sw.act.ifs[n]=sw.act.ifs[n]||{};if(on)delete c.disable;else c.disable=true}else sw.ifs[n].up=on},
+ svi(sw,v,ip,on){if(sw.vendor==='juniper'){sw.act.irb=sw.act.irb||{};sw.act.irb[v.id]={addr:ip+'/24'};const vl=sw.act.vlans[v.name];if(vl){if(on)vl.l3='irb.'+v.id;else delete vl.l3}}
+  else sw.ifs['Vlan'+v.id]={svi:true,vid:v.id,ip,len:24,up:on,desc:'',mode:'svi',access:0,allowed:[],native:1}},
+ sync(sw){if(sw.vendor==='juniper')sw.cand=clone(sw.act)}};
+function buildT(def){const t={...def,sws:[],pcs:[],att:{},pinged:{}};
+ for(const s of def.sws){const sw=mkSwitch(s.name,s.vendor);sw.tx=s.x;sw.ty=s.y;sw.lab=s.lab;t.sws.push(sw);t.att[s.name]={}}
+ T=t;
+ for(const l of def.links){const a=swByName(l.a),b=swByName(l.b);t.att[l.a][PN(a,l.as)]={sw:l.b,port:PN(b,l.bs)};t.att[l.b][PN(b,l.bs)]={sw:l.a,port:PN(a,l.as)}}
+ for(const p of def.pcs){const sw=swByName(p.sw),pc=mkPC(p.name,p.ip,'');pc.len=24;pc.gw=tnet(p.vlan)+'1';pc.vlan=p.vlan;pc.want=p.ip;pc.sw=p.sw;pc.slot=p.slot;pc.tx=p.x;pc.ty=p.y;t.pcs.push(pc);t.att[p.sw][PN(sw,p.slot)]={pc:p.name}}
+ for(const sw of t.sws){const I=def.intent[sw.name],pre=def.pre[sw.name]||{};
+  if(pre.l2){I.vlans.forEach(v=>CF.vlan(sw,v,true));for(const[s,v]of Object.entries(I.access))CF.access(sw,s,v);for(const[s,vs]of Object.entries(I.trunk))CF.trunk(sw,s,vs)}
+  if(pre.svi)for(const[vid,ip]of Object.entries(I.svi))CF.svi(sw,vid==def.A.id?def.A:def.B,ip,true);CF.sync(sw)}
+ if(def.brokenPC){const p=pcByName(def.brokenPC);p.ip='192.168.'+((p.vlan.id+100)%250)+'.'+p.want.split('.')[3];p.gw='192.168.'+((p.vlan.id+100)%250)+'.1'}
+ for(const f of def.faults){const sw=f.sw&&swByName(f.sw),pc=f.pc&&pcByName(f.pc);
+  if(f.k==='vlanmiss'){CF.vlan(sw,f.v,false)}
+  else if(f.k==='accwrong'){CF.access(sw,f.slot,f.o)}
+  else if(f.k==='trunkprune'){const I=def.intent[f.sw].trunk[f.slot];CF.trunk(sw,f.slot,I.filter(v=>v!==f.v))}
+  else if(f.k==='portdown'){CF.up(sw,f.slot,false)}
+  else if(f.k==='pcip'){pc.ip=f.bad}
+  else if(f.k==='pcmask'){pc.len=f.len}
+  else if(f.k==='sviwrong'){CF.svi(swByName('CORE'),f.v,f.bad,true)}
+  else if(f.k==='svishut'){CF.svi(swByName('CORE'),f.v,tnet(f.v)+'2',false)}
+  if(sw)CF.sync(sw)}
+ if(def.id==='lab2'){const core=swByName('CORE');tut(core,`Este switch ya tiene la capa 2 lista (VLAN ${def.A.id} y ${def.B.id}, trunks). Te falta su IP en cada VLAN.`);const ok=t.sws.find(s=>s.name!==def.blank&&s.name!=='CORE');if(ok)tut(ok,'Este switch ya está configurado. Úsalo de referencia con show running-config.');tut(swByName(def.blank),'Este switch está en blanco: aquí va tu configuración de capa 2.')}
+ else for(const sw of t.sws)tut(sw,'Este switch ya estaba configurado… pero algo se movió. Investiga con comandos show.');
+ return t}
+function tLinkUp(sw,n){const e=eff(sw).ifs[n];if(!e||!e.up)return false;const a=T.att[sw.name][n];if(!a)return false;if(a.pc)return true;const o=swByName(a.sw);return !!(eff(o).ifs[a.port]&&eff(o).ifs[a.port].up)}
+const carry=(sw,n,V)=>{const e=eff(sw),i=e.ifs[n];if(!i||!e.vlans[V])return null;if(i.mode==='trunk')return allows(i,V)?'T':null;return(i.access===V)?'A':null};
+function comps(V){const par={};const f=x=>par[x]===undefined||par[x]===x?(par[x]=x):(par[x]=f(par[x]));for(const s of T.sws)par[s.name]=s.name;
+ for(const s of T.sws)for(const[n,a]of Object.entries(T.att[s.name])){if(!a.sw||!tLinkUp(s,n))continue;const o=swByName(a.sw),c1=carry(s,n,V),c2=carry(o,a.port,V);if(c1&&c1===c2)par[f(s.name)]=f(o.name)}
+ return f}
+function tEndpoints(){const o=[],F={};const cf=V=>F[V]||(F[V]=comps(V));
+ for(const p of T.pcs){const sw=swByName(p.sw),n=PN(sw,p.slot),e=eff(sw).ifs[n];let V=null;if(tLinkUp(sw,n)&&e.mode!=='trunk'&&eff(sw).vlans[e.access])V=e.access;o.push({dev:p,ip:p.ip,len:p.len,V,comp:V?cf(V)(sw.name):null})}
+ for(const sw of T.sws)for(const x of svis(sw))if(x.up)o.push({dev:sw,ip:x.ip,len:x.len,V:x.vid,comp:cf(x.vid)(sw.name)});return o}
+function reachT(dev,ip){const E=tEndpoints(),mine=E.filter(e=>e.dev===dev);if(!mine.length)return{ok:false,why:'nosrc'};if(mine.some(e=>e.ip===ip))return{ok:true};
+ const src=mine.find(e=>sameNet(e.ip,ip,e.len));if(!src)return{ok:false,why:'offnet'};if(!src.V)return{ok:false,why:'nol2'};
+ const dst=E.find(e=>e.ip===ip&&e.dev!==dev);if(!dst)return{ok:false,why:'nohost'};if(dst.V!==src.V||dst.comp!==src.comp)return{ok:false,why:'nol2'};
+ if(!sameNet(dst.ip,src.ip,dst.len))return{ok:false,why:'noreply'};return{ok:true}}
+/* Objetivos y pistas */
+const vlist=vs=>vs.map(v=>v.id).join(',');
+function tHint(sw,k,a){const V=a.v,c=sw.vendor;
+ if(k==='vlan')return c==='juniper'?`configure\nset vlans ${V.name} vlan-id ${V.id}\ncommit`:`configure terminal\nvlan ${V.id}\n name ${V.name}`;
+ if(k==='access'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n switchport mode access\n switchport access vlan ${V.id}`:c==='aruba'?`configure terminal\ninterface ${n}\n no shutdown\n vlan access ${V.id}`:`configure\nset interfaces ${n} unit 0 family ethernet-switching interface-mode access\nset interfaces ${n} unit 0 family ethernet-switching vlan members ${V.name}\ncommit`}
+ if(k==='trunk'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n switchport mode trunk\n switchport trunk allowed vlan ${vlist(a.vs)}`:c==='aruba'?`configure terminal\ninterface ${n}\n no shutdown\n vlan trunk allowed ${vlist(a.vs)}`:`configure\nset interfaces ${n} unit 0 family ethernet-switching interface-mode trunk\n${a.vs.map(v=>`set interfaces ${n} unit 0 family ethernet-switching vlan members ${v.name}`).join('\n')}\ncommit`}
+ if(k==='svi')return c==='cisco'?`configure terminal\ninterface vlan ${V.id}\n ip address ${a.ip} 255.255.255.0\n no shutdown`:c==='aruba'?`configure terminal\ninterface vlan ${V.id}\n ip address ${a.ip}/24\n no shutdown`:`configure\nset interfaces irb unit ${V.id} family inet address ${a.ip}/24\nset vlans ${V.name} l3-interface irb.${V.id}\ncommit`}
+const pcHint=p=>`netsh interface ip set address "Ethernet0" static ${p.want} 255.255.255.0 ${tnet(p.vlan)}1`;
+function tChecks(){const r=[];
+ if(T.faults.length){T.faults.forEach((f,i)=>{const ok=faultFixed(f);r.push({who:{name:'Falla '+(i+1),type:'x'},t:ok?f.fixed+' · corregida':'Escondida en algún lugar de la red',ok,hint:f.hint})});return r}
+ for(const sw of T.sws){const I=T.intent[sw.name],pre=T.pre[sw.name]||{},e=eff(sw);
+  if(!pre.l2){for(const v of I.vlans)r.push({who:sw,t:`VLAN ${v.id} creada con nombre ${v.name}`,ok:!!e.vlans[v.id]&&String(e.vlans[v.id]).toUpperCase()===v.name,hint:tHint(sw,'vlan',{v})});
+   for(const[s,v]of Object.entries(I.access)){const p=T.pcs.find(x=>x.sw===sw.name&&x.slot===s),n=PN(sw,s),i=e.ifs[n];r.push({who:sw,t:`${PSh(sw,s)} hacia ${p.name}: acceso, VLAN ${v.id}, encendido`,ok:i.up&&i.mode==='access'&&i.access===v.id&&!!e.vlans[v.id],hint:tHint(sw,'access',{slot:s,v})})}
+   for(const[s,vs]of Object.entries(I.trunk)){const n=PN(sw,s),i=e.ifs[n],o=T.att[sw.name][n].sw;r.push({who:sw,t:`${PSh(sw,s)} hacia ${o}: trunk con las VLAN ${vlist(vs)}`,ok:i.up&&i.mode==='trunk'&&vs.every(v=>allows(i,v.id)&&!!e.vlans[v.id]),hint:tHint(sw,'trunk',{slot:s,vs})})}}
+  if(!pre.svi)for(const[vid,ip]of Object.entries(I.svi)){const v=+vid===T.A.id?T.A:T.B;r.push({who:sw,t:`Interfaz VLAN ${v.id} (SVI) con IP ${ip}/24, encendida`,ok:svis(sw).some(x=>x.vid===v.id&&x.up&&x.ip===ip&&x.len===24),hint:tHint(sw,'svi',{v,ip})})}}
+ for(const p of T.pcs)if(p.name===T.brokenPC)r.push({who:p,t:`IP de ${p.name} en su VLAN: ${p.want}/24, gateway ${tnet(p.vlan)}1`,ok:p.ip===p.want&&p.len===24&&p.gw===tnet(p.vlan)+'1',hint:pcHint(p)});
+ return r}
+function faultFixed(f){const sw=f.sw&&swByName(f.sw),pc=f.pc&&pcByName(f.pc),e=sw&&eff(sw);
+ if(f.k==='vlanmiss')return!!e.vlans[f.v.id];
+ if(f.k==='accwrong'){const i=e.ifs[PN(sw,f.slot)];return i.mode==='access'&&i.access===f.v.id}
+ if(f.k==='trunkprune'){const i=e.ifs[PN(sw,f.slot)];return i.mode==='trunk'&&allows(i,f.v.id)}
+ if(f.k==='portdown')return!!e.ifs[PN(sw,f.slot)].up;
+ if(f.k==='pcip')return pc.ip===pc.want;
+ if(f.k==='pcmask')return pc.len===24;
+ if(f.k==='sviwrong'||f.k==='svishut')return svis(swByName('CORE')).some(x=>x.vid===f.v.id&&x.up&&x.ip===tnet(f.v)+'2'&&x.len===24);
+ return true}
+const tGoalsDone=()=>T.goals.every((g,i)=>T.pinged[i]);
+const tAllOk=()=>tChecks().every(c=>c.ok)&&tGoalsDone();
+function tSolutions(){const o=[];for(const sw of T.sws){const I=T.intent[sw.name],pre=T.pre[sw.name]||{},L=[];
+  if(T.faults.length){for(const f of T.faults.filter(f=>f.sw===sw.name||(f.v&&/svi/.test(f.k)&&sw.name==='CORE'))){if(f.k==='vlanmiss')L.push(tHint(sw,'vlan',{v:f.v}));if(f.k==='accwrong')L.push(tHint(sw,'access',{slot:f.slot,v:f.v}));if(f.k==='trunkprune')L.push(tHint(sw,'trunk',{slot:f.slot,vs:I.trunk[f.slot]}));if(f.k==='portdown')L.push(sw.vendor==='cisco'?`configure terminal\ninterface ${PSh(sw,f.slot)}\n no shutdown`:sw.vendor==='aruba'?`configure terminal\ninterface ${PN(sw,f.slot)}\n no shutdown`:`configure\ndelete interfaces ${PN(sw,f.slot)} disable\ncommit`);if(/svi/.test(f.k))L.push(tHint(sw,'svi',{v:f.v,ip:tnet(f.v)+'2'}))}}
+  else{if(!pre.l2){I.vlans.forEach(v=>L.push(tHint(sw,'vlan',{v})));for(const[s,v]of Object.entries(I.access))L.push(tHint(sw,'access',{slot:s,v}));for(const[s,vs]of Object.entries(I.trunk))L.push(tHint(sw,'trunk',{slot:s,vs}))}if(!pre.svi)for(const[vid,ip]of Object.entries(I.svi))L.push(tHint(sw,'svi',{v:+vid===T.A.id?T.A:T.B,ip}))}
+  if(L.length)o.push({t:sw.name+' · '+VEND[sw.vendor].label,s:(sw.vendor==='cisco'?'enable\n':'')+L.map(x=>x.replace(/^configure terminal\n|^configure\n/,'').replace(/\ncommit$/,'')).join('\n').replace(/^/,sw.vendor==='juniper'?'configure\n':'configure terminal\n')+(sw.vendor==='juniper'?'\ncommit':'\nend\nwrite memory')})}
+ for(const p of T.pcs)if(p.name===T.brokenPC||T.faults.some(f=>f.pc===p.name&&/pc/.test(f.k)))o.push({t:p.name,s:pcHint(p)});return o}
+function tPing(p,arg){const r=reachT(p,arg),gi=T.goals.findIndex(g=>g.from===p.name&&g.to===arg),gwOk=p.gw&&sameNet(p.ip,p.gw,p.len);
+ push(p,['','Pinging '+arg+' with 32 bytes of data:']);busy=true;render();let i=0;
+ const tick=()=>{if(i<4){push(p,r.ok?{t:`Reply from ${arg}: bytes=32 time=${i?1:2}ms TTL=${/\.2$/.test(arg)?255:128}`,c:'okl'}:{t:r.why==='offnet'&&!gwOk?'PING: transmit failed. General failure.':'Request timed out.',c:'err'});i++;render();setTimeout(tick,r.ok?330:600)}
+  else{push(p,['','Ping statistics for '+arg+':',`    Packets: Sent = 4, Received = ${r.ok?4:0}, Lost = ${r.ok?0:4} (${r.ok?0:100}% loss),`]);
+   if(gi>=0){if(r.ok){T.pinged[gi]=true;const left=T.goals.filter((g,k)=>!T.pinged[k]);if(left.length&&!SC.exam)tut(p,`Objetivo cumplido. Te faltan: ${left.map(g=>g.label).join(' · ')}`)}
+    else{LS.fails++;if(!SC.exam)tut(p,r.why==='offnet'?`${arg} no está en la red de esta PC (${p.ip}/${p.len}). Revisa ipconfig.`:r.why==='nol2'?'No hay camino de capa 2: revisa VLANs, puertos de acceso y trunks en el recorrido.':'Nadie responde con esa IP en esta VLAN. ¿Ya tiene su IP el destino?')}}
+   busy=false;render();drawScore();if(r.ok&&tAllOk())win()}};
+ setTimeout(tick,450)}
+function drawTopoT(){const big=T.three,H=big?380:300;$('#topo').setAttribute('viewBox',big?'12 6 576 372':'40 10 520 290');
+ const clip=(a,b,hw,hh)=>{const dx=b.x-a.x,dy=b.y-a.y,s=Math.min(dx?hw/Math.abs(dx):1e9,dy?hh/Math.abs(dy):1e9);return{x:a.x+dx*s,y:a.y+dy*s}};
+ const L=[],LED=[],TX=[];
+ const tx=(x,y,s,an='middle',sz=12,col='var(--mut)',mono=true)=>`<text x="${x}" y="${y}" text-anchor="${an}" font-size="${sz}" ${mono?'font-family="IBM Plex Mono,monospace"':''} fill="${col}">${s}</text>`;
+ const drawn=new Set();
+ for(const sw of T.sws)for(const[n,a]of Object.entries(T.att[sw.name])){const A={x:sw.tx,y:sw.ty};let B,up=tLinkUp(sw,n),tr=false,key;
+  if(a.pc){const p=pcByName(a.pc);B={x:p.tx,y:p.ty};key=sw.name+n}else{const o=swByName(a.sw);B={x:o.tx,y:o.ty};key=[sw.name+n,o.name+a.port].sort().join('|');if(drawn.has(key))continue;tr=!SC.exam&&up&&eff(sw).ifs[n].mode==='trunk'&&eff(o).ifs[a.port].mode==='trunk'}
+  drawn.add(key);const p1=clip(A,B,47,17),p2=a.pc?clip(B,A,26,20):clip(B,A,47,17);
+  L.push(`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${up?(tr?'var(--trunk)':'var(--blue)'):'#9aa4ad'}" stroke-width="${tr?6:3.5}" ${up?'':'stroke-dasharray="6 5"'} stroke-linecap="round"/>`);
+  LED.push(`<circle cx="${p1.x}" cy="${p1.y}" r="4.5" fill="${up?'var(--ok)':'#9aa4ad'}"/>`);
+  const m={x:p1.x+(p2.x-p1.x)*(a.pc?.5:.3),y:p1.y+(p2.y-p1.y)*(a.pc?.5:.3)},side=(p2.x>=p1.x?1:-1);TX.push(tx(m.x+(a.pc?side*8:0),m.y+(a.pc?4:-8),PSh(sw,Object.keys(SLOT[sw.vendor]).find(k=>PN(sw,k)===n)),a.pc?(side>0?'start':'end'):'middle',11));
+  if(!a.pc){const o=swByName(a.sw),q={x:p2.x+(p1.x-p2.x)*.3,y:p2.y+(p1.y-p2.y)*.3};LED.push(`<circle cx="${p2.x}" cy="${p2.y}" r="4.5" fill="${up?'var(--ok)':'#9aa4ad'}"/>`);TX.push(tx(q.x,q.y-8,PSh(o,Object.keys(SLOT[o.vendor]).find(k=>PN(o,k)===a.port)),'middle',11))}}
+ const swG=d=>{const x=d.tx,y=d.ty,col=d.vendor==='aruba'?'#d7dce1':d.vendor==='juniper'?'#2b2e33':'#3c5a78',sv=svis(d).filter(s=>s.up).map(s=>'.'+s.ip.split('.')[3]+'/v'+s.vid).join(' ');
+  const lx=d.lab==='left'?x-56:d.lab==='right'?x+56:x,ly=d.lab==='top'?y-46:y-6,an=d.lab==='left'?'end':d.lab==='right'?'start':'middle';
+  return`<g class="dev" data-dev="${d.name}" tabindex="0" role="button" aria-label="Abrir consola de ${d.name}"><rect class="hit" x="${x-52}" y="${y-24}" width="104" height="48" rx="9" fill="transparent" stroke="${cur===d?'var(--blue)':'transparent'}" stroke-width="2"/><rect x="${x-46}" y="${y-16}" width="92" height="32" rx="5" fill="${col}"/>${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${x-38+i*9.5}" y="${y-6}" width="6" height="5" fill="#111"/><rect x="${x-38+i*9.5}" y="${y+2}" width="6" height="5" fill="#111"/>`).join('')}
+   <text x="${lx}" y="${ly}" text-anchor="${an}" font-size="15" font-weight="600" fill="currentColor">${d.name}</text><text x="${lx}" y="${ly+16}" text-anchor="${an}" font-size="12" fill="var(--mut)">${VEND[d.vendor].label}</text>${sv?tx(d.lab==='top'?x+54:lx,d.lab==='top'?y+4:ly+31,'SVI '+sv,d.lab==='top'?'start':an,11,'var(--ok)'):''}</g>`};
+ const pcG=d=>{const x=d.tx,y=d.ty;return`<g class="dev" data-dev="${d.name}" tabindex="0" role="button" aria-label="Abrir consola de ${d.name}"><rect class="hit" x="${x-36}" y="${y-26}" width="72" height="80" rx="9" fill="transparent" stroke="${cur===d?'var(--blue)':'transparent'}" stroke-width="2"/><rect x="${x-24}" y="${y-20}" width="48" height="32" rx="3" fill="#1d252c"/><rect x="${x-20}" y="${y-16}" width="40" height="24" fill="${done?'#16a35c':'#2f6fd6'}"/><rect x="${x-4}" y="${y+12}" width="8" height="7" fill="#55606a"/><rect x="${x-14}" y="${y+19}" width="28" height="4" rx="2" fill="#55606a"/><text x="${x}" y="${y+40}" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">${d.name}</text>${tx(x,y+55,d.ip.replace('192.168.','…')+(d.len!==24?'/'+d.len:''),'middle',11)}</g>`};
+ $('#topo').innerHTML=`<g style="color:var(--ink)" font-family="IBM Plex Sans,sans-serif">${L.join('')}${LED.join('')}${TX.join('')}${T.sws.map(swG).join('')}${T.pcs.map(pcG).join('')}</g>`}
+
 /* ---------- UI ---------- */
 const out=$('#out'),cmd=$('#cmd');
 function select(d){cur=d;cmd.value='';render();}
@@ -401,7 +550,7 @@ function render(){
   $('#tabs').innerHTML=devs.map(d=>`<button role="tab" aria-selected="${d===cur}" data-dev="${d.name}">${d.name}</button>`).join('');
   drawTopo();drawChecks();clearTimeout(render._t);render._t=setTimeout(saveLab,300);
 }
-function drawTopo(){
+function drawTopo(){if(TP())return drawTopoT();$('#topo').setAttribute('viewBox','0 0 560 190');
   const a=VEND[S1.vendor],b=VEND[S2.vendor],e1=eff(S1),e2=eff(S2);
   const l1=linkUp(S1,a.pc),l2=linkUp(S2,b.pc),lt=linkUp(S1,a.up),tr=!SC.exam&&lt&&e1.ifs[a.up].mode==='trunk'&&e2.ifs[b.up].mode==='trunk';
   const ln=(x1,x2,on,col,w)=>`<line x1="${x1}" y1="80" x2="${x2}" y2="80" stroke="${on?col:'#9aa4ad'}" stroke-width="${w}" ${on?'':'stroke-dasharray="6 5"'} stroke-linecap="round"/>`;
@@ -417,9 +566,9 @@ function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: 
 function drawChecks(){
   const cs=checks();
   $('#chk').innerHTML=cs.map(c=>`<li class="${c.ok?'ok':''}"><span class="dot" aria-hidden="true"></span><div><div class="sw">${c.who.name}${c.who.type==='sw'?' · '+VEND[c.who.vendor].label:''}</div>${c.t}<span class="sr">${c.ok?' (listo)':''}</span><details><summary>Pista</summary><code>${esc(c.hint)}</code></details></div></li>`).join('')+
-    (L3()?`<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-B</div>Ping exitoso a SW1 (${NET()}2)</div></li>`:`<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-A</div>Ping exitoso a PC-B</div></li>`);
-  const n=[];for(const sw of[S1,S2])if(sw.vendor==='juniper'&&JSON.stringify(sw.cand)!==JSON.stringify(sw.act))n.push(`<p class="warn">${sw.name} tiene cambios sin commit: aún no se aplican.</p>`);
-  if(!done&&cs.every(c=>c.ok))n.push(L3()?`<p class="tip">Todo parece listo. Ve a PC-B y escribe <code>ping ${NET()}2</code>.</p>`:`<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping ${NET()}12</code>.</p>`);
+    (TP()?T.goals.map((g,i)=>`<li class="${T.pinged[i]?'ok':''}"><span class="dot"></span><div><div class="sw">${g.from} · ping</div>${g.label} <code>${g.to}</code></div></li>`).join(''):L3()?`<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-B</div>Ping exitoso a SW1 (${NET()}2)</div></li>`:`<li class="${done?'ok':''}"><span class="dot"></span><div><div class="sw">PC-A</div>Ping exitoso a PC-B</div></li>`);
+  const n=[];for(const sw of(TP()?T.sws:[S1,S2]))if(sw.vendor==='juniper'&&JSON.stringify(sw.cand)!==JSON.stringify(sw.act))n.push(`<p class="warn">${sw.name} tiene cambios sin commit: aún no se aplican.</p>`);
+  if(!done&&cs.every(c=>c.ok))n.push(TP()?`<p class="tip">${T.faults.length?'Corregiste las fallas.':'Todo parece listo.'} Ahora haz los pings de la lista desde cada PC.</p>`:L3()?`<p class="tip">Todo parece listo. Ve a PC-B y escribe <code>ping ${NET()}2</code>.</p>`:`<p class="tip">Todo parece listo. Ve a PC-A y escribe <code>ping ${NET()}12</code>.</p>`);
   $('#notes').innerHTML=n.join('');
   $('#chk').querySelectorAll('details').forEach((dt,i)=>{dt.addEventListener('toggle',()=>{if(dt.open){LS.hints.add(i);drawScore()}})});drawScore();
 }
@@ -455,21 +604,42 @@ const TB3=`<thead><tr><th>Concepto</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><t
 function texts(cfg){const V=SC.vid,N=SC.name,lab=cfg&&cfg.label||'Ventas',l3=L3();
  if(!l3)return{p:`"Necesitamos que el área de ${lab} tenga su propia red: la VLAN ${V} (${N}), con una PC en cada piso." Configura SW1 y SW2 para que PC-A (${NET()}11) y PC-B (${NET()}12) se vean${SC.exam?'. Sin pistas ni guía: como en el trabajo.':' a través del enlace entre switches.'}`,goal:`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${V} (${N}).`};
  return{p:`"Queremos administrar los switches de ${lab} desde la red, y la PC del segundo piso dice que no ve a nadie." La capa 2 ya está lista (VLAN ${V}, ${N}). Dale a SW1 la IP ${NET()}2/24 y a SW2 la ${NET()}3/24 en la SVI de la VLAN ${V}, y arregla la IP de PC-B.${SC.exam?' Sin pistas ni guía.':' El ticket se cierra cuando PC-B hace ping a SW1 y explicas lo que hiciste.'}`,goal:`PC-B (${NET()}12) hace ping a SW1 (${NET()}2) en la VLAN ${V} (${N}).`}}
-function setKind(cfg,tkLabel){const l3=L3(),T=texts(cfg);document.querySelector('.ticket p').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?TK0:T.p;document.querySelector('.goal').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?GOAL0:T.goal;
+function setKind(cfg,tkLabel){document.body.classList.toggle('labtopo',TP());if(TP()){const X=topoTexts();document.querySelector('.ticket p').innerHTML=X.p;document.querySelector('.goal').innerHTML=X.goal;document.querySelector('#v-lab1 header h1').textContent=X.h;document.querySelector('.ticket .tk').textContent=tkLabel||X.tk;$('#labcrumb').innerHTML=`<a href="#mapa">Mi red</a> / Zona ${T.three?2:1} / TK-${T.id==='lab2'?2001:T.three?2050:1050}`;$('#labguide').innerHTML=X.guide;$('#labguide').open=!SC.exam;$('#labtbl').innerHTML=TBT;$('#lableg').innerHTML=LG0;return}const l3=L3(),TX=texts(cfg);document.querySelector('.ticket p').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?TK0:TX.p;document.querySelector('.goal').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?GOAL0:TX.goal;
  document.querySelector('#v-lab1 header h1').textContent=SC.exam?'Certificación: parte práctica':l3?'IP de administración en los switches':H0;
  document.querySelector('.ticket .tk').textContent=tkLabel||(l3?'Ticket #2001 · prioridad media · de: '+(cfg&&cfg.label||'Ventas'):TKH0);
  $('#labcrumb').innerHTML=l3?'<a href="#mapa">Mi red</a> / Zona 2 / TK-2001':CR0;$('#labguide').innerHTML=l3?GU3():GU0;$('#labtbl').innerHTML=l3?TB3:TB0;
  $('#lableg').innerHTML=l3?'<span><b style="background:#4f9bff"></b>Frame untagged (access port)</span><span><b style="background:#ffc61a"></b>Frame tagged 802.1Q (trunk)</span><span><b style="background:#e9eef2"></b>Hacia la SVI de SW1 (capa 3)</span>':LG0;
  $('#labguide').open=!SC.exam}
+
+const SHOWT=`<table class="stack"><thead><tr><th>Para revisar…</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><th>Juniper Junos</th></tr></thead><tbody>
+ <tr><td>Qué VLAN existen y qué puertos tienen</td><td><code>show vlan brief</code></td><td><code>show vlan</code></td><td><code>show vlans</code></td></tr>
+ <tr><td>Trunks y VLAN permitidas</td><td><code>show interfaces trunk</code></td><td><code>show running-config</code></td><td><code>show configuration</code></td></tr>
+ <tr><td>Puertos arriba o abajo</td><td><code>show interfaces status</code></td><td><code>show interface brief</code></td><td><code>show interfaces terse</code></td></tr>
+ <tr><td>IP de las interfaces vlan</td><td><code>show ip interface brief</code></td><td><code>show ip interface brief</code></td><td><code>show interfaces terse</code></td></tr>
+ <tr><td>Toda la configuración</td><td><code>show running-config</code></td><td><code>show running-config</code></td><td><code>show configuration</code></td></tr></tbody></table>`;
+const TBT=`<thead><tr><th>Concepto</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><th>Juniper Junos</th></tr></thead><tbody>
+ <tr><td>Trunk con dos VLAN</td><td><code>switchport mode trunk</code><br><code>switchport trunk allowed vlan 10,20</code></td><td><code>no shutdown</code><br><code>vlan trunk allowed 10,20</code></td><td><code>… interface-mode trunk</code><br><code>… vlan members VENTAS</code><br><code>… vlan members RRHH</code></td></tr>
+ <tr><td>Agregar una VLAN a un trunk</td><td><code>switchport trunk allowed vlan add 20</code></td><td><code>vlan trunk allowed 20</code></td><td><code>set … vlan members RRHH</code></td></tr>
+ <tr><td>IP en una VLAN (SVI)</td><td><code>interface vlan 10</code><br><code>ip address 192.168.10.2 255.255.255.0</code><br><code>no shutdown</code></td><td><code>interface vlan 10</code><br><code>ip address 192.168.10.2/24</code></td><td><code>set interfaces irb unit 10 family inet address 192.168.10.2/24</code><br><code>set vlans VENTAS l3-interface irb.10</code></td></tr>
+ <tr><td>Encender un puerto</td><td><code>no shutdown</code></td><td><code>no shutdown</code></td><td><code>delete interfaces ge-0/0/1 disable</code></td></tr></tbody>`;
+function topoTexts(){const A=T.A,B=T.B,vs=T.sws.map(s=>`${s.name}: ${VEND[s.vendor].label}`).join(' · '),g=T.goals.map(x=>`<li><code>${x.from}</code> → <code>${x.to}</code></li>`).join('');
+ if(T.id==='lab2'){const okAcc=T.sws.find(s=>s.name!==T.blank&&s.name!=='CORE').name;return{h:SC.exam?'Certificación: parte práctica':'Dos áreas, tres switches',tk:`Ticket #2001 · prioridad alta · de: Gerencia de ${A.name[0]+A.name.slice(1).toLowerCase()}`,
+  p:`"Abrimos el segundo piso: ${A.name} (VLAN ${A.id}) y ${B.name} (VLAN ${B.id}) en dos switches de acceso conectados a un core." El CORE y ${okAcc} ya tienen la capa 2. Configura <strong>${T.blank}</strong> (las dos VLAN, los puertos de las PCs y el trunk), dale al <strong>CORE</strong> una IP en cada VLAN (${tnet(A)}2 y ${tnet(B)}2) y corrige la IP de <strong>${T.brokenPC}</strong>.${SC.exam?' Sin pistas ni guía.':''}`,
+  goal:`Los pings de la lista funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar: cómo se resuelve este ticket</summary><ol class="pasos"><li><strong>Mira cómo está ${okAcc}:</strong> abre su consola y usa <code>show running-config</code> (o <code>show configuration</code> en Juniper). ${T.blank} debe quedar igual, pero con su propio vendor.</li><li><strong>En ${T.blank}:</strong> crea las VLAN ${A.id} (${A.name}) y ${B.id} (${B.name}), pon cada PC en su VLAN como access y haz el puerto hacia el CORE un trunk que permita las dos.</li><li><strong>En el CORE:</strong> crea la SVI de cada VLAN con su IP: ${tnet(A)}2/24 y ${tnet(B)}2/24.</li><li><strong>En ${T.brokenPC}:</strong> revisa <code>ipconfig</code>: su IP no es de su VLAN. Corrígela con <code>netsh</code>.</li><li><strong>Prueba</strong> con estos pings:<ul>${g}</ul></li></ol>${SHOWT}`}}
+ return{h:SC.exam?'Certificación: parte práctica':T.three?'Troubleshooting: la red del segundo piso':'Troubleshooting: VLANs entre dos switches',tk:`Ticket #${T.three?2050:1050} · prioridad ALTA · de: Mesa de ayuda`,
+  p:`"Desde el lunes ${A.name} y ${B.name} se quejan: no se ven entre pisos${T.three?' y no llegan al core':''}." La red estaba funcionando y alguien movió algo. Hay <strong>3 fallas escondidas</strong>: encuéntralas con comandos <code>show</code> y <code>ipconfig</code>, corrígelas y comprueba con los pings.`,
+  goal:`Las 3 fallas corregidas y los pings de la lista funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar: cómo se busca una falla</summary><ol class="pasos"><li><strong>Empieza por el síntoma:</strong> haz los pings de la lista y fíjate cuáles fallan. Eso te dice qué VLAN y qué parte de la red revisar.</li><li><strong>Revisa de abajo hacia arriba:</strong> ¿el puerto está arriba? (capa 1) ¿está en la VLAN correcta? ¿el trunk la deja pasar? ¿la VLAN existe en ese switch? (capa 2) ¿la IP y la máscara son de su red? (capa 3)</li><li><strong>Compara</strong> un switch que funciona con uno que no: la diferencia suele ser la falla.</li><li>Cada pista dice <em>dónde</em> buscar, no el comando, y cuesta 10 puntos.</li></ol>${SHOWT}<p>Los pings que deben funcionar:</p><ul>${g}</ul>`}}
 window.LAB={
- start(cfg){SC={kind:cfg.kind||'l2',vid:cfg.vid,name:cfg.name,exam:true};$('#v1').value=cfg.v1;$('#v2').value=cfg.v2;$('#v1').disabled=$('#v2').disabled=true;document.body.classList.add('labexam');
+ start(cfg){if(cfg.kind==='topo'){SC={kind:'topo',topo:cfg.topo,seed:cfg.seed,vid:0,name:'',exam:true};document.body.classList.add('labexam');cur=null;reset();setKind(null,`${cfg.cert||'CERT'} · de: Mesa de ayuda`);drawSol();return}SC={kind:cfg.kind||'l2',vid:cfg.vid,name:cfg.name,exam:true};$('#v1').value=cfg.v1;$('#v2').value=cfg.v2;$('#v1').disabled=$('#v2').disabled=true;document.body.classList.add('labexam');
   setKind(cfg,`${cfg.cert||'CERT-1'} · de: ${cfg.label}`);cur=null;reset();drawSol()},
- stop(){if(!SC.exam)return;SC={kind:'l2',vid:10,name:'VENTAS',exam:false};$('#v1').disabled=$('#v2').disabled=false;document.body.classList.remove('labexam');setKind(null);cur=null;reset()},
- practice(cfg){if(SC.exam)return;const kind=cfg&&cfg.kind||'l2',def=!cfg||!cfg.vid||cfg.vid===10;if(S1&&!done&&devs.some(d=>d.hist&&d.hist.length)&&SC.kind===kind&&SC.vid===(def?10:cfg.vid)&&SC.name===(def?'VENTAS':cfg.name)){saveLab();return}SC={kind,vid:def?10:cfg.vid,name:def?'VENTAS':cfg.name,exam:false};
+ stop(){if(!SC.exam)return;T=null;SC={kind:'l2',vid:10,name:'VENTAS',exam:false};$('#v1').disabled=$('#v2').disabled=false;document.body.classList.remove('labexam');setKind(null);cur=null;reset()},
+ practice(cfg){if(SC.exam)return;if(cfg&&cfg.kind==='topo'){if(TP()&&T&&!done&&SC.topo===cfg.topo&&SC.seed===cfg.seed&&devs.some(d=>d.hist&&d.hist.length)){saveLab();return}SC={kind:'topo',topo:cfg.topo,seed:cfg.seed,vend:cfg.vend||null,vid:0,name:'',exam:false};cur=null;if(!loadLab())reset();setKind(null);drawSol();return}if(TP()){T=null;SC={kind:'l2',vid:10,name:'VENTAS',exam:false}}const kind=cfg&&cfg.kind||'l2',def=!cfg||!cfg.vid||cfg.vid===10;if(S1&&!done&&devs.some(d=>d.hist&&d.hist.length)&&SC.kind===kind&&SC.vid===(def?10:cfg.vid)&&SC.name===(def?'VENTAS':cfg.name)){saveLab();return}SC={kind,vid:def?10:cfg.vid,name:def?'VENTAS':cfg.name,exam:false};
   setKind(def?null:cfg);cur=null;if(!loadLab())reset();drawSol()},
- solution(v){return SOLF()[v]},scenario(){return{...SC}},vendors(){return[S1.vendor,S2.vendor]},
- passed(){return checks().filter(c=>c.ok).length},total(){return checks().length},score:()=>labScore()};
-for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);if(L3())preL2(n);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
+ dbg(){return TP()?T.faults.map(f=>({k:f.k,sw:f.sw,pc:f.pc,slot:f.slot,v:f.v&&f.v.id,ok:faultFixed(f)})):null},solution(v){return SOLF()[v]},solutions(){return TP()?tSolutions():null},preview(id,seed){const d=topoDef(id,seed);return{sws:d.sws.map(s=>({name:s.name,vendor:VEND[s.vendor].label})),A:d.A,B:d.B,blank:d.blank,broken:d.brokenPC,faults:d.faults.length}},scenario(){return TP()?{...SC,desc:`VLAN ${T.A.id} (${T.A.name}) y ${T.B.id} (${T.B.name})`}:{...SC}},vendors(){return TP()?T.sws.map(s=>s.vendor):[S1.vendor,S2.vendor]},
+ passed(){return checks().filter(c=>c.ok).length+(TP()?Object.keys(T.pinged).length:0)},total(){return checks().length+(TP()?T.goals.length:0)},score:()=>labScore()};
+for(const id of['#v1','#v2'])$(id).addEventListener('change',()=>{if(TP())return;const i=id==='#v1'?0:1,n=mkSwitch(i?'SW2':'SW1',$(id).value);if(L3())preL2(n);devs[i]=n;if(i)S2=n;else S1=n;if(cur.name===n.name)cur=n;done=false;$('#done').classList.remove('show');render()});
 
 /* ---------- solutions ---------- */
 const SOLF=()=>{const V=SC.vid,N=SC.name;if(L3()){const pc=`\n\n! PC-B:\n${PCHINT()}`;return{cisco:`! SW1 (en SW2 usa ${NET()}3)\nenable\nconfigure terminal\ninterface vlan ${V}\n ip address ${NET()}2 255.255.255.0\n no shutdown\n end\nwrite memory`+pc,aruba:`! SW1 (en SW2 usa ${NET()}3)\nconfigure terminal\ninterface vlan ${V}\n ip address ${NET()}2/24\n end\nwrite memory`+pc,juniper:`# SW1 (en SW2 usa ${NET()}3)\nconfigure\nset interfaces irb unit ${V} family inet address ${NET()}2/24\nset vlans ${N} l3-interface irb.${V}\ncommit`+pc}}return{cisco:`enable
@@ -506,14 +676,50 @@ set interfaces ge-0/0/23 unit 0 family ethernet-switching interface-mode trunk
 set interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members ${N}
 commit`}};
 let SOL=SOLF();
-const drawSol=()=>{SOL=SOLF();$('#sol').innerHTML=Object.entries(SOL).map(([k,s])=>`<div><h3>${VEND[k].label}<button class="btn" data-copy="${k}">Copiar</button></h3><pre>${esc(s)}</pre></div>`).join('')};drawSol();
+const drawSol=()=>{if(TP()){const L=tSolutions();$('#sol').innerHTML=L.map(x=>`<div><h3>${esc(x.t)}</h3><pre>${esc(x.s)}</pre></div>`).join('');return}SOL=SOLF();$('#sol').innerHTML=Object.entries(SOL).map(([k,s])=>`<div><h3>${VEND[k].label}<button class="btn" data-copy="${k}">Copiar</button></h3><pre>${esc(s)}</pre></div>`).join('')};drawSol();
 $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-copy]');if(!b)return;try{await navigator.clipboard.writeText(SOL[b.dataset.copy]);b.textContent='Copiado'}catch{b.textContent='Selecciona el texto'}setTimeout(()=>b.textContent='Copiar',1600)});
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;clearLab();drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,mixed:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;clearLab();drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
-function build3D(){
+
+function build3DT(){
+  const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}
+  if(!window.THREE){box.insertAdjacentHTML('beforeend','<p style="color:#fff;padding:20px">No se pudo cargar la vista 3D.</p>');return}
+  const K=THREE,R=new K.WebGLRenderer({antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));box.prepend(R.domElement);
+  const sc=new K.Scene(),cam=new K.PerspectiveCamera(38,1,.1,200);sc.add(new K.HemisphereLight(0xdfe9f3,0x1a2026,.85));const dl=new K.DirectionalLight(0xffffff,.75);dl.position.set(6,12,10);sc.add(dl);
+  const M=(c,o={})=>new K.MeshStandardMaterial(Object.assign({color:c,roughness:.7,metalness:.2},o)),V3=(x,y,z)=>new K.Vector3(x,y,z);
+  const add=(g,m,x,y,z)=>{const o=new K.Mesh(g,m);o.position.set(x,y,z);sc.add(o);return o};
+  const fl=add(new K.PlaneGeometry(60,30),M(0x222a31,{roughness:1}),0,0,0);fl.rotation.x=-Math.PI/2;
+  const rk=M(0x15191d,{metalness:.6,roughness:.5});for(const x of[-2.7,2.7])for(const z of[-1.5,1.5])add(new K.BoxGeometry(.16,5.4,.16),rk,x,2.7,z);for(const y of[.08,5.4])add(new K.BoxGeometry(5.6,.14,3.2),rk,0,y,0);
+  const P={},pp=[];
+  T.sws.forEach((d,k)=>{const y=4.2-k*.75,v=VEND[d.vendor];add(new K.BoxGeometry(5,.44,2.7),M(v.color,{metalness:.45,roughness:.45}),0,y,0);
+    add(new K.PlaneGeometry(1.7,.34),new K.MeshBasicMaterial({map:textTex([d.name+'  '+v.label],512,100,null,d.vendor==='aruba'?'#1d252c':'#eef3f7',40),transparent:true}),-1.55,y,1.36);
+    const pos=[];for(let i=1;i<=24;i++){const col=(i-1)%12,row=i<=12?0:1,x=-.45+col*.27,py=y+(row?-.09:.09);add(new K.BoxGeometry(.21,.14,.04),M(0x0a0c0e),x,py,1.36);pos[i]=V3(x,py,1.39)}
+    P[d.name]={};for(const sl of Object.keys(SLOT[d.vendor])){const ph=SLOT[d.vendor][sl][2];P[d.name][sl]=pos[ph];if(T.att[d.name][PN(d,sl)]){const l=add(new K.BoxGeometry(.06,.03,.02),new K.MeshBasicMaterial({color:0x2cff8a}),pos[ph].x+.07,pos[ph].y+(ph<=12?.09:-.09),1.39);pp.push(l)}}});
+  const PCP={};T.pcs.forEach((d,k)=>{const n=T.pcs.length,x=(k-(n-1)/2)*4.2,z=4.2,tm=M(0x6b5844,{roughness:.9});add(new K.BoxGeometry(3,.12,1.8),tm,x,2.0,z);for(const dx of[-1.35,1.35])for(const dz of[-.7,.7])add(new K.BoxGeometry(.1,2,.1),tm,x+dx,1,z+dz);
+    add(new K.BoxGeometry(1.7,1.05,.08),M(0x14181c),x,2.75,z-.3);add(new K.PlaneGeometry(1.56,.92),new K.MeshBasicMaterial({map:textTex([d.name,d.ip,'ping OK'],512,300,'#0b1a12','#5fe39a',40)}),x,2.75,z-.255);PCP[d.name]=V3(x,2.3,z-.6)});
+  const tube=(pts,col)=>{const c=new K.CatmullRomCurve3(pts);sc.add(new K.Mesh(new K.TubeGeometry(c,60,.04,8,false),M(col,{roughness:.5})));return c};
+  const C={};
+  for(const d of T.pcs){const a=PCP[d.name],b=P[d.sw][d.slot];C[d.name]=tube([a,V3(a.x*.8,1.6,3.2),V3(b.x+(a.x>0?.6:-.6),b.y-.3,2.2),V3(b.x,b.y,1.8),b],0x2f7bf2)}
+  for(const l of T.links){const a=P[l.a][l.as],b=P[l.b][l.bs];C[l.a+'|'+l.b]=tube([a,V3(a.x+.5,a.y,1.9),V3(a.x+1.1,(a.y+b.y)/2,2.2),V3(b.x+.5,b.y,1.9),b],0xf2b705)}
+  const swPath=(s1,s2)=>{const q=[[s1]],seen=new Set([s1]);while(q.length){const pth=q.shift(),x=pth[pth.length-1];if(x===s2)return pth;for(const l of T.links){const y=l.a===x?l.b:l.b===x?l.a:null;if(y&&!seen.has(y)){seen.add(y);q.push(pth.concat(y))}}}return[s1]};
+  const routes=T.goals.map(g=>{const src=pcByName(g.from),dst=T.pcs.find(p=>p.ip===g.to),dsw=dst?dst.sw:'CORE',path=swPath(src.sw,dsw),pts=[...C[src.name].getPoints(40)];
+    for(let i=0;i+1<path.length;i++){const l=T.links.find(l=>(l.a===path[i]&&l.b===path[i+1])||(l.b===path[i]&&l.a===path[i+1])),c=C[l.a+'|'+l.b].getPoints(30);pts.push(...(l.a===path[i]?c:c.reverse()))}
+    if(dst)pts.push(...C[dst.name].getPoints(40).reverse());return pts});
+  const pk=routes.map(()=>{const m=new K.Mesh(new K.SphereGeometry(.11,16,12),new K.MeshBasicMaterial({color:0xffffff}));sc.add(m);return m});
+  const st={th:.2,ph:1.1,r:20,auto:!matchMedia('(prefers-reduced-motion:reduce)').matches,tgt:V3(0,2.6,1.5)},ptrs=new Map();let pd=0;
+  R.domElement.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);st.auto=false;R.domElement.setPointerCapture(e.pointerId)});
+  R.domElement.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const[px,py]=ptrs.get(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);if(ptrs.size===1){st.th-=(e.clientX-px)*.008;st.ph=Math.max(.35,Math.min(1.5,st.ph-(e.clientY-py)*.006))}else if(ptrs.size===2){const[a,b]=[...ptrs.values()],dd=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)st.r=Math.max(8,Math.min(34,st.r*(pd/dd)));pd=dd}});
+  const up=e=>{ptrs.delete(e.pointerId);pd=0};R.domElement.addEventListener('pointerup',up);R.domElement.addEventListener('pointercancel',up);
+  R.domElement.addEventListener('wheel',e=>{e.preventDefault();st.r=Math.max(8,Math.min(34,st.r*(1+e.deltaY*.001)))},{passive:false});
+  const ro=new ResizeObserver(()=>{const w=box.clientWidth,h=box.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()});ro.observe(box);
+  const loop=now=>{if(st.auto)st.th=.2+Math.sin(now/5000)*.5;cam.position.set(st.tgt.x+st.r*Math.sin(st.ph)*Math.sin(st.th),st.tgt.y+st.r*Math.cos(st.ph),st.tgt.z+st.r*Math.sin(st.ph)*Math.cos(st.th));cam.lookAt(st.tgt);
+    pk.forEach((m,i)=>{const r=routes[i],full=r.concat(r.slice().reverse()),f=((now/4600)+i/pk.length)%1;m.position.copy(full[Math.floor(f*(full.length-1))]);m.material.color.setHex(i%2?0xffc61a:0x7fb6ff)});
+    pp.forEach((l,i)=>l.material.color.setHex(Math.sin(now/90+i*1.7)>-.2?0x2cff8a:0x0c4020));R.render(sc,cam);G.raf=requestAnimationFrame(loop)};
+  G={R,ro,raf:0};G.raf=requestAnimationFrame(loop)}
+function build3D(){if(TP())return build3DT();
   const box=$('#g3d');if(G){cancelAnimationFrame(G.raf);G.ro.disconnect();G.R.dispose();G.R.domElement.remove();G=null}
   if(!window.THREE){box.insertAdjacentHTML('beforeend','<p style="color:#fff;padding:20px">No se pudo cargar la vista 3D.</p>');return}
   const T=THREE,R=new T.WebGLRenderer({antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));box.prepend(R.domElement);

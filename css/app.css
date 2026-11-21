@@ -350,3 +350,7 @@ code.big{font-size:18px;background:none;padding:0}.netp{color:var(--blue)}.hostp
 table.hunt tr[data-i]{cursor:pointer}table.hunt tr.sel td{background:color-mix(in srgb,var(--blue) 14%,var(--paper))}table.hunt tr.bad td{color:var(--bad)}table.hunt tr.note td{font-size:13px;color:var(--bad);border-top:0;padding-top:0}
 table.nat{margin-top:10px;font-size:13px}
 @media(max-width:640px){.pair{grid-template-columns:1fr}code.big{font-size:15px}.bits32 i{height:16px}.bits32 i.oct{margin-right:2px}}
+body.labtopo #v-lab1 .vend{display:none}
+.verbar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:90;display:flex;gap:12px;align-items:center;background:var(--paper);color:var(--ink);border:1.5px solid var(--blue);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100% - 24px)}
+.verbar span{font-size:14px}
+body.labtopo .topo svg{max-height:none}
