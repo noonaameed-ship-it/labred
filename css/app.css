@@ -558,3 +558,4 @@ details.more>summary,details.queue>summary,details.queue>summary h2{color:var(--
 .livepill{position:fixed;right:16px;bottom:16px;z-index:18;display:inline-flex;gap:8px;align-items:center;background:#b91c1c;color:#fff;text-decoration:none;padding:8px 14px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:14px;animation:popin .3s}
 .livepill:hover{background:#991b1b}
 .livepill .mono{opacity:.85;font-size:13px}
+body.syncing::after{content:"Cargando tu red…";position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 82%,transparent);color:var(--ink);font:600 16px "IBM Plex Mono",monospace;backdrop-filter:blur(2px)}

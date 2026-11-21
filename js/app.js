@@ -1250,19 +1250,20 @@ async function onSession(session){
  SYNCING=!!u;
  uid=u?u.id:null;window.LABRED_UID=uid||'';userEmail=u?u.email:'';myName=u?((u.user_metadata&&u.user_metadata.name)||u.email.split('@')[0]):'';
  isOwner=!!(u&&(LABRED_CONFIG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase()));
+ let pP=null;if(u){document.body.classList.add('syncing');pP=sb.from('progress').select('data').eq('user_id',u.id).maybeSingle()}
  if(u&&!isOwner){try{const ad=await sb.from('admins').select('user_id').eq('user_id',u.id).maybeSingle();isOwner=!!(ad.data)}catch(e){}}
  if(u)pwReqSet(null);if(u&&u.user_metadata&&u.user_metadata.must_change)setTimeout(forcePw,400);INTEG=null;
  st=clone(BASE);prevPts=null;lastRank=null;
  if(uid){try{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
-  const r=await sb.from('progress').select('data').eq('user_id',uid).maybeSingle();
+  const r=await pP;
   if(r.error)throw r.error;
   const R=r.data&&r.data.data;if(R){const lt=st.ts||0,rt=R.ts||0,more=SUB(st)>SUB(R)+20;if(more){setTimeout(()=>toast('Recuperamos tu avance guardado en este navegador.'),600)}else if(rt>lt||(!rt&&!lt&&(Number(R.pts)||0)>=calcPts())||(!rt&&lt&&(Number(R.pts)||0)>calcPts()))st=Object.assign(clone(BASE),R)}
   let gi=false;if(!Object.keys(st.done).length&&!isOwner){try{const g=JSON.parse(localStorage.getItem('labred')||'null');if(g&&g.done&&Object.values(g.done).some(used)){st=Object.assign(clone(BASE),g);delete st.cUnlock;delete st.noRank;gi=true}}catch(e){}}
   if(isOwner&&st.noRank===undefined)st.noRank=true;
   if(gi)setTimeout(()=>toast('Pasamos a tu cuenta el avance que hiciste como invitado.'),400);
-  }catch(e){SYNCING=false;st=clone(BASE);uid=null;toast('No pudimos cargar tu avance. Revisa tu conexión y vuelve a entrar.');try{await sb.auth.signOut()}catch(_){}return}
+  }catch(e){SYNCING=false;document.body.classList.remove('syncing');st=clone(BASE);uid=null;toast('No pudimos cargar tu avance. Revisa tu conexión y vuelve a entrar.');try{await sb.auth.signOut()}catch(_){}return}
   try{await applyRestore()}catch(e){}
-  SYNCING=false;save(true);flush();loadReviews();loadRequests();claimDuels();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
+  SYNCING=false;document.body.classList.remove('syncing');save(true);flush();loadReviews();loadRequests();claimDuels();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
  else{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}save(true)}
  route();
 }
