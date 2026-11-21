@@ -30,7 +30,7 @@ pre,.scroll{overflow-x:auto}
 /* ---------- top bar ---------- */
 nav.top{position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding:8px max(3vw,14px);background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .logo{display:inline-flex;align-items:center;gap:8px;font:600 17px "IBM Plex Mono",monospace;color:var(--ink);text-decoration:none;min-height:36px}
-.logo::before{content:"";width:10px;height:10px;border-radius:2px;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent);animation:blinkled 2.4s steps(1) infinite}
+.logo .ppmark{width:28px;height:28px;flex:none}
 @keyframes blinkled{0%,92%{opacity:1}93%,96%{opacity:.3}}
 #hud{display:flex;flex:1;align-items:center;gap:6px 14px;flex-wrap:wrap}
 .links{display:flex;gap:4px;margin-right:auto}
@@ -379,9 +379,9 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 
 /* Certificado */
 .diploma{max-width:1000px;aspect-ratio:11/8.5;margin:20px auto 40px;background:#fffdf7;color:#1d252c;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25);-webkit-print-color-adjust:exact;print-color-adjust:exact;page:diploma}
-.dinner{height:100%;box-sizing:border-box;border:3px solid #1f4fa3;outline:1px solid #1f4fa3;outline-offset:-10px;padding:34px 56px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;background:radial-gradient(circle at 50% 45%,rgba(31,79,163,.06),transparent 60%),repeating-linear-gradient(45deg,rgba(31,79,163,.025) 0 2px,transparent 2px 10px)}
-.dtop{display:flex;flex-direction:column;gap:2px}.dlogo{font:700 26px 'IBM Plex Mono',monospace;color:#1f4fa3;letter-spacing:.5px}.diploma .small{color:#55606a}
-.dkicker{font:600 14px 'IBM Plex Sans',sans-serif;letter-spacing:4px;text-transform:uppercase;color:#1f4fa3;margin:8px 0 0}
+.dinner{height:100%;box-sizing:border-box;border:3px solid #0f1d24;outline:1px solid #0f1d24;outline-offset:-10px;padding:34px 56px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;background:radial-gradient(circle at 50% 45%,rgba(31,79,163,.06),transparent 60%),repeating-linear-gradient(45deg,rgba(31,79,163,.025) 0 2px,transparent 2px 10px)}
+.dtop{display:flex;flex-direction:column;gap:2px}.dlogo{color:#0f1d24}.diploma .small{color:#55606a}
+.dkicker{font:600 14px 'IBM Plex Sans',sans-serif;letter-spacing:4px;text-transform:uppercase;color:#0e9450;margin:8px 0 0}
 .dsub{margin:0;font-size:17px;color:#55606a}.diploma h2{font:700 46px Georgia,'Times New Roman',serif;margin:0;color:#1d252c;border-bottom:2px solid #c9a227;padding:0 30px 8px}
 .dbody{font-size:18px;line-height:1.5;max-width:760px;margin:0}.dtemas{font-size:13px;color:#55606a;max-width:780px;margin:0}
 .dfoot{width:100%;display:grid;grid-template-columns:1fr 120px 1fr;align-items:end;gap:24px;font-size:14px}.dcol{display:flex;flex-direction:column;justify-content:flex-end}.dsig,.ddate{height:56px;display:flex;align-items:flex-end;justify-content:center;width:100%}.dsig{width:270px;height:86px!important;max-width:100%;margin:0 auto -8px;transform:rotate(-4deg)}.ddate{font:italic 20px Georgia,serif;color:#1d252c;padding-bottom:8px;box-sizing:border-box}.dline{display:block;border-top:1.5px solid #1d252c;margin:0 20px 6px}.dseal{width:110px;height:110px}.dfolio{margin:6px 0 0;font:11px 'IBM Plex Mono',monospace;color:#55606a}
@@ -545,3 +545,16 @@ details.more>summary,details.queue>summary,details.queue>summary h2{color:var(--
 .mails .mail h3{margin:4px 0 6px}.mails .mail p{margin:0;line-height:1.55}
 /* desbloqueables */
 .ave.lockd,.avc.lockd{opacity:.25;filter:grayscale(1);cursor:help}
+
+/* marca PacketPath */
+.ppword{font:500 18px "IBM Plex Sans",sans-serif;letter-spacing:-.2px;color:var(--ink)}
+.ppword b{font-weight:700;color:var(--ok)}
+.ppmark .pkt{animation:pktmove 3.2s ease-in-out infinite}
+@keyframes pktmove{0%{transform:translate(-8px,8px);opacity:0}8%{opacity:1}22%{transform:translate(-8px,3px)}36%{transform:translate(-4px,0)}50%,58%{transform:translate(0,0)}70%{transform:translate(4px,0)}84%{transform:translate(8px,-3px);opacity:1}92%,100%{transform:translate(8px,-3px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.ppmark .pkt{animation:none}}
+.dlogo{display:inline-flex;align-items:center;gap:10px}
+.dlogo .ppmark{width:40px;height:40px}.dlogo .ppmark .pkt{animation:none}
+.dlogo .ppword{font-size:28px;color:#0f1d24}.dlogo .ppword b{color:#0e9450}
+.livepill{position:fixed;right:16px;bottom:16px;z-index:18;display:inline-flex;gap:8px;align-items:center;background:#b91c1c;color:#fff;text-decoration:none;padding:8px 14px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:14px;animation:popin .3s}
+.livepill:hover{background:#991b1b}
+.livepill .mono{opacity:.85;font-size:13px}

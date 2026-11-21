@@ -1,4 +1,4 @@
-/* Configuración de LabRed.
+/* Configuración de PacketPath.
    supabaseKey es la llave pública (publishable / anon). Es seguro que esté aquí:
    la base de datos se protege con las reglas (RLS) de supabase/schema.sql.
    NUNCA pongas aquí la llave secreta (service_role / secret). */

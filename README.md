@@ -1,4 +1,4 @@
-# LabRed
+# PacketPath
 
 Aprende redes jugando: desde qué es un frame hasta configurar switches de **Cisco IOS, Aruba AOS-CX y Juniper Junos** en una consola simulada, con vista 3D del resultado.
 

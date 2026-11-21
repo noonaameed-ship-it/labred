@@ -5,18 +5,26 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://xjqusoxqtwawvzuzndho.supabase.co wss://xjqusoxqtwawvzuzndho.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LabRed · Aprende redes</title>
+<title>PacketPath · Aprende redes, un salto a la vez</title>
+<link rel="icon" type="image/svg+xml" href="img/mark.svg">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<meta name="theme-color" content="#0f1d24">
+<meta property="og:title" content="PacketPath · Aprende redes, un salto a la vez">
+<meta property="og:description" content="Fundamentos, VLAN, subredes y labs en consola de Cisco, Aruba y Juniper. Certificaciones verificables.">
+<meta property="og:image" content="https://noonaameed-ship-it.github.io/labred/img/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="Aprende redes jugando: fundamentos, VLAN y labs en consola de Cisco, Aruba y Juniper.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=202611211007">
+<link rel="stylesheet" href="css/app.css?v=202611211014">
 <script>try{var t=localStorage.getItem('labred_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
-<nav class="top"><a href="#mapa" class="logo">LabRed</a><span class="navl" id="hud"></span></nav>
+<nav class="top"><a href="#mapa" class="logo" aria-label="PacketPath, inicio"><svg class="ppmark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0f1d24"/><path d="M8 24V17.5Q8 13 12.5 13H19.5Q24 13 24 8.5" fill="none" stroke="#33d17f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="24" r="3.2" fill="#33d17f"/><circle cx="24" cy="8" r="3.2" fill="#33d17f"/><rect class="pkt" x="13.5" y="10.5" width="5" height="5" rx="1.2" fill="#f5b300"/></svg><span class="ppword">Packet<b>Path</b></span></a><span class="navl" id="hud"></span></nav>
 <div id="celeb" role="dialog" aria-modal="true" aria-labelledby="celt"></div>
 <div id="toast" role="status"></div>
 <div class="view" id="v-mapa"></div>
@@ -126,11 +134,11 @@
 </div>
 
 
-<script src="js/config.js?v=202611211007"></script>
-<script src="js/content.js?v=202611211007"></script>
-<script src="js/content0.js?v=202611211007"></script>
-<script src="js/content2.js?v=202611211007"></script>
-<script src="js/lab.js?v=202611211007"></script>
-<script src="js/app.js?v=202611211007"></script>
+<script src="js/config.js?v=202611211014"></script>
+<script src="js/content.js?v=202611211014"></script>
+<script src="js/content0.js?v=202611211014"></script>
+<script src="js/content2.js?v=202611211014"></script>
+<script src="js/lab.js?v=202611211014"></script>
+<script src="js/app.js?v=202611211014"></script>
 </body>
 </html>

@@ -468,7 +468,7 @@ create policy "feedback: instructor borra" on public.feedback for delete to auth
 -- Verificación pública de un certificado: cualquiera con el código puede confirmar que es real
 create or replace function public.cert_code(p_user uuid, p_zone int) returns text
 language sql immutable set search_path = public, extensions as $$
-  select 'LR' || p_zone || '-' || upper(substr(encode(extensions.digest(p_user::text || ':x' || p_zone, 'sha256'), 'hex'), 1, 10)) $$;
+  select 'PP' || p_zone || '-' || upper(substr(encode(extensions.digest(p_user::text || ':x' || p_zone, 'sha256'), 'hex'), 1, 10)) $$;
 
 create or replace function public.verify_cert(p_code text)
 returns table (name text, zone int, score int, passed_at text)
@@ -476,7 +476,7 @@ language plpgsql stable security definer set search_path = public, extensions as
 declare z int; r record;
 begin
   p_code := upper(trim(coalesce(p_code, '')));
-  if p_code !~ '^LR[0-9]-[0-9A-F]{10}$' then return; end if;
+  if p_code !~ '^PP[0-9]-[0-9A-F]{10}$' then return; end if;
   z := substr(p_code, 3, 1)::int;
   for r in select p.user_id, coalesce(nullif(p.name, ''), k.name, 'Becario') as nm, p.data->'done'->('x' || z) as e
              from public.progress p left join public.ranking k on k.user_id = p.user_id loop
@@ -589,4 +589,27 @@ begin
 end $$;
 revoke all on function public.live_tick(boolean) from public, anon;
 grant execute on function public.live_tick(boolean) to authenticated;
+notify pgrst, 'reload schema';
+
+-- 17. Nuevo nombre: los códigos de verificación ahora empiezan con PP (PacketPath)
+create or replace function public.cert_code(p_user uuid, p_zone int) returns text
+language sql immutable set search_path = public, extensions as $$
+  select 'PP' || p_zone || '-' || upper(substr(encode(extensions.digest(p_user::text || ':x' || p_zone, 'sha256'), 'hex'), 1, 10)) $$;
+create or replace function public.verify_cert(p_code text)
+returns table (name text, zone int, score int, passed_at text)
+language plpgsql stable security definer set search_path = public, extensions as $$
+declare z int; r record;
+begin
+  p_code := upper(trim(coalesce(p_code, '')));
+  if p_code !~ '^PP[0-9]-[0-9A-F]{10}$' then return; end if;
+  z := substr(p_code, 3, 1)::int;
+  for r in select p.user_id, coalesce(nullif(p.name, ''), k.name, 'Becario') as nm, p.data->'done'->('x' || z) as e
+             from public.progress p left join public.ranking k on k.user_id = p.user_id loop
+    if public.cert_code(r.user_id, z) = p_code and r.e is not null
+       and coalesce((r.e->>'examBest')::numeric, 0) >= 80 and r.e->>'v' = '2' then
+      return query select r.nm::text, z, (r.e->>'examBest')::numeric::int, coalesce(r.e->>'passAt', '');
+      return;
+    end if;
+  end loop;
+end $$;
 notify pgrst, 'reload schema';

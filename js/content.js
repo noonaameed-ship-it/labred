@@ -1,4 +1,4 @@
-/* LabRed: contenido de lecciones, examen y niveles.
+/* PacketPath: contenido de lecciones, examen y niveles.
    Edita este archivo para corregir textos o agregar lecciones. */
 /* ---------- contenido ---------- */
 const LEVELS=[

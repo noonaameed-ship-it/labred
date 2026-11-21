@@ -1,4 +1,4 @@
-/* LabRed: simulador de consola (Cisco IOS, Aruba AOS-CX, Juniper Junos) y vista 3D */
+/* PacketPath: simulador de consola (Cisco IOS, Aruba AOS-CX, Juniper Junos) y vista 3D */
 {
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -581,7 +581,7 @@ cmd.addEventListener('keydown',e=>{
   else if(e.key==='ArrowUp'){e.preventDefault();hist(-1)}else if(e.key==='ArrowDown'){e.preventDefault();hist(1)}
   else if(e.key==='z'&&e.ctrlKey&&cur.type==='sw'&&cur.vendor!=='juniper'&&cur.mode.startsWith('config')){e.preventDefault();push(cur,prompt(cur)+'^Z','cmd');cur.mode='priv';render()}
 });
-['paste','drop'].forEach(ev=>cmd.addEventListener(ev,e=>{e.preventDefault();LS.paste++;tut(cur,'En LabRed los comandos se escriben, no se pegan: así se te quedan en la memoria.');render()}));
+['paste','drop'].forEach(ev=>cmd.addEventListener(ev,e=>{e.preventDefault();LS.paste++;tut(cur,'En PacketPath los comandos se escriben, no se pegan: así se te quedan en la memoria.');render()}));
 cmd.addEventListener('input',()=>{if(cmd.value.endsWith('?')){const v=cmd.value.slice(0,-1);help(cur,v);cmd.value=v;render()}});
 function hist(dir){const h=cur.hist;if(!h.length)return;cur.hp=Math.max(0,Math.min(h.length,cur.hp+dir));cmd.value=h[cur.hp]||''}
 for(const b of document.querySelectorAll('.keys button'))b.addEventListener('click',()=>{const k=b.dataset.k;if(k==='?'){help(cur,cmd.value);render()}else if(k==='tab')cmd.value=complete(cur,cmd.value);else hist(k==='up'?-1:1);cmd.focus()});
