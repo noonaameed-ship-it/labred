@@ -475,9 +475,10 @@ function renderDiploma(n){const v=$('#v-diploma'),id='x'+n,L=LEVELS[n],r=st.done
   <h2>${esc(myName||'Becario')}</h2>
   <p class="dbody">por aprobar la certificación de la <strong>Zona ${n}: ${esc(L.t)}</strong> con una calificación de <strong>${r.examBest}/100</strong>${EXAMS[id].lab?', que incluye un laboratorio práctico sin ayuda en equipos multivendor (Cisco, Aruba y Juniper)':''}.</p>
   <p class="dtemas">${L.items.filter(i=>!i.exam).map(i=>esc(i.t)).join(' · ')}</p>
-  <div class="dfoot"><div><span class="dline"></span>Instructor · LabRed</div>
+  <div class="dfoot"><div class="dcol"><svg class="dsig" viewBox="0 0 220 60" aria-hidden="true"><text x="110" y="40" text-anchor="middle" font-family="'Snell Roundhand','Segoe Script','Brush Script MT','Lucida Handwriting',cursive" font-style="italic" font-size="36" fill="#1f3f7a">LabRed</text><path d="M30 50 C80 58 140 44 196 50" fill="none" stroke="#1f3f7a" stroke-width="1.6" stroke-linecap="round"/></svg><span class="dline"></span>Instructor · LabRed</div>
    <svg class="dseal" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="#1f4fa3"/><circle cx="60" cy="60" r="48" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 3"/><text x="60" y="52" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="700">LabRed</text><text x="60" y="76" text-anchor="middle" fill="#fff" font-family="IBM Plex Sans,sans-serif" font-size="22" font-weight="700">ZONA ${n}</text></svg>
-   <div><span class="dline"></span>${new Date(String(dt).slice(0,10)+'T12:00').toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'})}<br><span class="small">Folio ${fol}</span></div></div>
+   <div class="dcol"><div class="ddate">${new Date(String(dt).slice(0,10)+'T12:00').toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'})}</div><span class="dline"></span>Fecha de emisión</div></div>
+  <p class="dfolio">Folio ${fol}</p>
  </div></div>`;
  $('#dprint').onclick=()=>print()}
 /* --- Chuletas por zona --- */

@@ -384,7 +384,7 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 .dkicker{font:600 14px 'IBM Plex Sans',sans-serif;letter-spacing:4px;text-transform:uppercase;color:#1f4fa3;margin:8px 0 0}
 .dsub{margin:0;font-size:17px;color:#55606a}.diploma h2{font:700 46px Georgia,'Times New Roman',serif;margin:0;color:#1d252c;border-bottom:2px solid #c9a227;padding:0 30px 8px}
 .dbody{font-size:18px;line-height:1.5;max-width:760px;margin:0}.dtemas{font-size:13px;color:#55606a;max-width:780px;margin:0}
-.dfoot{width:100%;display:grid;grid-template-columns:1fr 120px 1fr;align-items:end;gap:24px;font-size:14px}.dline{display:block;border-top:1.5px solid #1d252c;margin:0 20px 6px}.dseal{width:110px;height:110px}
+.dfoot{width:100%;display:grid;grid-template-columns:1fr 120px 1fr;align-items:end;gap:24px;font-size:14px}.dcol{display:flex;flex-direction:column;justify-content:flex-end}.dsig,.ddate{height:56px;display:flex;align-items:flex-end;justify-content:center;width:100%}.dsig{width:220px;max-width:100%;margin:0 auto}.ddate{font:italic 20px Georgia,serif;color:#1d252c;padding-bottom:8px;box-sizing:border-box}.dline{display:block;border-top:1.5px solid #1d252c;margin:0 20px 6px}.dseal{width:110px;height:110px}.dfolio{margin:6px 0 0;font:11px 'IBM Plex Mono',monospace;color:#55606a}
 @media(max-width:700px){.diploma{aspect-ratio:auto}.dinner{padding:22px 18px;gap:12px}.diploma h2{font-size:30px}.dfoot{grid-template-columns:1fr;justify-items:center}.dseal{width:80px;height:80px}}
 @page diploma{size:letter landscape;margin:0}
 @page{margin:12mm}
