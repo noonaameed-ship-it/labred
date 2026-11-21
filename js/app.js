@@ -86,6 +86,7 @@ const sb=(window.supabase&&window.LABRED_CONFIG&&LABRED_CONFIG.supabaseKey)?wind
 let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
+let SYNCING=false;const SUB=x=>x?Object.keys(x.done||{}).length*10+(Number(x.pts)||0)/10:0;
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
 const calcPts=()=>(st.placePts||0)+(st.livePts||0)+(st.mis&&st.mis.pts||0)+(st.fcPts||0)+(st.daily&&st.daily.pts||0)+(st.revPts||0)+(st.noc&&st.noc.pts||0)+(st.duelPts||0)+(st.arenaPts||0)+(st.bossPts||0)+(st.peerPts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
 const CV=2,exOk=r=>(r.examBest||0)>=EXPASS&&r.v===CV;
@@ -100,7 +101,7 @@ function checkLevels(){for(const L of LEVELS){if(L.soon||!L.items)continue;const
 let wt=null,writing=false,again=false;
 let prevPts=null,prevPassed=null,prevCerts=null;
 const allIds=()=>LEVELS.flatMap(L=>L.items||[]).map(i=>i.id);
-function save(quiet){const p=calcPts();st.pts=p;st.ts=Date.now();st.badges=st.badges||{};
+function save(quiet){if(SYNCING)return;const p=calcPts();st.pts=p;st.ts=Date.now();st.badges=st.badges||{};
  if(prevPts===null||quiet){prevPts=p;prevPassed=new Set(allIds().filter(isPassed));BADGES.forEach(b=>{if(b.f()&&!st.badges[b.id])st.badges[b.id]=today()})}
  else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak();const wk=isoWeek();if(!st.wk||st.wk.id!==wk)st.wk={id:wk,xp:0};st.wk.xp+=p-prevPts}
   const cc=certCount(st.done);if(!isOwner&&prevCerts!==null&&cc>prevCerts)celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle())}</strong>.`,'Continuar',`%PPATH-5-PRIV: privilege level changed to ${rankTitle()}`);
@@ -109,7 +110,7 @@ function save(quiet){const p=calcPts();st.pts=p;st.ts=Date.now();st.badges=st.ba
   prevPts=p;prevPassed=new Set(allIds().filter(isPassed))}
  prevCerts=certCount(st.done);
  try{localStorage.setItem(LSK(),JSON.stringify(st))}catch(e){}renderMe();if(sb&&uid){clearTimeout(wt);wt=setTimeout(flush,700)}}
-async function flush(){if(writing){again=true;return}writing=true;
+async function flush(){if(SYNCING)return;if(writing){again=true;return}writing=true;
  try{const r1=await sb.from('progress').upsert({user_id:uid,name:(myName||'').slice(0,60),email:userEmail,data:clone(st),updated_at:new Date().toISOString()});if(r1.error)throw r1.error;
   if(st.noRank){if(lastRank!=='off'){await sb.from('ranking').delete().eq('user_id',uid);lastRank='off'}}
   else{const sig2=JSON.stringify([st.pts,certCount(st.done),st.streak,st.wk,myAvatarStr(),st.lema,nBadges(),st.unlocked]);if(sig2!==lastRank){const base={user_id:uid,name:(myName||'Alguien').slice(0,40),xp:st.pts,nivel:st.unlocked||0,updated_at:new Date().toISOString()},wk=st.wk&&st.wk.id===isoWeek()?st.wk:{id:isoWeek(),xp:0};
@@ -1229,18 +1230,21 @@ function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('inva
 async function onSession(session){
  const u=session&&session.user;
  if(u&&u.id===uid)return;
+ SYNCING=!!u;
  uid=u?u.id:null;window.LABRED_UID=uid||'';userEmail=u?u.email:'';myName=u?((u.user_metadata&&u.user_metadata.name)||u.email.split('@')[0]):'';
  isOwner=!!(u&&(LABRED_CONFIG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase()));
  if(u&&!isOwner){try{const ad=await sb.from('admins').select('user_id').eq('user_id',u.id).maybeSingle();isOwner=!!(ad.data)}catch(e){}}
  if(u)pwReqSet(null);if(u&&u.user_metadata&&u.user_metadata.must_change)setTimeout(forcePw,400);INTEG=null;
  st=clone(BASE);prevPts=null;lastRank=null;
- if(uid){try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
+ if(uid){try{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
   const r=await sb.from('progress').select('data').eq('user_id',uid).maybeSingle();
-  const R=r.data&&r.data.data;if(R){const lt=st.ts||0,rt=R.ts||0;if(rt>lt||(!rt&&!lt&&(Number(R.pts)||0)>=calcPts())||(!rt&&lt&&(Number(R.pts)||0)>calcPts()))st=Object.assign(clone(BASE),R)}
+  if(r.error)throw r.error;
+  const R=r.data&&r.data.data;if(R){const lt=st.ts||0,rt=R.ts||0,more=SUB(st)>SUB(R)+20;if(more){setTimeout(()=>toast('Recuperamos tu avance guardado en este navegador.'),600)}else if(rt>lt||(!rt&&!lt&&(Number(R.pts)||0)>=calcPts())||(!rt&&lt&&(Number(R.pts)||0)>calcPts()))st=Object.assign(clone(BASE),R)}
   let gi=false;if(!Object.keys(st.done).length&&!isOwner){try{const g=JSON.parse(localStorage.getItem('labred')||'null');if(g&&g.done&&Object.values(g.done).some(used)){st=Object.assign(clone(BASE),g);delete st.cUnlock;delete st.noRank;gi=true}}catch(e){}}
   if(isOwner&&st.noRank===undefined)st.noRank=true;
   if(gi)setTimeout(()=>toast('Pasamos a tu cuenta el avance que hiciste como invitado.'),400);
-  save(true);flush();loadReviews();loadRequests();claimDuels();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
+  }catch(e){SYNCING=false;st=clone(BASE);uid=null;toast('No pudimos cargar tu avance. Revisa tu conexión y vuelve a entrar.');try{await sb.auth.signOut()}catch(_){}return}
+  SYNCING=false;save(true);flush();loadReviews();loadRequests();claimDuels();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
  else{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}save(true)}
  route();
 }
@@ -1380,7 +1384,7 @@ function integrityCheck(){try{if(!uid||isOwner)return;const real=calcPts();if(IN
 setInterval(integrityCheck,60000);
 
 /* ---------- instructor: seguridad, contraseñas, moderación y respaldo ---------- */
-const ALK={xp_salto:'Subió mucho XP de golpe',xp_inicial:'Cuenta nueva con mucho XP',cert_sin_intento:'Certificación sin haberla presentado',calificacion_imposible:'Calificación mayor a 100',lab_inconsistente:'Más labs aprobados que intentos','cliente:examen':'Trampas durante una certificación','cliente:xp_salto_local':'XP alterado en el navegador','cliente:lab_rapido':'Lab terminado demasiado rápido','cliente:quiz_rapido':'Quiz respondido demasiado rápido','cliente:consola':'Abrió las herramientas del navegador'};
+const ALK={progreso_protegido:'Se bloqueó un guardado que iba a borrar su avance',xp_salto:'Subió mucho XP de golpe',xp_inicial:'Cuenta nueva con mucho XP',cert_sin_intento:'Certificación sin haberla presentado',calificacion_imposible:'Calificación mayor a 100',lab_inconsistente:'Más labs aprobados que intentos','cliente:examen':'Trampas durante una certificación','cliente:xp_salto_local':'XP alterado en el navegador','cliente:lab_rapido':'Lab terminado demasiado rápido','cliente:quiz_rapido':'Quiz respondido demasiado rápido','cliente:consola':'Abrió las herramientas del navegador'};
 async function instrExtra(v,names){
  const [pw,al,pp,pr]=await Promise.all([sb.from('pw_requests').select('*').order('created_at',{ascending:false}).limit(50),sb.from('alerts').select('*').order('created_at',{ascending:false}).limit(200),sb.from('peer_pool').select('id,user_id,module,text,created_at').order('created_at',{ascending:false}).limit(100),sb.from('peer_reviews').select('*').order('created_at',{ascending:false}).limit(150)]);
  const top=v.querySelector('#isec'),bot=v.querySelector('#imod');if(!top||!bot)return;

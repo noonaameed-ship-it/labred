@@ -613,3 +613,46 @@ begin
   end loop;
 end $$;
 notify pgrst, 'reload schema';
+
+-- 18. Protección: el servidor no deja que un guardado borre el avance de alguien
+create or replace function public.check_progress() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  oldp int := coalesce((old.data->>'pts')::numeric, 0)::int;
+  newp int := coalesce((new.data->>'pts')::numeric, 0)::int;
+  oldn int := 0; newn int := 0;
+  k text; e jsonb;
+begin
+  if pg_column_size(new.data) > 500000 then raise exception 'Progreso demasiado grande'; end if;
+  if tg_op = 'UPDATE' and not public.is_admin() then
+    select count(*) into oldn from jsonb_object_keys(coalesce(old.data->'done', '{}'::jsonb));
+    select count(*) into newn from jsonb_object_keys(coalesce(new.data->'done', '{}'::jsonb));
+    if oldn >= 3 and newn < oldn / 2 then
+      perform public.raise_alert(new.user_id, 'progreso_protegido',
+        jsonb_build_object('tickets_guardados', oldn, 'tickets_que_llegaron', newn, 'xp_guardado', oldp));
+      new.data := jsonb_set(old.data, '{ts}', to_jsonb((extract(epoch from now()) * 1000)::bigint), true);
+      return new;
+    end if;
+  end if;
+  if public.is_admin() then return new; end if;
+  if tg_op = 'UPDATE' and newp - oldp > 1500 then
+    perform public.raise_alert(new.user_id, 'xp_salto', jsonb_build_object('antes', oldp, 'despues', newp));
+  end if;
+  if tg_op = 'INSERT' and newp > 3000 then
+    perform public.raise_alert(new.user_id, 'xp_inicial', jsonb_build_object('xp', newp));
+  end if;
+  for k, e in select * from jsonb_each(coalesce(new.data->'done', '{}'::jsonb)) loop
+    if jsonb_typeof(e) <> 'object' then continue; end if;
+    if k ~ '^x[0-9]$' and coalesce(e->>'v','') = '2' and coalesce((e->>'examBest')::numeric, 0) >= 80
+       and coalesce((e->>'attempts')::int, 0) = 0 then
+      perform public.raise_alert(new.user_id, 'cert_sin_intento', jsonb_build_object('cert', k, 'calificacion', e->>'examBest'));
+    end if;
+    if coalesce((e->>'examBest')::numeric, 0) > 100 or coalesce((e->>'labScore')::numeric, 0) > 100 then
+      perform public.raise_alert(new.user_id, 'calificacion_imposible', jsonb_build_object('modulo', k));
+    end if;
+    if coalesce((e->>'labPasses')::int, 0) > coalesce((e->>'labRuns')::int, 0) then
+      perform public.raise_alert(new.user_id, 'lab_inconsistente', jsonb_build_object('lab', k));
+    end if;
+  end loop;
+  return new;
+end $$;
