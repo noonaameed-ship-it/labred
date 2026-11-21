@@ -50,8 +50,8 @@ create table if not exists public.feedback (
 );
 alter table public.feedback enable row level security;
 drop policy if exists "feedback: enviar" on public.feedback;
-create policy "feedback: enviar" on public.feedback for insert to anon, authenticated
-  with check (user_id is null or user_id = auth.uid());
+create policy "feedback: enviar" on public.feedback for insert to authenticated
+  with check (user_id = auth.uid());
 
 -- 4. Instructores: pueden leer el avance de todos y el feedback
 alter table public.progress add column if not exists name text;
@@ -456,3 +456,10 @@ create trigger reviews_apply_reset after insert on public.reviews
 
 -- Aplica ahora las que ya revocaste y el becario todavía no ha abierto
 select public.apply_exam_reset(id) from public.reviews where reopen and module ~ '^x[0-9]$' order by id;
+
+-- 15. Solo becarios con cuenta pueden dejar feedback (evita comentarios anónimos)
+drop policy if exists "feedback: enviar" on public.feedback;
+create policy "feedback: enviar" on public.feedback for insert to authenticated
+  with check (user_id = auth.uid());
+drop policy if exists "feedback: instructor borra" on public.feedback;
+create policy "feedback: instructor borra" on public.feedback for delete to authenticated using (public.is_admin());
