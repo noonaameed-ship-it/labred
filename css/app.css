@@ -431,3 +431,4 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 .pedit input{width:100%;max-width:520px;font:inherit;padding:8px 10px;border:1.5px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink)}
 .tiers{display:flex;gap:6px;margin:2px 0}.tiers i{font:600 11px 'IBM Plex Mono',monospace;font-style:normal;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--mut)}.tiers i.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .rankwrap h2{margin:26px 0 10px}
+.pacts{display:flex;gap:8px;flex-wrap:wrap}
