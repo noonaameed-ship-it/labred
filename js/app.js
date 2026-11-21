@@ -88,7 +88,7 @@ try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 let SYNCING=false;const SUB=x=>x?Object.keys(x.done||{}).length*10+(Number(x.pts)||0)/10:0;
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
-const calcPts=()=>(st.placePts||0)+(st.livePts||0)+(st.mis&&st.mis.pts||0)+(st.fcPts||0)+(st.daily&&st.daily.pts||0)+(st.revPts||0)+(st.noc&&st.noc.pts||0)+(st.duelPts||0)+(st.arenaPts||0)+(st.bossPts||0)+(st.peerPts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
+const calcPts=()=>(st.restorePts||0)+(st.placePts||0)+(st.livePts||0)+(st.mis&&st.mis.pts||0)+(st.fcPts||0)+(st.daily&&st.daily.pts||0)+(st.revPts||0)+(st.noc&&st.noc.pts||0)+(st.duelPts||0)+(st.arenaPts||0)+(st.bossPts||0)+(st.peerPts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
 const CV=2,exOk=r=>(r.examBest||0)>=EXPASS&&r.v===CV;
 const used=r=>!!(r&&((r.qok&&Object.keys(r.qok).length)||r.expSent||r.evalText||r.lab||r.labRuns||r.attempts||r.examBest));
 const fastZone=z=>(st.fast||0)>z;
@@ -1227,6 +1227,23 @@ function forcePw(){const el=$('#celeb');
   if(r.error){m.textContent=/different|same/i.test(r.error.message)?'Usa una contraseña distinta a la temporal.':authErr(r.error);return}
   el.classList.remove('on');toast('Listo: tu contraseña nueva quedó guardada.')})}
 function authErr(e){const m=(e&&e.message||'').toLowerCase();if(m.includes('invalid login'))return'Correo o contraseña incorrectos. Si la olvidaste, usa "Olvidé mi contraseña".';if(m.includes('already registered'))return'Ese correo ya tiene cuenta. Usa "Entrar".';if(m.includes('not confirmed'))return'Tu cuenta está pendiente de activar. Avísale a tu instructor.';if(m.includes('signups')&&m.includes('disabled'))return'El registro de cuentas está apagado. Pídele al administrador que lo active en Supabase.';if(m.includes('weak')||m.includes('password should'))return'Contraseña muy débil: usa al menos 8 caracteres con mayúscula, minúscula, número y símbolo.';if(m.includes('rate'))return'Demasiados intentos desde esta red. Espera unos minutos.';return'No se pudo: '+(e.message||'error desconocido')}
+
+/* Restauración del 21 nov 2026: avance reconstruido para quienes lo perdieron al cambiar de dirección.
+   Las llaves son el sha256 (16 caracteres) del nombre o correo en minúsculas; solo se aplica si su avance guardado quedó vacío. */
+const RESTORE={jess:{z0:1,x0:88,z1:'antesLab',lab1:1,unl:1,xp:2102},daryl:{z0:1,x0:90,z1:'todo',lab1:3,tsh1:1,unl:2,xp:1976},nn:{x0:97,z1:2,placed:3,fast:3,placePts:115,unl:1,xp:823}};
+const RESTOREK={'dc6f5528812059f8':'jess','1233534871a5f944':'jess','3b43e48861a62d3b':'daryl','fab66aa01347d3f1':'nn'};
+async function applyRestore(){if(isOwner||st.restoredV1||Object.keys(st.done).filter(k=>used(st.done[k])).length>=3)return;
+ let R=null;for(const t of[myName,userEmail]){if(!t)continue;try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t.trim().toLowerCase()));const h=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,16);if(RESTOREK[h]){R=RESTORE[RESTOREK[h]];break}}catch(e){}}
+ if(!R)return;const Z0=ZIDS(LEVELS[0]),Z1=ZIDS(LEVELS[1]),les=ids=>ids.filter(id=>!EXAMS[id]&&!LABS[id]);
+ if(R.z0)les(Z0).forEach(markPassed);
+ if(R.x0){const r=item('x0');r.examBest=R.x0;r.examPts=150;r.v=CV;r.attempts=1;r.passAt='2026-11-20'}
+ const L1=les(Z1),before=L1.filter(id=>Z1.indexOf(id)<Z1.indexOf('lab1'));
+ (R.z1==='todo'?L1:R.z1==='antesLab'?before:typeof R.z1==='number'?L1.slice(0,R.z1):[]).forEach(markPassed);
+ if(R.lab1>=RUNS('lab1'))markPassed('lab1');else if(R.lab1){const r=item('lab1');r.lab=true;r.labRuns=R.lab1;r.labPasses=R.lab1;r.labScore=95;r.labPts=190}
+ if(R.tsh1)markPassed('tsh1');
+ st.unlocked=Math.max(st.unlocked||0,R.unl||0);if(R.placed!==undefined){st.placed=R.placed;st.fast=R.fast||0;st.placePts=R.placePts||0}
+ st.intro=1;st.cv=CV;st.restorePts=0;st.restorePts=Math.max(0,R.xp-calcPts());st.restoredV1=1;
+ setTimeout(()=>toast('Restauramos tu avance. Si notas que falta algo, avísale a tu instructor.'),700)}
 async function onSession(session){
  const u=session&&session.user;
  if(u&&u.id===uid)return;
@@ -1244,6 +1261,7 @@ async function onSession(session){
   if(isOwner&&st.noRank===undefined)st.noRank=true;
   if(gi)setTimeout(()=>toast('Pasamos a tu cuenta el avance que hiciste como invitado.'),400);
   }catch(e){SYNCING=false;st=clone(BASE);uid=null;toast('No pudimos cargar tu avance. Revisa tu conexión y vuelve a entrar.');try{await sb.auth.signOut()}catch(_){}return}
+  try{await applyRestore()}catch(e){}
   SYNCING=false;save(true);flush();loadReviews();loadRequests();claimDuels();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
  else{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}save(true)}
  route();
