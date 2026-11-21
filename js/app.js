@@ -26,21 +26,32 @@ const celebQ=[];let celebOn=false;
 function celebrate(icon,title,text,btn='Continuar',log){celebQ.push({icon,title,text,btn,log:log||'%LABRED-5-EVENT: '+title});if(!celebOn)nextCeleb()}
 function nextCeleb(){const c=celebQ.shift(),el=$('#celeb');if(!c){celebOn=false;el.classList.remove('on');return}celebOn=true;
  el.innerHTML=`<div class="card"><div class="log">${esc(c.log)}</div><div class="body"><div class="big">${ico(c.icon)}</div><h2 id="celt">${esc(c.title)}</h2><p>${c.text}</p><button>${esc(c.btn)}</button></div></div>`;el.classList.add('on');confetti();sfx('badge');const b=el.querySelector('button');b.focus();b.addEventListener('click',nextCeleb)}
+const nOk=f=>Object.entries(st.done).filter(([k,r])=>lesById(k)||k==='lab1').some(([k,r])=>f(r));
 const BADGES=[
  {id:'primera',n:'Primer paquete',d:'Responde bien tu primera pregunta',ic:'packet',f:()=>Object.values(st.done).some(r=>r.qok&&Object.values(r.qok).some(Boolean))},
  {id:'ubicado',n:'Sé dónde estoy',d:'Haz el examen de ubicación',ic:'map',f:()=>st.placed!==null&&st.placed!==undefined},
  {id:'experto',n:'Ruta rápida',d:'El examen de ubicación te dio nivel avanzado',ic:'bolt',f:()=>(st.placed||0)>=2},
+ {id:'red',n:'Hola, red',d:'Cierra el ticket L0-01: qué es una red',ic:'cloud',f:()=>isPassed('n0-1')},
+ {id:'capas',n:'Las 7 capas',d:'Arma la pila OSI sin un solo error',ic:'layers',f:()=>!!(st.mini&&st.mini.osi)},
+ {id:'rayo',n:'Rayo OSI',d:'Haz 10 aciertos o más en la ronda rápida de capas',ic:'bolt',f:()=>(st.mini&&st.mini.osiBest||0)>=10},
+ {id:'binario',n:'Pienso en binario',d:'Completa las misiones de bits',ic:'table',f:()=>!!(st.mini&&st.mini.bits)},
  {id:'cartero',n:'Cartero',d:'Aprueba la misión del frame y la MAC',ic:'mail',f:()=>isPassed('l0-1')},
  {id:'memoria',n:'Memoria de switch',d:'Aprueba la misión de la MAC address table',ic:'table',f:()=>isPassed('l0-2')},
  {id:'vlan',n:'Arquitecto de VLAN',d:'Aprueba la misión de VLAN',ic:'layers',f:()=>isPassed('l0-3')},
- {id:'consola',n:'Primera consola',d:'Cierra el ticket TK-1042 con 90/100 o más',ic:'term',f:()=>isPassed('lab1')},
+ {id:'consola0',n:'Tres consolas',d:'Completa las misiones de consola en Cisco, Aruba y Juniper',ic:'term',f:()=>!!(st.mini&&st.mini.cli&&['cisco','aruba','juniper'].every(k=>st.mini.cli[k]))},
+ {id:'consola',n:'Primera VLAN',d:'Cierra el ticket TK-1042 con 90/100 o más',ic:'term',f:()=>isPassed('lab1')},
  {id:'impecable',n:'Configuración impecable',d:'Cierra un lab con 100/100: sin pistas ni errores',ic:'check',f:()=>(st.done.lab1&&st.done.lab1.labScore||0)>=100},
- {id:'cert0',n:'Certificado Zona 0',d:'Aprueba la certificación de Fundamentos',ic:'cert',f:()=>isPassed('x0')},
  {id:'multi',n:'Multivendor',d:'Resuelve el Lab 1 mezclando vendors',ic:'multi',f:()=>(st.done.lab1&&st.done.lab1.labPts||0)>=250},
- {id:'perfecto',n:'Explicación perfecta',d:'Saca 10/10 en una explicación',ic:'star',f:()=>Object.values(st.done).some(r=>r.exp===10)},
- {id:'persiste',n:'No me rindo',d:'Aprueba una explicación que antes reprobaste',ic:'up',f:()=>Object.values(st.done).some(r=>r.failed&&r.exp>=PASS)},
- {id:'racha3',n:'Uptime de 3 días',d:'Practica 3 días seguidos',ic:'flame',f:()=>(st.streak||0)>=3}
+ {id:'alaprimera',n:'A la primera',d:'Tu instructor aprueba una explicación sin regresártela',ic:'star',f:()=>nOk(r=>r.approved&&!r.reopenedBy)},
+ {id:'corregi',n:'Lo corregí',d:'Tu instructor aprueba una explicación que antes te regresó',ic:'wrench',f:()=>nOk(r=>r.approved&&r.reopenedBy)},
+ {id:'cert0',n:'Certificado Zona 0',d:'Aprueba la certificación de ¿Qué es una red?',ic:'cert',f:()=>isPassed('x0')},
+ {id:'cert1',n:'Certificado Zona 1',d:'Aprueba la certificación de Switching',ic:'cert',f:()=>isPassed('x1')},
+ {id:'reto3',n:'Reto aceptado',d:'Completa 3 retos del día',ic:'trophy',f:()=>(st.daily&&st.daily.n||0)>=3},
+ {id:'reto7',n:'Semana de retos',d:'Completa 7 retos del día',ic:'trophy',f:()=>(st.daily&&st.daily.n||0)>=7},
+ {id:'racha3',n:'Uptime de 3 días',d:'Practica 3 días seguidos',ic:'flame',f:()=>(st.streak||0)>=3},
+ {id:'racha7',n:'Uptime de 7 días',d:'Practica 7 días seguidos',ic:'flame',f:()=>(st.streak||0)>=7}
 ];
+const nBadges=()=>BADGES.filter(b=>st.badges&&st.badges[b.id]).length;
 const today=()=>new Date().toLocaleDateString('sv');
 function touchStreak(){const t=today();if(st.lastDay===t)return;const y=new Date(Date.now()-864e5).toLocaleDateString('sv');st.streak=st.lastDay===y?(st.streak||0)+1:1;st.lastDay=t}
 let isOwner=false,myName='';
@@ -58,7 +69,8 @@ let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
-const calcPts=()=>(st.placePts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0),0);
+const calcPts=()=>(st.placePts||0)+(st.daily&&st.daily.pts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
+const used=r=>!!(r&&((r.qok&&Object.keys(r.qok).length)||r.expSent||r.evalText||r.lab||r.labRuns||r.attempts||r.examBest));
 const fastZone=z=>(st.fast||0)>z;
 const passIn=(done,id)=>{const r=(done||{})[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&labPasses(r)>=LABRUNS&&sentOf(r)&&!r.redo;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&sentOf(r)&&!r.redo};
 const isPassed=id=>{const r=st.done[id];if(!r)return false;if(EXAMS[id])return(r.examBest||0)>=EXPASS;if(id==='lab1')return!!r.lab&&labPasses(r)>=LABRUNS&&sentOf(r)&&!r.redo;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&sentOf(r)&&!r.redo};
@@ -96,22 +108,29 @@ function isoWeek(d=new Date()){const t=new Date(Date.UTC(d.getFullYear(),d.getMo
 const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
 function curTheme(){try{return localStorage.getItem('labred_theme')||''}catch(e){return''}}
 function setTheme(t){try{t?localStorage.setItem('labred_theme',t):localStorage.removeItem('labred_theme')}catch(e){}t?document.documentElement.dataset.theme=t:delete document.documentElement.dataset.theme}
-function renderMe(){const p=calcPts(),nb=Object.keys(st.badges||{}).length,h=location.hash.slice(1)||'mapa';
- $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct()}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
+function renderMe(){const p=calcPts(),nb=nBadges(),h=location.hash.slice(1)||'mapa';
+ $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#reto" class="${h==='reto'?'on':''}">Reto del día</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a><a href="#glosario" class="${h==='glosario'?'on':''}">Glosario</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct()}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="#entrar" title="${uid?'Tu cuenta':'Entrar'}">${ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
  $('#thm').addEventListener('click',()=>{const n={'':'light',light:'dark',dark:''}[curTheme()];setTheme(n);toast('Tema: '+({light:'claro',dark:'oscuro'}[n]||'automático (como tu sistema)'));renderMe()});
  $('#snd').addEventListener('click',()=>{st.mute=!st.mute;save(true);if(!st.mute)sfx('ok')})}
 
 /* ---------- mapa: tu red ---------- */
-const ORDER=['l0-1','l0-2','l0-3','x0','lab1','x1','z2','z3','z4','z5'];
-const LAY={
- w:{vb:[960,500],zones:{0:[20,30,450,200],1:[490,30,450,200],2:[725,270,215,210],3:[490,270,215,210],4:[255,270,215,210],5:[20,270,215,210]},
-   pos:{'l0-1':[75,125],'l0-2':[185,125],'l0-3':[295,125],'x0':[405,125],'lab1':[620,125],'x1':[830,125],z2:[832,365],z3:[597,365],z4:[362,365],z5:[127,365]},off:{x1:80}},
- t:{vb:[360,1170],zones:{0:[10,20,340,310],1:[10,350,340,180],2:[10,550,340,140],3:[10,705,340,140],4:[10,860,340,140],5:[10,1015,340,140]},
-   pos:{'l0-1':[95,105],'l0-2':[265,105],'l0-3':[95,250],'x0':[265,250],'lab1':[95,440],'x1':[265,440],z2:[180,612],z3:[180,767],z4:[180,922],z5:[180,1077]},off:{}}};
+const ZIDS=L=>L.items?L.items.map(i=>i.id):['z'+L.n];
+const ORDER=LEVELS.flatMap(ZIDS);
+/* El mapa se acomoda solo: una franja por zona (las zonas próximas comparten franja en pantalla ancha). */
+function mkLay(mode){const zones={},pos={},off={};
+ if(mode==='w'){const W=960;let y=30;const soon=LEVELS.filter(L=>L.soon);
+  for(const L of LEVELS.filter(L=>!L.soon)){const ids=ZIDS(L),h=210,sp=(W-40)/ids.length;zones[L.n]=[20,y,W-40,h];ids.forEach((id,k)=>pos[id]=[20+sp*(k+.5),y+100]);y+=h+20}
+  if(soon.length){const w=(W-40-(soon.length-1)*12)/soon.length;soon.forEach((L,k)=>{const x=20+k*(w+12);zones[L.n]=[x,y,w,190];pos['z'+L.n]=[x+w/2,y+95]});
+   off[ZIDS(LEVELS.filter(L=>!L.soon).pop()).pop()]=0;y+=210}
+  return{vb:[W,y],zones,pos,off}}
+ let y=20;for(const L of LEVELS){const ids=ZIDS(L);if(L.soon){zones[L.n]=[10,y,340,140];pos['z'+L.n]=[180,y+62];y+=155;continue}
+  const rows=Math.ceil(ids.length/2),h=rows*150+30;zones[L.n]=[10,y,340,h];ids.forEach((id,k)=>pos[id]=[k%2?265:95,y+95+Math.floor(k/2)*150]);y+=h+20}
+ return{vb:[360,y],zones,pos,off}}
+const LAY={w:mkLay('w'),t:mkLay('t')};
 function itemById(id){if(id==='place')return{id,t:'Examen de ubicación',h:'#ubicacion',L:LEVELS[0]};for(const L of LEVELS)for(const i of(L.items||[]))if(i.id===id)return{...i,L};const n=+id.slice(1);return{id,t:LEVELS[n].t,L:LEVELS[n],soon:true}}
 function blockedAt(){return ORDER.find(id=>st.done[id]&&st.done[id].redo)}
 function itemOpen(id){const I=itemById(id);if(I.soon||I.L.soon)return false;if(!unlocked(I.L.n))return false;if(cOn())return true;const blk=blockedAt();if(blk&&ORDER.indexOf(id)>ORDER.indexOf(blk))return false;
- if(!I.exam&&!fastZone(I.L.n)){const its=I.L.items,k=its.findIndex(i=>i.id===id);if(k>0&&!isPassed(its[k-1].id))return false}if(I.exam&&!cOn()&&!fastZone(I.L.n))return I.L.items.filter(i=>i.id!==id).every(i=>isPassed(i.id));return true}
+ if(!I.exam&&!fastZone(I.L.n)){const its=I.L.items,k=its.findIndex(i=>i.id===id);if(k>0&&!isPassed(its[k-1].id)&&!used(st.done[id]))return false}if(I.exam&&!cOn()&&!fastZone(I.L.n))return I.L.items.filter(i=>i.id!==id).every(i=>isPassed(i.id));return true}
 const nextOpen=()=>ORDER.find(id=>{const I=id[0]==='z'?null:itemById(id);return itemOpen(id)&&!isPassed(id)&&!(I&&!I.exam&&fastZone(I.L.n)&&!isPassed('x'+I.L.n))});
 function glyph(t,x,y,stt){const ink=stt==='lock'?'var(--line)':'var(--ink)',fill=stt==='done'?'var(--ink)':stt==='lock'?'var(--soft)':'var(--paper)',in2=stt==='done'?'var(--paper)':ink;
  const sw=(cx,cy,w,h,cols)=>`<rect x="${cx-w/2}" y="${cy-h/2}" width="${w}" height="${h}" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3,4,5].map(i=>`<rect x="${cx-w/2+7+i*((w-14)/6)}" y="${cy-3}" width="${(w-14)/6-3}" height="6" rx="1" fill="${cols?cols[i%2]:in2}"/>`).join('')}`;
@@ -124,6 +143,12 @@ function glyph(t,x,y,stt){const ink=stt==='lock'?'var(--line)':'var(--ink)',fill
  case'rack':return`<rect x="${x-22}" y="${y-24}" width="44" height="48" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3].map(i=>`<rect x="${x-15}" y="${y-17+i*10}" width="30" height="5" rx="1" fill="${in2}"/>`).join('')}`;
  case'stp':return`<path d="M${x} ${y-18}L${x-22} ${y+14}M${x} ${y-18}L${x+22} ${y+14}" stroke="${ink}" stroke-width="2"/><path d="M${x-22} ${y+14}H${x+22}" stroke="${ink}" stroke-width="2" stroke-dasharray="3 4"/>${[[x,y-18],[x-22,y+14],[x+22,y+14]].map(([a,b])=>`<circle cx="${a}" cy="${b}" r="8" fill="${fill}" stroke="${ink}" stroke-width="2"/>`).join('')}`;
  case'lacp':return sw(x-26,y,30,22).replace(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="6"[^>]*\/>/g,'')+sw(x+26,y,30,22).replace(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="6"[^>]*\/>/g,'')+[-6,0,6].map(d=>`<path d="M${x-11} ${y+d}H${x+11}" stroke="${ink}" stroke-width="2"/>`).join('');
+ case'net':return`<path d="M${x-22} ${y+10}a12 12 0 0 1 2-23a15 15 0 0 1 28-4a11 11 0 0 1 14 15a9 9 0 0 1-4 12z" fill="${fill}" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>${[[-10,2],[2,-6],[12,4]].map(([a,b])=>`<circle cx="${x+a}" cy="${y+b}" r="3" fill="${in2}"/>`).join('')}<path d="M${x-10} ${y+2}L${x+2} ${y-6}L${x+12} ${y+4}" fill="none" stroke="${in2}" stroke-width="1.5"/>`;
+ case'osi':return[0,1,2,3].map(i=>`<rect x="${x-24+i*2}" y="${y-22+i*11}" width="${48-i*4}" height="9" rx="2" fill="${i===2&&stt!=='lock'?'var(--blue)':fill}" stroke="${ink}" stroke-width="2"/>`).join('');
+ case'cable':return`<path d="M${x-26} ${y+16}C${x-10} ${y+16} ${x-14} ${y-2} ${x} ${y-2}" fill="none" stroke="${stt==='lock'?ink:'var(--trunk)'}" stroke-width="4" stroke-linecap="round"/><rect x="${x}" y="${y-14}" width="22" height="24" rx="3" fill="${fill}" stroke="${ink}" stroke-width="2"/>${[0,1,2,3].map(i=>`<rect x="${x+4+i*4}" y="${y-11}" width="2" height="7" fill="${in2}"/>`).join('')}`;
+ case'addr':return`<path d="M${x-24} ${y-14}h32l16 14-16 14h-32z" fill="${fill}" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><circle cx="${x+10}" cy="${y}" r="3" fill="${in2}"/><text x="${x-9}" y="${y+5}" text-anchor="middle" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="${in2}">IP</text>`;
+ case'term':return`<rect x="${x-26}" y="${y-20}" width="52" height="38" rx="4" fill="${fill}" stroke="${ink}" stroke-width="2"/><path d="M${x-26} ${y-11}h52" stroke="${ink}" stroke-width="2"/><path d="M${x-17} ${y-3}l7 5-7 5M${x-6} ${y+9}h12" fill="none" stroke="${stt==='done'?'var(--trunk)':in2}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+ case'ip':return`<circle cx="${x}" cy="${y}" r="20" fill="${fill}" stroke="${ink}" stroke-width="2"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace" fill="${in2}">/24</text>`;
  case'router':return`<circle cx="${x}" cy="${y}" r="20" fill="${fill}" stroke="${ink}" stroke-width="2"/><path d="M${x-10} ${y-5}h20m-5-5 5 5-5 5M${x+10} ${y+6}h-20m5-5-5 5 5 5" fill="none" stroke="${in2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`}
  return''}
 function wrapT(t,n){const w=t.split(' '),L=[''];for(const x of w){if(L[L.length-1]&&(L[L.length-1]+' '+x).length>n)L.push(x);else L[L.length-1]=(L[L.length-1]+' '+x).trim()}return L.length>2?[L[0],L[1]+'…']:L}
@@ -133,7 +158,7 @@ function drawNet(card){
  const P=Ly.pos,stOf=id=>id[0]==='z'?'lock':isPassed(id)?'done':!itemOpen(id)?'lock':id===cur?'cur':'open';
  const zones=Object.entries(Ly.zones).map(([n,[x,y,w,h]])=>{const L=LEVELS[n],ok=L.items&&L.items.every(i=>isPassed(i.id));return`<rect class="zr" x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/><text class="zl" x="${x+12}" y="${y+20}">${L.soon?`Zona ${n} · próximamente`:`Zona ${n} · ${esc(L.t)}${ok?' · en línea':''}`}</text>`}).join('');
  let links='';for(let i=0;i<ORDER.length-1;i++){const a=ORDER[i],b=ORDER[i+1],[ax,ay]=P[a],[bx,by]=P[b],up=isPassed(a)&&b[0]!=='z';
-  const d=ay===by&&ax!==bx?`M${ax} ${ay}H${bx}`:`M${ax} ${ay}H${ax+(Ly.off[a]||(mode==='t'&&a[0]==='z'?85:65))}V${ay===by?ay:by-(mode==='t'?62:62)}H${bx}V${by}`;
+  const o=Ly.off[a]!==undefined?Ly.off[a]:(mode==='t'&&a[0]==='z'?85:65),d=ay===by&&ax!==bx?`M${ax} ${ay}H${bx}`:o===0?`M${ax} ${ay}V${by-62}H${bx}V${by}`:`M${ax} ${ay}H${ax+o}V${ay===by?ay:by-62}H${bx}V${by}`;
   links+=`<path class="lk ${up?'up':'dn'}" d="${d}"/>${up&&!RM?`<path class="pk" d="${d}"/>`:''}`}
  const nodes=ORDER.map(id=>{const[x,y]=P[id],s=stOf(id),I=itemById(id),open=s!=='lock',tid=id[0]==='z'?'Zona '+id.slice(1):TID[id],t=wrapT(I.t,mode==='t'?20:14);
   const led=s==='done'?'var(--ok)':s==='cur'?'var(--trunk)':s==='open'?'var(--blue)':'var(--line)';
@@ -147,16 +172,17 @@ function drawNet(card){
 }
 let netRO=null;
 const DESC_T={lesson:'Lección corta con práctica interactiva, 10 preguntas y tu explicación con tus palabras, que revisa tu instructor.',lab:'Configura dos switches en consola. Tienes que resolverlo bien 3 veces (90/100 o más), cada vez con otra VLAN, y explicar lo que hiciste (lo revisa tu instructor).',exam:n=>EXAMS[n].lab?`${EXAMS[n].n} preguntas de teoría y un lab sin ayuda. Aprueba con 80; con 90 o más ganas bono de XP.`:`${EXAMS[n].n} preguntas al azar de todo lo visto en la zona, ${EXAMS[n].min} minutos. Aprueba con 80; con 90 o más ganas bono de XP.`};
-function migrateFast(){if(st.placed>=1&&st.fast===undefined){st.fast=Math.min(st.placed,2);if(st.placePts===undefined)st.placePts=st.placed>=2?75:st.placed>=1?40:0;save()}}
-function renderMap(){migrateFast();
+function migrateFast(){if((st.unlocked||0)<1&&['l0-1','l0-2','l0-3','lab1','x0'].some(id=>used(st.done[id]))){st.unlocked=1;save(true)}if(st.placed>=1&&st.fast===undefined){st.fast=Math.min(st.placed,2);if(st.placePts===undefined)st.placePts=st.placed>=2?75:st.placed>=1?40:0;save()}}
+function renderMap(){migrateFast();if(!st.intro&&!isOwner&&(!sb||uid||guest)){st.intro=1;save(true);celebrate('net','Bienvenido a NetCorp',INTRO,'Ver mi red','%LABRED-5-WELCOME: nuevo becario en la red')}
  const p=calcPts(),n=nextT(p),cur=nextOpen(),C=cur&&itemById(cur),ids=ORDER.filter(id=>id[0]!=='z'),closed=ids.filter(isPassed).length;
  const saved=sb&&uid?'Progreso guardado en tu cuenta':'Sin cuenta: progreso solo en este navegador';
  const desc=C?(C.exam?DESC_T.exam(cur):cur==='lab1'?DESC_T.lab:DESC_T.lesson):'';
  const stChip=id=>isPassed(id)?'<span class="chip ok">Cerrado</span>':!itemOpen(id)?'<span class="chip lock">Bloqueado</span>':st.done[id]?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>';
  $('#v-mapa').innerHTML=`<div class="console"><aside class="op">
   <div class="card"><div class="prof"><div class="av">${esc(initials(myName||'Invitado'))}</div><div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle())}${!isOwner&&(st.placed||0)>=2?` · nivel Zona ${st.placed}${st.placed>=3?'+':''}`:''}</span></div></div><div class="xpbar"><i style="width:${xpPct()}%"></i></div><div class="small">${nextTxt()} · ${saved}</div></div>
-  <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${Object.keys(st.badges||{}).length}/${BADGES.length}</b><span>Insignias</span></div></div>
+  <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${nBadges()}/${BADGES.length}</b><span>Insignias</span></div></div>
   ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
+  ${retoCard()}
   ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:(fastZone(0)?`<div class="card"><strong>Ruta rápida activa</strong>${(st.placed||0)>=2?`<p class="small" style="margin:4px 0 0">Tu examen de ubicación te puso en la <strong>Zona ${st.placed}</strong>${st.placed>=3?' o más':''}. Esa zona todavía se está construyendo: se abrirá aquí en cuanto salga. Mientras, certifica las anteriores para subir de rango.</p>`:''}<p class="small" style="margin:4px 0 0">Puedes certificar directo: ${[...Array(Math.min(st.fast,2)).keys()].map(z=>`<a href="#examen-${z}">${TID['x'+z]}</a>${isPassed('x'+z)?' ✓':''}`).join(' · ')}</p></div>`:'')+`<a class="btnl sec" href="#ubicacion">${ico('map')} Repetir examen de ubicación</a>`}
  </aside><section><div class="netcard"><div class="nethead"><h2>Tu red</h2><div class="nleg"><span><i style="background:var(--ok)"></i>enlace up</span><span><i style="background:var(--line)"></i>pendiente</span><span><i style="background:var(--trunk)"></i>siguiente</span></div></div><div class="netbox"></div></div>
  <div class="netcard queue"><h2>Cola de tickets</h2>${ids.map(id=>{const I=itemById(id);return`<a class="qrow ${itemOpen(id)?'':'lock'}" href="${itemOpen(id)?I.h:'#mapa'}" data-q="${id}"><span class="qid">${esc(TID[id])}</span><span class="qt"><b>${esc(I.t)}</b><span>Zona ${I.L.n} · ${esc(I.L.t)}</span></span>${sig(starsFor(id))}${stChip(id)}</a>`}).join('')}</div></section></div>`;
@@ -165,7 +191,7 @@ function renderMap(){migrateFast();
 }
 
 /* ---------- insignias ---------- */
-function renderLogros(){const p=calcPts(),stars=ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),nb=Object.keys(st.badges||{}).length;
+function renderLogros(){const p=calcPts(),stars=ORDER.reduce((a,id)=>a+(id[0]==='z'?0:starsFor(id)),0),nb=nBadges();
  $('#v-logros').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / insignias</p><h1>${isOwner?'Instructor':esc(rankTitle())}</h1><div class="xpbar" style="max-width:420px"><i style="width:${xpPct()}%"></i></div><p class="small">${p} XP · ${nextTxt()}</p></div></header>
  <div class="wrap" style="padding-bottom:40px"><div class="stats"><div class="stat"><b>${p}</b><span>XP total</span></div><div class="stat"><b>${stars}</b><span>Barras de señal</span></div><div class="stat"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="stat"><b>${nb}/${BADGES.length}</b><span>Insignias</span></div></div>
  <h2>Insignias</h2><div class="badges">${BADGES.map(b=>{const on=st.badges&&st.badges[b.id];return`<div class="badge ${on?'on':''}"><div class="bi">${ico(on?b.ic:'lock')}</div><div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div></div>`}).join('')}</div>
@@ -193,6 +219,29 @@ function renderCreador(){
  $('#fresh').addEventListener('click',()=>{try{localStorage.setItem('labred_bk',JSON.stringify(st))}catch(e){}if(sb&&uid)sb.from('progress').update({backup:clone(st)}).eq('user_id',uid).then(()=>{});st=Object.assign(clone(BASE),keep(),{cUnlock:false});save(true);toast('Empiezas de cero. Tu progreso quedó respaldado.');location.hash='mapa'});
  $('#restore').addEventListener('click',async()=>{let b=bk;if(sb&&uid){try{const d=await sb.from('progress').select('backup').eq('user_id',uid).maybeSingle();if(d.data&&d.data.backup)b=d.data.backup}catch(e){}}if(!b)return;st=Object.assign(clone(BASE),clone(b));save(true);toast('Progreso restaurado.');renderCreador()});
 }
+
+
+/* ---------- bienvenida, reto del día y glosario ---------- */
+const INTRO='Soy <strong>Sofía</strong>, jefa de TI. Desde hoy eres parte del equipo de redes de NetCorp. Cada ticket del mapa es un problema de la oficina: lo resuelves aprendiendo, jugando los minijuegos y explicándolo con tus palabras. Certifica cada zona para subir de rango. ¿Ya sabes algo de redes? Haz el <strong>examen de ubicación</strong> y sáltate lo que ya dominas.';
+const dayN=d=>{let h=0;for(const c of d)h=(h*31+c.charCodeAt(0))>>>0;return h};
+function retoQs(){const zs=Math.max(st.unlocked||0,0),pool=[];for(const L of Object.values(LES))if(L.lv<=zs)for(const q of L.quiz)pool.push({...q,from:L.id});
+ let h=dayN(today()+(uid||''));const out=[];const p=pool.slice();while(out.length<3&&p.length){h=(h*1103515245+12345)>>>0;out.push(p.splice(h%p.length,1)[0])}return out}
+function dailySt(){st.daily=st.daily||{n:0,pts:0};if(st.daily.day!==today()){st.daily.day=today();st.daily.ans={}}return st.daily}
+function retoCard(){if(isOwner)return'';const d=dailySt(),k=Object.keys(d.ans).length;return`<a class="card reto" href="#reto"><span class="tid">${ico('trophy')} Reto del día</span><b>${k>=3?'Completado hoy':`${k} de 3 preguntas`}</b><span class="small">${k>=3?`Vuelve mañana por otro. Llevas ${d.n} ${d.n===1?'reto':'retos'}.`:'3 preguntas de repaso, +5 XP por cada acierto.'}</span></a>`}
+function renderReto(){const d=dailySt(),qs=retoQs(),v=$('#v-reto');
+ const draw=()=>{const k=Object.keys(d.ans).length;
+  v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / reto del día</p><h1>Reto del día</h1><p>Tres preguntas de repaso de las zonas que tienes abiertas. Cambian cada día. Solo cuenta tu primera respuesta: +5 XP por acierto.</p></div></header>
+  <div class="lecw">${qs.map((q,i)=>{const a=d.ans[i];return`<div class="q" data-i="${i}"><p class="small mono" style="margin:0 0 4px">${esc(TID[q.from]||'')}</p><p>${esc(q.q)}</p><div class="opts">${q.o.map((o,j)=>`<button data-j="${j}" class="${a!==undefined?(j===q.a?'right':j===a?'wrong':''):''}" ${a!==undefined?'disabled':''}>${esc(o)}</button>`).join('')}</div>${a!==undefined?`<div class="why">${a===q.a?'<strong style="color:var(--ok)">Correcto. +5 XP</strong> ':'<strong style="color:var(--bad)">No.</strong> '}${esc(q.why||'')}</div>`:''}</div>`}).join('')}
+  ${k>=3?`<div class="res"><h3 style="margin:0">Reto de hoy completo</h3><p>${qs.filter((q,i)=>d.ans[i]===q.a).length} de 3 correctas. Llevas <strong>${d.n}</strong> ${d.n===1?'reto':'retos'} en total. Mañana hay otro.</p><a class="btnl" href="#mapa">Volver a mi red →</a></div>`:''}${qs.length<3?'<p class="small">Abre más tickets para tener más preguntas en el reto.</p>':''}</div>`;
+  v.querySelectorAll('.q').forEach(box=>box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const i=+box.dataset.i,j=+b.dataset.j;if(d.ans[i]!==undefined)return;d.ans[i]=j;
+   if(j===qs[i].a){d.pts=(d.pts||0)+5;sfx('ok');floatXP(5)}else sfx('bad');if(Object.keys(d.ans).length>=3&&d.doneDay!==today()){d.doneDay=today();d.n=(d.n||0)+1;touchStreak()}save();draw()})))};
+ draw()}
+function renderGlosario(){const seen=new Map();for(const[k,list]of Object.entries(VOCAB)){const L=LES[k];for(const[e,t]of list){const key=e.toLowerCase();if(!seen.has(key))seen.set(key,{e,t,from:L?L.id:null})}}
+ const all=[...seen.values()].sort((a,b)=>a.e.localeCompare(b.e,'es',{sensitivity:'base'})),v=$('#v-glosario');
+ v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / glosario</p><h1>Glosario</h1><p>Los ${all.length} términos en inglés que vas a oír en el trabajo, con su traducción. Búscalos cuando los veas en un comando o en una junta.</p></div></header>
+ <div class="lecw"><input id="gq" class="gq" type="search" placeholder="Buscar: VLAN, trunk, MAC…" aria-label="Buscar término"><dl class="gloss" id="gl"></dl></div>`;
+ const paint=q=>{const n=norm(q||'');$('#gl').innerHTML=all.filter(x=>!n||norm(x.e+' '+x.t).includes(n)).map(x=>`<div><dt>${esc(x.e)}</dt><dd>${esc(x.t)}${x.from&&TID[x.from]?` <a class="small mono" href="${itemById(x.from).h}">${esc(TID[x.from])}</a>`:''}</dd></div>`).join('')||'<p class="small">No hay términos con esa búsqueda.</p>'};
+ $('#gq').addEventListener('input',e=>paint(e.target.value));paint('')}
 
 /* ---------- examen de ubicación ---------- */
 function renderPlace(){
@@ -246,6 +295,108 @@ function frameBar(el,segs){
 }
 const SEG_ETH=[{n:'Destination MAC',b:'6 bytes',c:'#1a5fd0',w:2,d:'<strong>Destination MAC</strong> (MAC destino): a quién va. Es lo primero que lee el switch para decidir el puerto de salida.'},{n:'Source MAC',b:'6 bytes',c:'#3c5a78',w:2,d:'<strong>Source MAC</strong> (MAC origen): quién lo manda. El switch la usa para aprender (lo ves en la siguiente lección).'},{n:'EtherType',b:'2 bytes',c:'#55606a',w:1,d:'<strong>EtherType</strong> (tipo): avisa qué tipo de contenido viene adentro, por ejemplo un paquete IP. No necesitas memorizar sus valores.'},{n:'Payload',b:'46–1500 bytes',c:'#0f8a4f',w:5,d:'<strong>Payload</strong> (los datos que se transportan): lo que realmente se quería mandar, normalmente un paquete IP. En Ethernet caben hasta 1500 bytes; a ese límite se le llama MTU.'},{n:'FCS',b:'4 bytes',c:'#8a5a00',w:1,d:'<strong>FCS</strong> (código de revisión): el switch hace una cuenta con todo el frame y la compara con este código. Si no coincide, el frame se dañó en el camino y se descarta.'}];
 const SEG_TAG=[SEG_ETH[0],SEG_ETH[1],{n:'802.1Q',b:'4 bytes',c:'#d49b00',w:2,d:'<strong>Tag 802.1Q</strong> (etiqueta): solo existe dentro de un trunk. Lo importante es que lleva el número de VLAN (el VID, de 1 a 4094) para que el otro switch sepa a qué VLAN pertenece el frame. También trae otros datos, como la prioridad, que verás más adelante.'},SEG_ETH[2],SEG_ETH[3],SEG_ETH[4]];
+
+/* LabRed: minijuegos de las lecciones (Zona 0 y "Tu primera consola").
+   Cada juego recibe el contenedor y guarda su avance en st.mini. */
+const MINIXP=10;
+function miniWin(key,lesId,msg){st.mini=st.mini||{};const first=!st.mini[key+'_xp'];st.mini[key]=true;
+ if(first){st.mini[key+'_xp']=1;const r=item(lesId);r.miniPts=(r.miniPts||0)+MINIXP;floatXP(MINIXP)}sfx('win');save();if(msg)toast(msg)}
+const gshuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const GAMES={
+ devices(el){
+  const P=[['PC / laptop','Donde trabaja la persona (endpoint)'],['Switch','Conecta equipos de la misma red local'],['Router','Conecta redes distintas, como la oficina con internet'],['Access point','Da Wi-Fi'],['Servidor','Da servicios: web, correo, archivos'],['Firewall','Decide qué tráfico pasa y cuál se bloquea']];
+  let sel=null,err=0,ok=0;const L=gshuf(P.map((p,i)=>i)),R=gshuf(P.map((p,i)=>i));
+  el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · ¿Quién es quién?</b><span class="small" id="gst">Toca un equipo y luego lo que hace.</span></div>
+   <div class="match"><div>${L.map(i=>`<button class="gb" data-l="${i}">${esc(P[i][0])}</button>`).join('')}</div><div>${R.map(i=>`<button class="gb" data-r="${i}">${esc(P[i][1])}</button>`).join('')}</div></div></div>`;
+  const stt=el.querySelector('#gst');
+  el.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;el.querySelectorAll('[data-l]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');sel=+b.dataset.l}));
+  el.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;if(sel===null){stt.textContent='Primero toca un equipo de la izquierda.';return}
+   const lb=el.querySelector(`[data-l="${sel}"]`);
+   if(+b.dataset.r===sel){[lb,b].forEach(x=>{x.disabled=true;x.classList.remove('sel');x.classList.add('ok')});sfx('ok');ok++;stt.textContent=`${P[sel][0]}: ${P[sel][1].toLowerCase()}.`;sel=null;
+    if(ok===P.length){stt.innerHTML=err?`<strong>¡Completo!</strong> Con ${err} ${err===1?'error':'errores'}. Recarga la lección si quieres intentarlo perfecto.`:'<strong>¡Perfecto, sin errores!</strong>';if(!err)miniWin('devices','n0-1','Minijuego completado sin errores');else{st.mini=st.mini||{};if(!st.mini.devices_xp){const r=item('n0-1');r.miniPts=(r.miniPts||0)+5;st.mini.devices_xp=1;floatXP(5);save()}}}}
+   else{err++;sfx('bad');b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),400);stt.textContent=`No: ${P[sel][0]} no hace eso. Intenta otra.`}}));
+ },
+ osi(el){
+  const LY=['Física','Enlace de datos','Red','Transporte','Sesión','Presentación','Aplicación'],EX=['cables, señal, bits','MAC, switch, frames','IP, router, paquetes','TCP, UDP, puertos','abrir y cerrar la conversación','formato y cifrado','lo que usa la persona: web, correo'];
+  let next=0,err=0;
+  const Q=[['Cable UTP desconectado',1],['El switch revisa la MAC destino',2],['El router elige el camino con la IP',3],['TCP vuelve a mandar un dato perdido',4],['Navegar con HTTPS',7],['La luz de la fibra',1],['Un frame',2],['Un paquete',3],['El puerto 443',4],['Una dirección IP',3],['Señal de Wi-Fi débil',1],['El correo electrónico',7],['Una dirección MAC',2],['UDP para una llamada',4]];
+  el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · Arma la pila OSI</b><span class="small" id="gst">Toca las capas en orden, de la 1 (abajo) a la 7 (arriba).</span></div>
+   <div class="osi"><ol class="stack" id="gstack" reversed></ol><div class="pool">${gshuf(LY.map((t,i)=>i)).map(i=>`<button class="gb" data-i="${i}">${LY[i]}</button>`).join('')}</div></div><div id="gspeed"></div></div>`;
+  const stt=el.querySelector('#gst'),stack=el.querySelector('#gstack');
+  el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;
+   if(i===next){b.remove();stack.insertAdjacentHTML('afterbegin',`<li><b>${next+1} · ${LY[i]}</b><span>${EX[i]}</span></li>`);next++;sfx('ok');stt.textContent=next<7?`Bien. Ahora la capa ${next+1}.`:'';
+    if(next===7){stt.innerHTML=err?`<strong>¡Pila completa!</strong> Con ${err} ${err===1?'error':'errores'}. Truco: "Francisco Enamoró a Rosa Tocando Su Piano Alemán".`:'<strong>¡Las 7 capas sin un solo error!</strong>';if(!err)miniWin('osi','n0-2','Insignia en camino: las 7 capas sin errores');speed()}}
+   else{err++;sfx('bad');b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),400);stt.textContent=`Esa no es la capa ${next+1}. Pista: ${EX[next]}.`}}));
+  const speed=()=>{const box=el.querySelector('#gspeed');box.innerHTML=`<div class="speed"><p><b>Ronda rápida:</b> 30 segundos para decir en qué capa vive cada cosa.</p><button class="btn pri" id="sgo">Empezar ronda rápida</button>${st.mini&&st.mini.osiBest?`<span class="small"> Tu récord: ${st.mini.osiBest}</span>`:''}</div>`;
+   box.querySelector('#sgo').addEventListener('click',()=>{const qs=gshuf(Q);let k=0,pts=0,t0=Date.now(),tm;
+    const end=()=>{clearInterval(tm);st.mini=st.mini||{};const best=Math.max(st.mini.osiBest||0,pts),rec=pts>(st.mini.osiBest||0);st.mini.osiBest=best;save(true);sfx(pts>=8?'win':'ok');
+     box.innerHTML=`<div class="speed"><p><b>${pts} aciertos</b> en 30 segundos.${rec?' ¡Nuevo récord!':` Tu récord: ${best}.`}</p><button class="btn" id="sgo2">Otra vez</button></div>`;box.querySelector('#sgo2').addEventListener('click',speed)};
+    const show=()=>{if(k>=qs.length){end();return}const[q]=qs[k];box.innerHTML=`<div class="speed"><div class="small mono" id="stm">30 s</div><p class="sq">${esc(q)}</p><div class="opts row">${[1,2,3,4,7].map(n=>`<button data-n="${n}">Capa ${n}</button>`).join('')}</div><p class="small">${pts} aciertos</p></div>`;
+     box.querySelectorAll('[data-n]').forEach(b=>b.addEventListener('click',()=>{if(+b.dataset.n===qs[k][1]){pts++;sfx('ok')}else{sfx('bad');toast(`${qs[k][0]}: capa ${qs[k][1]}.`)}k++;show()}))};
+    tm=setInterval(()=>{const s=30-Math.floor((Date.now()-t0)/1000),e=box.querySelector('#stm');if(e)e.textContent=s+' s';if(s<=0)end()},250);show()})};
+ },
+ cables(el){
+  const O=['UTP Cat6','Fibra multimodo','Fibra monomodo','Wi-Fi'];
+  const C=[['Conectar la PC de Lupita al switch del piso, a 25 metros.',0,'UTP: corto y barato, perfecto hasta 100 metros.'],['Unir el nuevo edificio de Contabilidad, a 3 kilómetros.',2,'Para kilómetros se usa fibra monomodo; la multimodo se queda en cientos de metros.'],['La laptop de Don Ramiro, que se mueve de sala en sala.',3,'Un equipo que se mueve necesita Wi-Fi.'],['Subir del switch del piso 1 al del piso 5 del mismo edificio, unos 150 metros.',1,'Pasa de 100 metros: fibra. Dentro de un edificio basta la multimodo, que es más barata (la monomodo también funcionaría).'],['Conectar dos switches en el mismo rack.',0,'Están a 1 metro: un patch cord UTP basta (o fibra si ya tienen SFP).'],['Unir la oficina de Monterrey con la de Guadalajara (cientos de km), si fuera cable propio.',2,'Solo la monomodo llega a esas distancias.']];
+  let k=0,ok=0;
+  const show=()=>{if(k>=C.length){el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · ¿Qué cable va?</b></div><p><strong>${ok} de ${C.length}</strong> correctos.${ok===C.length?' ¡Excelente ojo de instalador!':''}</p><button class="btn" id="gre">Jugar otra vez</button></div>`;if(ok===C.length)miniWin('cables','n0-3','Minijuego completado');el.querySelector('#gre').addEventListener('click',()=>{k=0;ok=0;show()});return}
+   const[q,a,why]=C[k];el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · ¿Qué cable va?</b><span class="small">Caso ${k+1} de ${C.length}</span></div><p class="sq">${esc(q)}</p><div class="opts">${O.map((o,j)=>`<button data-j="${j}">${o}</button>`).join('')}</div><div class="why" id="gwhy"></div></div>`;
+   let done=false;el.querySelectorAll('[data-j]').forEach(b=>b.addEventListener('click',()=>{if(done)return;done=true;const j=+b.dataset.j;b.classList.add(j===a?'right':'wrong');el.querySelector(`[data-j="${a}"]`).classList.add('right');if(j===a){ok++;sfx('ok')}else sfx('bad');
+    el.querySelector('#gwhy').innerHTML=`${j===a?'<strong style="color:var(--ok)">Correcto.</strong>':'<strong style="color:var(--bad)">No.</strong>'} ${esc(why)} <button class="btn" id="gn" style="margin-left:6px">Siguiente →</button>`;el.querySelector('#gn').addEventListener('click',()=>{k++;show()})}))};
+  show();
+ },
+ bits(el){
+  const W=[128,64,32,16,8,4,2,1],M=[[192,'el primer octeto de 192.168.1.20'],[168,'el segundo octeto de 192.168.1.20'],[10,'la red 10.0.0.0'],[255,'el número más grande de un octeto']];let on=W.map(()=>0),m=0;
+  el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · Prende los bits</b><span class="small" id="gst"></span></div><div class="bits">${W.map((w,i)=>`<button class="bit" data-i="${i}"><span>${w}</span><b>0</b></button>`).join('')}</div>
+   <div class="bitout"><div><span class="small">Decimal</span><b id="gdec">0</b></div><div><span class="small">Binario</span><b class="mono" id="gbin">00000000</b></div><div><span class="small">Hexadecimal</span><b class="mono" id="ghex">00</b></div></div></div>`;
+  const stt=el.querySelector('#gst'),mis=()=>{stt.innerHTML=m<M.length?`Misión ${m+1} de ${M.length}: forma el <strong>${M[m][0]}</strong> (${M[m][1]}).`:'<strong>¡Misiones completas!</strong> Ya sabes contar como una computadora.'};mis();
+  el.querySelectorAll('.bit').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;on[i]^=1;b.classList.toggle('on',!!on[i]);b.querySelector('b').textContent=on[i];sfx('xp');
+   const v=W.reduce((a,w,k)=>a+w*on[k],0);el.querySelector('#gdec').textContent=v;el.querySelector('#gbin').textContent=on.join('');el.querySelector('#ghex').textContent=v.toString(16).padStart(2,'0');
+   if(m<M.length&&v===M[m][0]){sfx('ok');toast(`¡Eso! ${v} = ${on.join('')} = ${v.toString(16)} en hexadecimal.`);m++;mis();if(m===M.length)miniWin('bits','n0-4')}}));
+ },
+ cli(el){
+  const V={
+   cisco:{n:'Cisco IOS',start:'user',pr:{user:'SW1>',priv:'SW1#',conf:'SW1(config)#'},bad:c=>`% Invalid input detected at '^' marker.`,amb:c=>`% Ambiguous command:  "${c}"`,
+    cmds:{user:[['enable',null,'priv'],['show vlan brief','vlan']],priv:[['show vlan brief','vlan'],['show interfaces status','int'],['configure terminal','Enter configuration commands, one per line.  End with CNTL/Z.','conf'],['disable',null,'user']],conf:[['end',null,'priv'],['exit',null,'priv'],['do show vlan brief','vlan']]},
+    out:{vlan:'VLAN Name                             Status    Ports\n---- -------------------------------- --------- ------------------------------\n1    default                          active    Gi0/1, Gi0/2, Gi0/3, Gi0/4',int:'Port      Name   Status       Vlan  Duplex  Speed Type\nGi0/1            connected    1     a-full  a-1000 10/100/1000BaseTX\nGi0/2            notconnect   1       auto   auto 10/100/1000BaseTX'},
+    mis:[['Pasa al modo privilegiado (#).',['enable'],'enable'],['Mira las VLAN sin cambiar nada.',['show vlan brief'],'show vlan brief'],['Entra al modo configuración.',['configure terminal'],'configure terminal (o conf t)'],['Regresa al modo privilegiado.',['end','exit'],'end']]},
+   aruba:{n:'Aruba AOS-CX',start:'priv',pr:{priv:'SW1#',conf:'SW1(config)#'},bad:c=>`Invalid input: ${c.split(' ').pop()}`,amb:c=>`Ambiguous command: ${c}`,
+    cmds:{priv:[['show vlan','vlan'],['show interface brief','int'],['configure terminal',null,'conf']],conf:[['end',null,'priv'],['exit',null,'priv']]},
+    out:{vlan:'--------------------------------------------------------------------------\nVLAN  Name             Status  Reason  Type     Interfaces\n--------------------------------------------------------------------------\n1     DEFAULT_VLAN_1   up      ok      default  1/1/1-1/1/4',int:'Port      Native  Mode    Type  Enabled  Status  Reason   Speed\n          VLAN                                            (Mb/s)\n1/1/1     1       access  --    yes      up               1000\n1/1/2     1       access  --    yes      down    Waiting  --'},
+    mis:[['Mira las VLAN sin cambiar nada.',['show vlan'],'show vlan'],['Entra al modo configuración.',['configure terminal'],'configure terminal (o conf t)'],['Sal del modo configuración.',['end','exit'],'end o exit']]},
+   juniper:{n:'Juniper Junos',start:'op',pr:{op:'user@SW1>',conf:'user@SW1#'},bad:c=>`syntax error, expecting <command>.`,amb:c=>`'${c}' is ambiguous.`,
+    cmds:{op:[['show vlans','vlan'],['show interfaces terse','int'],['configure','Entering configuration mode\n\n[edit]','conf']],conf:[['exit','Exiting configuration mode','op'],['quit','Exiting configuration mode','op'],['commit','commit complete\n\n[edit]'],['run show vlans','vlan']]},
+    out:{vlan:'Routing instance        VLAN name             Tag          Interfaces\ndefault-switch          default               1\n                                                           ge-0/0/0.0*\n                                                           ge-0/0/1.0*',int:'Interface               Admin Link Proto    Local                 Remote\nge-0/0/0                up    up\nge-0/0/0.0              up    up   eth-switch\nge-0/0/1                up    down'},
+    mis:[['Mira las VLAN sin cambiar nada.',['show vlans'],'show vlans'],['Entra al modo configuración.',['configure'],'configure'],['Sal del modo configuración.',['exit','quit'],'exit']]}};
+  let ven='cisco',mode,step,lines,hist=[],hp=0;
+  el.innerHTML=`<div class="game"><div class="ghead"><b>Consola de práctica</b><span class="small">Aquí no rompes nada. Prueba <code>?</code> y la tecla Tab.</span></div>
+   <div class="vtabs">${Object.entries(V).map(([k,v])=>`<button class="gb" data-v="${k}">${v.n}</button>`).join('')}</div><div class="mis" id="gmis"></div>
+   <div class="miniterm" id="gterm"><pre id="gout"></pre><div class="inl"><span id="gpr"></span><input id="gin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></div></div></div>`;
+  const out=el.querySelector('#gout'),inp=el.querySelector('#gin'),pr=el.querySelector('#gpr'),misb=el.querySelector('#gmis');
+  const D=()=>V[ven],done=()=>st.mini&&st.mini.cli&&st.mini.cli[ven];
+  const paint=()=>{const d=D();pr.textContent=d.pr[mode]+' ';out.textContent=lines.join('\n');out.scrollTop=out.scrollHeight;
+   el.querySelectorAll('[data-v]').forEach(b=>{b.classList.toggle('sel',b.dataset.v===ven);b.classList.toggle('ok',!!(st.mini&&st.mini.cli&&st.mini.cli[b.dataset.v]))});
+   misb.innerHTML=`<ol>${d.mis.map((m,i)=>`<li class="${i<step?'ok':i===step?'cur':''}">${esc(m[0])}${i===step?` <details><summary>Ver pista</summary><code>${esc(m[2])}</code></details>`:''}</li>`).join('')}</ol>${step>=d.mis.length?`<p class="small"><strong style="color:var(--ok)">¡Misiones de ${d.n} completas!</strong> ${Object.keys(V).filter(k=>!(st.mini&&st.mini.cli&&st.mini.cli[k])).length?'Prueba con otro vendor.':'Dominaste las tres consolas.'}</p>`:''}`};
+  const reset=v=>{ven=v;mode=D().start;step=0;lines=[`${D().n} · switch de práctica`,''];paint()};
+  const cands=()=>D().cmds[mode]||[];
+  const match=toks=>cands().filter(c=>{const w=c[0].split(' ');return w.length===toks.length&&toks.every((t,i)=>w[i].startsWith(t.toLowerCase()))});
+  const run=raw=>{const d=D(),c=raw.trim();lines.push(d.pr[mode]+' '+raw);if(!c){paint();return}
+   if(c.endsWith('?')){const toks=c.slice(0,-1).trim().split(/\s+/).filter(Boolean),partial=!/\s\?$/.test(c)&&c!=='?'&&toks.length,pos=partial?toks.length-1:toks.length,opts=[...new Set(cands().map(x=>x[0].split(' ')).filter(w=>w.length>pos&&toks.slice(0,pos).every((t,i)=>w[i].startsWith(t.toLowerCase()))&&(!partial||w[pos].startsWith(toks[pos].toLowerCase()))).map(w=>w[pos]))];
+    lines.push(...(opts.length?opts.map(o=>'  '+o):['  (no hay opciones aquí)']));paint();return}
+   const toks=c.split(/\s+/),m=match(toks);
+   if(!m.length){lines.push(d.bad(c),'  Pista: escribe ? para ver qué puedes escribir aquí.');sfx('bad');paint();return}
+   if(m.length>1){lines.push(d.amb(c));paint();return}
+   const[full,o,to]=m[0];if(o)lines.push(d.out[o]||o);if(to)mode=to;lines.push('');
+   const ms=d.mis[step];if(ms&&ms[1].includes(full)){step++;sfx('ok');if(step===d.mis.length){st.mini=st.mini||{};st.mini.cli=st.mini.cli||{};const was=!!st.mini.cli[ven];st.mini.cli[ven]=true;if(!was){const r=item('c1-1');r.miniPts=(r.miniPts||0)+5;floatXP(5)}save();sfx('win');if(Object.keys(V).every(k=>st.mini.cli[k]))toast('¡Tres consolas dominadas!')}}
+   paint()};
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const v=inp.value;if(v.trim())hist.push(v);hp=hist.length;inp.value='';run(v)}
+   else if(e.key==='Tab'){e.preventDefault();const v=inp.value,toks=v.split(/\s+/);if(!v.trim())return;const last=toks.length-1,opts=[...new Set(cands().map(x=>x[0].split(' ')).filter(w=>w.length>last&&toks.slice(0,last).every((t,i)=>w[i].startsWith(t.toLowerCase()))&&w[last].startsWith(toks[last].toLowerCase())).map(w=>w[last]))];
+    if(opts.length===1){toks[last]=opts[0];inp.value=toks.join(' ')+' '}else if(opts.length>1){lines.push(D().pr[mode]+' '+v,...opts.map(o=>'  '+o));paint()}}
+   else if(e.key==='ArrowUp'){if(hp>0){hp--;inp.value=hist[hp]}e.preventDefault()}else if(e.key==='ArrowDown'){if(hp<hist.length){hp++;inp.value=hist[hp]||''}e.preventDefault()}});
+  el.querySelector('#gterm').addEventListener('click',()=>inp.focus());
+  el.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>{reset(b.dataset.v);inp.focus()}));reset('cisco');
+ }
+};
 
 const FIGS={
  frame(el){el.innerHTML=`<div class="netfig">${netSVG()}<div class="ctrl"><button class="btn pri" id="fsend">Enviar frame de PC-A a PC-C</button></div><div class="status" id="fst">PC-A quiere mandarle algo a PC-C.</div><div id="fbar"></div></div>`;
@@ -363,13 +514,13 @@ function sentPopup(v,cfg,wasRedo,id){const el=$('#celeb'),miss=v.hit?v.hit.filte
 /* ---------- lección ---------- */
 function showLesson(key){
  const L=LES[key];if(!L){location.hash='mapa';return}
- const r=item(L.id),keys=Object.keys(LES),i=keys.indexOf(key),prev=keys[i-1],next=keys[i+1],nextH=next?'#leccion-'+next:'#examen-0',nextT=next?'Siguiente ticket':'Ir a la certificación';
- $('#v-lec').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${L.lv} / ${TID[L.id]}</p><h1>${esc(L.t)}</h1></div></header>
- <div class="lgrid"><article class="lec">${L.body.map(p=>p.startsWith('<')?p:`<p>${p}</p>`).join('')}<div id="lfig"></div><div class="real">${L.real}</div>
+ const r=item(L.id),seq=ORDER.filter(id=>id[0]!=='z'),i=seq.indexOf(L.id),P=i>0?itemById(seq[i-1]):null,N=itemById(seq[i+1]),prevH=P&&P.h,nextH=N.h,nextT=N.exam?'Ir a la certificación':N.id==='lab1'?'Ir al lab':'Siguiente ticket',Z=LEVELS[L.lv].items,mk=Z.findIndex(x=>x.id===L.id)+1;
+ $('#v-lec').innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / Zona ${L.lv} / ${TID[L.id]} · misión ${mk} de ${Z.length}</p><h1>${esc(L.t)}</h1></div></header>
+ <div class="lgrid"><article class="lec">${L.story?`<div class="story"><div class="av">S</div><div><b>Sofía · jefa de TI en NetCorp</b><p>${L.story}</p></div></div>`:''}${L.body.map(p=>p.startsWith('<')?p:`<p>${p}</p>`).join('')}<div id="lfig"></div><div class="real">${L.real}</div>
  <h2>Comprueba</h2><div id="lquiz"></div><div id="lexp" style="margin-top:24px"></div><div id="lpass"></div>
- <div class="nextnav">${prev?`<a class="btn" href="#leccion-${prev}">← Anterior</a>`:'<span></span>'}<a id="lnext" class="btnl" href="${nextH}">${nextT} →</a></div><div id="lgate"></div></article>
+ <div class="nextnav">${prevH?`<a class="btn" href="${prevH}">← Anterior</a>`:'<span></span>'}<a id="lnext" class="btnl" href="${nextH}">${nextT} →</a></div><div id="lgate"></div></article>
  <aside class="side"><div class="card" id="lside"></div><div class="card vocab"><h3 style="margin:0">Vocabulario</h3><p class="tip" style="margin:2px 0 6px">En el trabajo todo está en inglés:</p><dl>${(VOCAB[key]||[]).map(([e,t])=>`<div><dt>${esc(e)}</dt><dd>${esc(t)}</dd></div>`).join('')}</dl></div></aside></div>`;
- FIGS[L.fig]($('#lfig'));revBox($('#v-lec .lec'),L.id);
+ (FIGS[L.fig]||GAMES[L.fig])($('#lfig'));revBox($('#v-lec .lec'),L.id);
  const side=()=>{const qk=L.quiz.filter((_,k)=>r.qok&&r.qok[k]).length,ok=isPassed(L.id);
   $('#lside').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="mono small">${TID[L.id]}</span>${ok?'<span class="chip ok">Cerrado</span>':st.done[L.id]&&(qk||r.exp)?'<span class="chip go">En curso</span>':'<span class="chip open">Abierto</span>'}</div>
   <ul class="steps"><li class="${qk===L.quiz.length?'ok':''}"><span class="d"></span><span>Quiz</span><span>${qk}/${L.quiz.length}</span></li><li class="${sentOf(r)&&!r.redo?'ok':''}"><span class="d"></span><span>Explicación</span><span>${EXPST[expState(r)][0].split(' ·')[0]}</span></li></ul>${r.approved?'<p class="small" style="color:var(--ok);margin:4px 0 0">✓ Aprobada por tu instructor</p>':''}
@@ -510,13 +661,13 @@ function renderLock(){const blk=blockedAt(),h=location.hash.slice(1),tid=h.start
 
 /* ---------- router ---------- */
 function route(){
- const h=location.hash.slice(1)||'mapa';let id='v-mapa';
- if(h.startsWith('leccion-')&&LES[h.slice(8)])id=itemOpen(LES[h.slice(8)].id)?'v-lec':'v-lock';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=(unlocked(1)&&itemOpen('lab1'))||(EX&&EX.phase==='lab')?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes'].includes(h))id='v-'+h;
+ migrateFast();const h=location.hash.slice(1)||'mapa';let id='v-mapa';
+ if(h.startsWith('leccion-')&&LES[h.slice(8)])id=itemOpen(LES[h.slice(8)].id)?'v-lec':'v-lock';else if(/^examen-[01]$/.test(h))id='v-examen';else if(h==='lab-1')id=(unlocked(1)&&itemOpen('lab1'))||(EX&&EX.phase==='lab')?'v-lab1':'v-lock';else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes','reto','glosario'].includes(h))id='v-'+h;
  if(sb&&!uid&&!guest)id='v-entrar';
  if(EX&&!EX.admin){const keep=EX.phase==='lab'?'lab-1':'examen-'+EXAMS[EX.id].zone;if(h!==keep){history.replaceState(null,'','#'+keep);toast('Estás en tu certificación: no puedes salir hasta terminar.');sfx('bad');return}}
  if(EX&&id!=='v-examen'&&!(EX.phase==='lab'&&id==='v-lab1'))examAbort();
  $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));renderMe();
- if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();if(id==='v-mensajes')renderMensajes();
+ if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();if(id==='v-mensajes')renderMensajes();if(id==='v-reto')renderReto();if(id==='v-glosario')renderGlosario();
  if(id==='v-lab1')dispatchEvent(new Event('lab-show'));
  scrollTo(0,0);
 }
@@ -563,7 +714,9 @@ async function onSession(session){
  if(uid){try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
   const r=await sb.from('progress').select('data').eq('user_id',uid).maybeSingle();
   if(r.data&&r.data.data&&(Number(r.data.data.pts)||0)>=calcPts())st=Object.assign(clone(BASE),r.data.data);
+  let gi=false;if(!Object.keys(st.done).length&&!isOwner){try{const g=JSON.parse(localStorage.getItem('labred')||'null');if(g&&g.done&&Object.values(g.done).some(used)){st=Object.assign(clone(BASE),g);delete st.cUnlock;delete st.noRank;gi=true}}catch(e){}}
   if(isOwner&&st.noRank===undefined)st.noRank=true;
+  if(gi)setTimeout(()=>toast('Pasamos a tu cuenta el avance que hiciste como invitado.'),400);
   save(true);flush();loadReviews();loadRequests();if((location.hash||'#entrar')==='#entrar')location.hash='mapa'}
  else{try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}save(true)}
  route();

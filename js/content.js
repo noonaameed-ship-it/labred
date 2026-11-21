@@ -2,12 +2,13 @@
    Edita este archivo para corregir textos o agregar lecciones. */
 /* ---------- contenido ---------- */
 const LEVELS=[
- {n:0,t:'Fundamentos',d:'Qué viaja por el cable, cómo piensa un switch y qué es una VLAN. Teoría corta, con animaciones.',items:[{id:'l0-1',t:'El frame y la dirección MAC',h:'#leccion-0-1'},{id:'l0-2',t:'Cómo aprende un switch',h:'#leccion-0-2'},{id:'l0-3',t:'VLAN: varias redes en un switch',h:'#leccion-0-3'},{id:'x0',t:'Certificación de la Zona 0',h:'#examen-0',exam:true}]},
- {n:1,t:'Switching básico',d:'Tu primera VLAN entre dos switches, en consola real de Cisco, Aruba o Juniper.',items:[{id:'lab1',t:'Lab: tu primera VLAN entre dos switches',h:'#lab-1'},{id:'x1',t:'Certificación de la Zona 1',h:'#examen-1',exam:true}]},
- {n:2,t:'Trunks y VLAN nativa',d:'Varias VLAN en un mismo trunk y qué pasa cuando la nativa no coincide.',soon:true},
- {n:3,t:'Spanning Tree',d:'Encontrar al root bridge y entender por qué se bloquea un puerto.',soon:true},
- {n:4,t:'Agregación con LACP',d:'Juntar varios cables como si fueran uno.',soon:true},
- {n:5,t:'Ruteo entre VLAN',d:'Hacer que VLANs distintas se hablen con SVI.',soon:true}
+ {n:0,t:'¿Qué es una red?',d:'Desde cero: qué equipos hay, el modelo OSI, cables y direcciones. Con minijuegos.',items:[{id:'n0-1',t:'Qué es una red y quién es quién',h:'#leccion-n1'},{id:'n0-2',t:'El modelo OSI sin miedo',h:'#leccion-n2'},{id:'n0-3',t:'Cables y conexiones',h:'#leccion-n3'},{id:'n0-4',t:'Direcciones: MAC, IP y puerto',h:'#leccion-n4'},{id:'x0',t:'Certificación de la Zona 0',h:'#examen-0',exam:true}]},
+ {n:1,t:'Switching',d:'Qué viaja por el cable, cómo piensa un switch, qué es una VLAN, tu primera consola y tu primer lab en Cisco, Aruba o Juniper.',items:[{id:'l0-1',t:'El frame y la dirección MAC',h:'#leccion-0-1'},{id:'l0-2',t:'Cómo aprende un switch',h:'#leccion-0-2'},{id:'l0-3',t:'VLAN: varias redes en un switch',h:'#leccion-0-3'},{id:'c1-1',t:'Tu primera consola',h:'#leccion-c1'},{id:'lab1',t:'Lab: tu primera VLAN entre dos switches',h:'#lab-1'},{id:'x1',t:'Certificación de la Zona 1',h:'#examen-1',exam:true}]},
+ {n:2,t:'IP y subredes',d:'Máscaras, gateway y cómo saber si dos equipos están en la misma red.',soon:true},
+ {n:3,t:'Trunks y VLAN nativa',d:'Varias VLAN en un mismo trunk y qué pasa cuando la nativa no coincide.',soon:true},
+ {n:4,t:'Spanning Tree',d:'Encontrar al root bridge y entender por qué se bloquea un puerto.',soon:true},
+ {n:5,t:'Agregación con LACP',d:'Juntar varios cables como si fueran uno.',soon:true},
+ {n:6,t:'Ruteo entre VLAN',d:'Hacer que VLANs distintas se hablen con SVI.',soon:true}
 ];
 /* Rangos: se suben certificando zonas. Al agregar zonas nuevas, agrega rangos aquí. */
 const RANKS=['Becario de redes','Técnico de cableado','Técnico de switching','Especialista en VLAN','Técnico NOC','Ingeniero de redes jr','Ingeniero de redes','Arquitecto de redes'];
@@ -118,22 +119,24 @@ const LABEXP={q:'En el Lab 1, ¿por qué el enlace entre SW1 y SW2 se configura 
  mine:'El cable entre SW1 y SW2 es un trunk porque es el camino que van a compartir todas las VLAN: hoy solo pasa Ventas, pero mañana pasarán Compras o las cámaras. Por ese cable cada frame viaja con su tag 802.1Q que dice "soy de la VLAN 10"; hacia la PC sale sin tag, porque la PC no sabe de VLANs. Para que funcione, la VLAN 10 tiene que existir en los dos switches y estar permitida en el trunk de los dos lados.',
  model:'El trunk permite que varias VLAN compartan el cable entre switches. Por ahí los frames de la VLAN 10 viajan con tag (tagged) 802.1Q; hacia la PC salen sin tag (untagged) por el access port. El switch de enfrente lee el tag para meter el frame en la VLAN 10, que debe existir y estar permitida en los dos lados.'};
 
-/* Examen de ubicación: 20 preguntas. lv 0 = básica, 1 = media, 2 = difícil */
+/* Examen de ubicación: lv 0 = básica (Zona 0), 1 = media (Zona 1), 2 = difícil */
 const PLACE=[
- {lv:0,q:'¿Qué identifica una dirección MAC?',o:['Una red completa','Una tarjeta o interfaz de red','Un sitio web','A un usuario'],a:1},
- {lv:0,q:'¿En qué capa del modelo OSI trabaja principalmente un switch de acceso?',o:['Capa 1, física','Capa 2, enlace de datos','Capa 3, red','Capa 7, aplicación'],a:1},
- {lv:0,q:'¿Qué hace un switch con un frame cuyo destino no conoce?',o:['Lo descarta','Lo manda por todos los puertos menos por el que llegó','Lo manda al gateway','Lo guarda hasta conocer el destino'],a:1},
- {lv:0,q:'¿Cuántos bits tiene una dirección MAC?',o:['32','48','64','128'],a:1},
- {lv:0,q:'¿Cuál es la dirección MAC de broadcast?',o:['00:00:00:00:00:00','ff:ff:ff:ff:ff:ff','192.168.1.255','La MAC del router'],a:1},
- {lv:0,q:'¿Qué separa una VLAN?',o:['Broadcast domains dentro del mismo switch','La velocidad de los puertos','Los cables por color','Las direcciones MAC de fábrica'],a:0},
+ {lv:0,q:'¿Qué equipo conecta tu red local con internet?',o:['El switch','El router','El access point','El patch panel'],a:1},
+ {lv:0,q:'¿Cuántas capas tiene el modelo OSI?',o:['4','5','7','9'],a:2},
+ {lv:0,q:'¿En qué capa del modelo OSI trabaja principalmente un switch?',o:['Capa 1, física','Capa 2, enlace de datos','Capa 3, red','Capa 7, aplicación'],a:1},
+ {lv:0,q:'¿Cuál es la distancia máxima de un cable UTP de red?',o:['10 metros','100 metros','1 kilómetro','No tiene límite'],a:1},
+ {lv:0,q:'¿Cuántos bits tiene una dirección IPv4?',o:['8','32','48','128'],a:1},
  {lv:0,q:'¿Cuál es la diferencia principal entre MAC e IP?',o:['La MAC entrega dentro de la red local; la IP sirve para llegar de una red a otra','Son lo mismo','La IP viene de fábrica','La MAC solo existe en Wi-Fi'],a:0},
+ {lv:0,q:'¿Cuánto vale la letra f en hexadecimal?',o:['6','10','15','16'],a:2},
+ {lv:1,q:'¿Qué identifica una dirección MAC?',o:['Una red completa','Una tarjeta o interfaz de red','Un sitio web','A un usuario'],a:1},
+ {lv:1,q:'¿Qué hace un switch con un frame cuyo destino no conoce?',o:['Lo descarta','Lo manda por todos los puertos menos por el que llegó','Lo manda al gateway','Lo guarda hasta conocer el destino'],a:1},
+ {lv:1,q:'¿Cuál es la dirección MAC de broadcast?',o:['00:00:00:00:00:00','ff:ff:ff:ff:ff:ff','192.168.1.255','La MAC del router'],a:1},
+ {lv:1,q:'¿Qué separa una VLAN?',o:['Broadcast domains dentro del mismo switch','La velocidad de los puertos','Los cables por color','Las direcciones MAC de fábrica'],a:0},
  {lv:1,q:'Un access port…',o:['Lleva varias VLAN con tag','Pertenece a una sola VLAN y manda frames sin tag','Solo sirve para administrar el switch','Siempre está en la VLAN 1'],a:1},
- {lv:1,q:'¿Qué estándar agrega el tag de VLAN a los frames en un trunk?',o:['IEEE 802.3ad','IEEE 802.1D','IEEE 802.1Q','IEEE 802.11'],a:2},
- {lv:1,q:'Dos PCs en la VLAN 10, en switches distintos, no se ven. El trunk está arriba. ¿Qué revisas primero?',o:['Que la VLAN 10 exista en ambos switches y esté permitida en el trunk','El cable de consola','La prioridad de STP','El DNS'],a:0},
  {lv:1,q:'Cisco IOS: ¿qué par de comandos deja una interfaz como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set vlan members 10','switchport trunk vlan 10'],a:0},
  {lv:1,q:'Juniper Junos: configuraste con set, pero nada cambia. ¿Qué falta?',o:['commit','write memory','reload','no shutdown'],a:0},
- {lv:1,q:'¿Qué lleva un trunk que no lleva un access port?',o:['Varias VLAN, con tag 802.1Q','Energía para teléfonos','Una sola VLAN sin tag','Direcciones IP'],a:0},
- {lv:1,q:'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?',o:['VLAN 1, que viaja sin tag','VLAN 10','La VLAN más alta','No existe'],a:0},
+ {lv:2,q:'¿Qué estándar agrega el tag de VLAN a los frames en un trunk?',o:['IEEE 802.3ad','IEEE 802.1D','IEEE 802.1Q','IEEE 802.11'],a:2},
+ {lv:2,q:'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?',o:['VLAN 1, que viaja sin tag','VLAN 10','La VLAN más alta','No existe'],a:0},
  {lv:2,q:'¿Qué pasa si la VLAN nativa no coincide en los dos extremos de un trunk?',o:['El trunk se apaga siempre','El tráfico sin tag termina en VLANs distintas en cada lado','Nada, se ignora','Se duplica el ancho de banda'],a:1},
  {lv:2,q:'¿Para qué sirve Spanning Tree (STP)?',o:['Para evitar bucles de capa 2 bloqueando enlaces redundantes','Para asignar direcciones IP','Para cifrar el tráfico','Para crear VLANs'],a:0},
  {lv:2,q:'En STP, ¿cómo se elige el root bridge?',o:['El de más puertos','El de menor bridge ID (prioridad + MAC)','El más nuevo','El que tenga más VLAN'],a:1},
@@ -144,8 +147,8 @@ const PLACE=[
 
 
 /* Identificador de ticket y tipo de equipo de cada misión en el mapa */
-const TID={'place':'UBICACIÓN','l0-1':'L0-01','l0-2':'L0-02','l0-3':'L0-03','x0':'CERT-0','lab1':'TK-1042','x1':'CERT-1'};
-const GLYPH={'l0-1':'pc','l0-2':'sw','l0-3':'vlan','x0':'cert','lab1':'pair','x1':'cert',z2:'rack',z3:'stp',z4:'lacp',z5:'router'};
+const TID={'place':'UBICACIÓN','n0-1':'L0-01','n0-2':'L0-02','n0-3':'L0-03','n0-4':'L0-04','x0':'CERT-0','l0-1':'L1-01','l0-2':'L1-02','l0-3':'L1-03','c1-1':'L1-04','lab1':'TK-1042','x1':'CERT-1'};
+const GLYPH={'n0-1':'net','n0-2':'osi','n0-3':'cable','n0-4':'addr','x0':'cert','l0-1':'pc','l0-2':'sw','l0-3':'vlan','c1-1':'term','lab1':'pair','x1':'cert',z2:'ip',z3:'rack',z4:'stp',z5:'lacp',z6:'router'};
 
 /* Certificaciones de zona: preguntas al azar del banco, opciones barajadas, con tiempo. Se aprueba con 90%. */
 const EXAMS={
@@ -182,7 +185,7 @@ x0:{zone:0,t:'Certificación de la Zona 0: Fundamentos',n:30,min:30,pool:[
  {q:'¿Para qué usa una empresa varias VLANs?',o:['Para separar PCs, teléfonos, cámaras e invitados en redes distintas','Para que el internet sea más rápido','Para no tener que usar cables','Para cambiar las MAC'],a:0,topic:'l0-3'},
  {q:'Cuando un frame sale del trunk hacia la PC destino, ¿qué pasa con el tag 802.1Q?',o:['El switch se lo quita antes de entregarlo por el access port','Se queda puesto','Se cambia por otro','Se duplica'],a:0,topic:'l0-3'}
 ]},
-x1:{zone:1,t:'Certificación de la Zona 1: Switching básico',n:30,min:30,lab:true,labMin:20,pool:[
+x1:{zone:1,t:'Certificación de la Zona 1: Switching',n:30,min:30,lab:true,labMin:20,pool:[
  {q:'Cisco IOS: ¿qué par de comandos deja Gi0/1 como access en la VLAN 10?',o:['switchport mode access y switchport access vlan 10','vlan access 10','set interfaces ge-0/0/1 vlan 10','switchport trunk vlan 10'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando pone una interfaz como access en la VLAN 10?',o:['vlan access 10','switchport access vlan 10','set vlan members 10','access vlan 10 enable'],a:0,topic:'lab1'},
  {q:'Aruba AOS-CX: ¿qué comando permite la VLAN 10 en un trunk?',o:['vlan trunk allowed 10','switchport trunk allowed vlan 10','set trunk 10','trunk vlan 10 allow'],a:0,topic:'lab1'},
