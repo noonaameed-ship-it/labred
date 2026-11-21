@@ -373,7 +373,20 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 .boss .bossbar{display:flex;align-items:center;gap:12px;border:1.5px solid var(--bad);border-radius:8px;padding:8px 12px;background:var(--paper);margin-bottom:12px}.bhp{flex:1;height:10px;background:var(--soft);border-radius:5px;overflow:hidden}.bhp i{display:block;height:100%;background:var(--bad);transition:width .3s}
 .card.ar.lockd{opacity:.55}.card.ar button{align-self:flex-start}
 .card.team{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px}.card.team .tid{display:flex;gap:6px;align-items:center;font:12px 'IBM Plex Mono',monospace;color:var(--mut)}
-.diploma{max-width:820px;margin:20px auto 40px;background:#fffdf7;color:#1d252c;border:10px double #1f4fa3;border-radius:6px;padding:40px 48px;text-align:center;font-size:17px}.diploma h1{font-size:44px;margin:10px 0}.diploma h2{font-size:34px;margin:6px 0 14px;font-family:Georgia,serif}.dlogo{font:700 22px 'IBM Plex Mono',monospace;color:#1f4fa3}.dfoot{display:flex;justify-content:space-between;margin-top:30px;font-size:13px;color:#55606a}
 .chuleta table{margin:6px 0 16px}.chuleta td{font-size:14px}.printonly{display:none}
-@media print{nav.top,.noprint,#toast,#verbar,.exwm{display:none!important}.view{display:none!important}.view.on{display:block!important}body{background:#fff!important}.printonly{display:block}.diploma{margin:0 auto;border-color:#1f4fa3}}
-@media(max-width:640px){.swgame{grid-template-columns:1fr}.diploma{padding:24px 18px}.diploma h1{font-size:32px}.diploma h2{font-size:26px}}
+
+@media(max-width:640px){.swgame{grid-template-columns:1fr}}
+
+/* Certificado */
+.diploma{max-width:1000px;aspect-ratio:11/8.5;margin:20px auto 40px;background:#fffdf7;color:#1d252c;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25);-webkit-print-color-adjust:exact;print-color-adjust:exact;page:diploma}
+.dinner{height:100%;box-sizing:border-box;border:3px solid #1f4fa3;outline:1px solid #1f4fa3;outline-offset:-10px;padding:34px 56px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;background:radial-gradient(circle at 50% 45%,rgba(31,79,163,.06),transparent 60%),repeating-linear-gradient(45deg,rgba(31,79,163,.025) 0 2px,transparent 2px 10px)}
+.dtop{display:flex;flex-direction:column;gap:2px}.dlogo{font:700 26px 'IBM Plex Mono',monospace;color:#1f4fa3;letter-spacing:.5px}.diploma .small{color:#55606a}
+.dkicker{font:600 14px 'IBM Plex Sans',sans-serif;letter-spacing:4px;text-transform:uppercase;color:#1f4fa3;margin:8px 0 0}
+.dsub{margin:0;font-size:17px;color:#55606a}.diploma h2{font:700 46px Georgia,'Times New Roman',serif;margin:0;color:#1d252c;border-bottom:2px solid #c9a227;padding:0 30px 8px}
+.dbody{font-size:18px;line-height:1.5;max-width:760px;margin:0}.dtemas{font-size:13px;color:#55606a;max-width:780px;margin:0}
+.dfoot{width:100%;display:grid;grid-template-columns:1fr 120px 1fr;align-items:end;gap:24px;font-size:14px}.dline{display:block;border-top:1.5px solid #1d252c;margin:0 20px 6px}.dseal{width:110px;height:110px}
+@media(max-width:700px){.diploma{aspect-ratio:auto}.dinner{padding:22px 18px;gap:12px}.diploma h2{font-size:30px}.dfoot{grid-template-columns:1fr;justify-items:center}.dseal{width:80px;height:80px}}
+@page diploma{size:letter landscape;margin:0}
+@page{margin:12mm}
+@media print{nav.top,.noprint,#toast,#verbar,.exwm,#celeb{display:none!important}.view{display:none!important}.view.on{display:block!important}body,html{background:#fff!important}.printonly{display:block}
+ .diploma{width:11in;height:8.5in;max-width:none;aspect-ratio:auto;margin:0;box-shadow:none;padding:.35in;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid}}

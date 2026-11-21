@@ -468,8 +468,17 @@ function renderDiploma(n){const v=$('#v-diploma'),id='x'+n,L=LEVELS[n],r=st.done
  if(!L||!isPassed(id)){v.innerHTML=`<div class="lecw"><p>Este certificado aparece cuando apruebas la certificación de la Zona ${n}.</p><a class="btnl" href="#logros">Volver</a></div>`;return}
  const fol=('LR-'+n+'-'+((uid||'x').replace(/-/g,'').slice(0,6))).toUpperCase(),dt=r.passAt||r.sentAt||today();
  v.innerHTML=`<div class="noprint lecw"><p><button class="btnl" id="dprint">Imprimir o guardar en PDF</button> <a class="btn" href="#logros">Volver</a></p></div>
- <div class="diploma"><div class="dlogo">LabRed</div><p class="small">Plataforma de aprendizaje de redes · NetCorp</p><h1>Certificado</h1><p>Se reconoce a</p><h2>${esc(myName||'Becario')}</h2><p>por aprobar la certificación de la <strong>Zona ${n}: ${esc(L.t)}</strong>, con <strong>${r.examBest}/100</strong>${EXAMS[id].lab?', incluyendo un laboratorio práctico sin ayuda en equipos multivendor (Cisco, Aruba y Juniper)':''}.</p>
-  <p class="small">Temas: ${L.items.filter(i=>!i.exam).map(i=>esc(i.t)).join(' · ')}</p><div class="dfoot"><span>Fecha: ${new Date(String(dt).slice(0,10)+'T12:00').toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'})}</span><span>Folio: ${fol}</span></div></div>`;
+ <div class="diploma"><div class="dinner">
+  <div class="dtop"><span class="dlogo">LabRed</span><span class="small">Plataforma de aprendizaje de redes · NetCorp</span></div>
+  <p class="dkicker">Certificado de aprobación</p>
+  <p class="dsub">Se otorga el presente reconocimiento a</p>
+  <h2>${esc(myName||'Becario')}</h2>
+  <p class="dbody">por aprobar la certificación de la <strong>Zona ${n}: ${esc(L.t)}</strong> con una calificación de <strong>${r.examBest}/100</strong>${EXAMS[id].lab?', que incluye un laboratorio práctico sin ayuda en equipos multivendor (Cisco, Aruba y Juniper)':''}.</p>
+  <p class="dtemas">${L.items.filter(i=>!i.exam).map(i=>esc(i.t)).join(' · ')}</p>
+  <div class="dfoot"><div><span class="dline"></span>Instructor · LabRed</div>
+   <svg class="dseal" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="#1f4fa3"/><circle cx="60" cy="60" r="48" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 3"/><text x="60" y="52" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="700">LabRed</text><text x="60" y="76" text-anchor="middle" fill="#fff" font-family="IBM Plex Sans,sans-serif" font-size="22" font-weight="700">ZONA ${n}</text></svg>
+   <div><span class="dline"></span>${new Date(String(dt).slice(0,10)+'T12:00').toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'})}<br><span class="small">Folio ${fol}</span></div></div>
+ </div></div>`;
  $('#dprint').onclick=()=>print()}
 /* --- Chuletas por zona --- */
 const CHULETA={0:`<h2>Equipos</h2><table class="stack"><tr><td>Switch</td><td>Conecta equipos de la misma red local (capa 2, MAC).</td></tr><tr><td>Router</td><td>Conecta redes distintas (capa 3, IP).</td></tr><tr><td>Access point</td><td>Da Wi-Fi.</td></tr><tr><td>Firewall</td><td>Decide qué tráfico pasa.</td></tr></table>
