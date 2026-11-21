@@ -174,3 +174,31 @@ create policy "duelos: ver los míos" on public.duels for select to authenticate
 create policy "duelos: crear" on public.duels for insert to authenticated with check (auth.uid() = a and a <> b);
 create policy "duelos: jugar" on public.duels for update to authenticated using (auth.uid() = a or auth.uid() = b);
 notify pgrst, 'reload schema';
+
+-- 9. Revisión entre compañeros (Arena)
+create table if not exists public.peer_pool (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  module text not null,
+  text text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.peer_reviews (
+  id bigint generated always as identity primary key,
+  pool_id bigint not null references public.peer_pool(id) on delete cascade,
+  reviewer uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  ideas integer, clarity integer, comment text,
+  created_at timestamptz not null default now(),
+  unique (pool_id, reviewer)
+);
+alter table public.peer_pool enable row level security;
+alter table public.peer_reviews enable row level security;
+drop policy if exists "pares: ver explicaciones" on public.peer_pool;
+drop policy if exists "pares: compartir la mía" on public.peer_pool;
+drop policy if exists "pares: ver revisiones" on public.peer_reviews;
+drop policy if exists "pares: revisar" on public.peer_reviews;
+create policy "pares: ver explicaciones" on public.peer_pool for select to authenticated using (true);
+create policy "pares: compartir la mía" on public.peer_pool for insert to authenticated with check (auth.uid() = user_id);
+create policy "pares: ver revisiones" on public.peer_reviews for select to authenticated using (reviewer = auth.uid() or public.is_admin() or exists (select 1 from public.peer_pool p where p.id = pool_id and p.user_id = auth.uid()));
+create policy "pares: revisar" on public.peer_reviews for insert to authenticated with check (reviewer = auth.uid() and exists (select 1 from public.peer_pool p where p.id = pool_id and p.user_id <> auth.uid()));
+notify pgrst, 'reload schema';
