@@ -213,3 +213,8 @@ update public.ranking r set
   week_xp = coalesce((p.data->'wk'->>'xp')::int, 0),
   nivel   = least(50, coalesce((p.data->>'unlocked')::int, 0))
 from public.progress p where p.user_id = r.user_id;
+
+-- 11. Perfiles públicos: avatar y resumen de avance (nunca el correo)
+alter table public.ranking add column if not exists avatar text check (avatar is null or char_length(avatar) <= 40);
+alter table public.ranking add column if not exists pub jsonb;
+notify pgrst, 'reload schema';
