@@ -494,3 +494,25 @@ a.mprof{display:flex;gap:12px;align-items:center;text-decoration:none;color:inhe
 .bitref span{border:1px solid var(--line);border-radius:6px;padding:3px 7px}
 .guestbar{display:flex;gap:12px 18px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 16px;background:var(--paper);border-bottom:1px solid var(--line);font-size:14px;text-align:center}
 .guestbar .btnl{padding:7px 14px}
+/* mapa minimalista */
+.queue .qrow .qt{height:auto;background:none;margin:0;overflow:visible;border-radius:0}
+.kstrip{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:13px;color:var(--mut)}
+.kstrip b{color:var(--ink);font:600 15px "IBM Plex Mono",monospace;margin-right:3px}
+.kstrip a{color:inherit;text-decoration:none}
+.kstrip a:hover b{color:var(--blue)}
+details.more{border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:0}
+details.more>summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.more>summary::after{content:"+";color:var(--mut);font-weight:400;font-size:18px}
+details.more[open]>summary::after{content:"–"}
+details.more>summary::-webkit-details-marker{display:none}
+.morein{display:grid;gap:10px;padding:0 12px 12px}
+.morein .card{box-shadow:none}
+details.queue>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+details.queue>summary::-webkit-details-marker{display:none}
+details.queue>summary h2{margin:0}
+details.queue>summary h2::after{content:" +";color:var(--mut);font-weight:400}
+details.queue[open]>summary h2::after{content:" –"}
+details.queue[open]>summary{margin-bottom:8px}
+@media(max-width:560px){.op .next p{display:none}.card.mis>p.small{display:none}}
+details.more>summary,details.queue>summary,details.queue>summary h2{color:var(--ink)}
+.kstrip{gap:4px 10px}
