@@ -423,3 +423,36 @@ grant execute on function public.admin_pw_reject(bigint) to authenticated;
 -- Confirma de una vez a quien se registró cuando "Confirm email" estaba encendido
 update auth.users set email_confirmed_at = now() where email_confirmed_at is null;
 notify pgrst, 'reload schema';
+
+-- 14. Revocar o reiniciar una certificación se aplica al instante (ranking incluido),
+--     sin esperar a que el becario vuelva a abrir LabRed
+create or replace function public.apply_exam_reset(p_review bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare v public.reviews; d jsonb; e jsonb;
+begin
+  select * into v from public.reviews where id = p_review;
+  if not found or not v.reopen or v.module !~ '^x[0-9]$' then return; end if;
+  select data into d from public.progress where user_id = v.student_id;
+  if d is null or coalesce(d->'reopened', '{}'::jsonb) ? v.id::text then return; end if;
+  e := coalesce(d->'done'->v.module, '{}'::jsonb) - 'lastScore' - 'lastTheory' - 'lastLab'
+       || jsonb_build_object('examBest', 0, 'attempts', 0, 'resetBy', v.id);
+  d := jsonb_set(d, array['done', v.module], e, true);
+  d := jsonb_set(d, '{reopened}', coalesce(d->'reopened', '{}'::jsonb) || jsonb_build_object(v.id::text, 1), true);
+  d := jsonb_set(d, '{ts}', to_jsonb((extract(epoch from now()) * 1000)::bigint), true);
+  update public.progress set data = d, updated_at = now() where user_id = v.student_id;
+  update public.ranking set updated_at = now() where user_id = v.student_id;
+end $$;
+revoke all on function public.apply_exam_reset(bigint) from public, anon, authenticated;
+
+create or replace function public.reviews_apply_reset() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.reopen and new.module ~ '^x[0-9]$' then perform public.apply_exam_reset(new.id); end if;
+  return new;
+end $$;
+drop trigger if exists reviews_apply_reset on public.reviews;
+create trigger reviews_apply_reset after insert on public.reviews
+  for each row execute function public.reviews_apply_reset();
+
+-- Aplica ahora las que ya revocaste y el becario todavía no ha abierto
+select public.apply_exam_reset(id) from public.reviews where reopen and module ~ '^x[0-9]$' order by id;
