@@ -87,7 +87,7 @@ let uid=null,userEmail='',lastRank=null,guest=false;
 try{guest=sessionStorage.getItem('labred_guest')==='1'}catch(e){}
 const LSK=()=>'labred'+(uid?'_'+uid:'');
 const item=id=>st.done[id]||(st.done[id]={quiz:{},quizPts:0,exp:0,expPts:0});
-const calcPts=()=>(st.placePts||0)+(st.daily&&st.daily.pts||0)+(st.revPts||0)+(st.noc&&st.noc.pts||0)+(st.duelPts||0)+(st.arenaPts||0)+(st.bossPts||0)+(st.peerPts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
+const calcPts=()=>(st.placePts||0)+(st.mis&&st.mis.pts||0)+(st.fcPts||0)+(st.daily&&st.daily.pts||0)+(st.revPts||0)+(st.noc&&st.noc.pts||0)+(st.duelPts||0)+(st.arenaPts||0)+(st.bossPts||0)+(st.peerPts||0)+Object.values(st.done).reduce((p,v)=>p+(v.quizPts||0)+(v.expPts||0)+(v.labPts||0)+(v.examPts||0)+(v.miniPts||0),0);
 const CV=2,exOk=r=>(r.examBest||0)>=EXPASS&&r.v===CV;
 const used=r=>!!(r&&((r.qok&&Object.keys(r.qok).length)||r.expSent||r.evalText||r.lab||r.labRuns||r.attempts||r.examBest));
 const fastZone=z=>(st.fast||0)>z;
@@ -128,7 +128,7 @@ const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].t
 function curTheme(){try{return localStorage.getItem('labred_theme')||''}catch(e){return''}}
 function setTheme(t){try{t?localStorage.setItem('labred_theme',t):localStorage.removeItem('labred_theme')}catch(e){}t?document.documentElement.dataset.theme=t:delete document.documentElement.dataset.theme}
 function renderMe(){const p=calcPts(),nb=nBadges(),h=location.hash.slice(1)||'mapa';
- $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#arena" class="${['arena','reto','repaso','noc','duelos'].includes(h)?'on':''}">Arena${(revDue().length+duelPend())?` <span class="pill">${revDue().length+duelPend()}</span>`:''}</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a><a href="#glosario" class="${h==='glosario'?'on':''}">Glosario</a><a href="#ayuda" class="${h==='ayuda'?'on':''}">Ayuda</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct()}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="${uid?'#perfil':'#entrar'}" title="${uid?'Tu perfil':'Entrar'}">${uid&&st.avatar?`<span class="hudav">${esc(st.avatar.e)}</span>`:ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
+ $('#hud').innerHTML=`<span class="links"><a href="#mapa" class="${h==='mapa'?'on':''}">Mi red</a><a href="#arena" class="${['arena','reto','repaso','noc','duelos','tarjetas','jefes','pares'].includes(h)||h.startsWith('juego-')?'on':''}">Arena${(revDue().length+duelPend())?` <span class="pill">${revDue().length+duelPend()}</span>`:''}</a><a href="#ranking" class="${h==='ranking'?'on':''}">Ranking</a><a href="#logros" class="${h==='logros'?'on':''}">Insignias</a><a href="#glosario" class="${h==='glosario'?'on':''}">Glosario</a><a href="#ayuda" class="${h==='ayuda'?'on':''}">Ayuda</a></span><span class="chips">${sb&&!uid?'':`<a class="hudp" href="#logros" title="Experiencia">${ico('bolt')}${p} XP<span class="bar"><i style="width:${xpPct()}%"></i></span></a><a class="hudp fl" href="#logros" title="Días seguidos practicando">${ico('up')}<span>uptime ${st.streak||0}d</span></a>`}${uid&&!isOwner?`<a class="hudp" href="#mensajes" title="Mensajes de tu instructor">${ico('bell')}${unreadN()?`<b style="color:var(--bad)">${unreadN()}</b>`:''}<span class="lbl">Mensajes</span></a>`:''}<button class="hudp" id="fbk" aria-label="Feedback">${ico('mail')}<span class="lbl">Feedback</span></button><button class="hudp" id="thm" title="Tema: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'}" aria-label="Cambiar tema (actual: ${({light:'claro',dark:'oscuro'})[curTheme()]||'automático'})">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')}</button><button class="hudp" id="snd" aria-label="${st.mute?'Activar sonido':'Silenciar'}">${ico(st.mute?'mute':'sound')}</button><a class="hudp" href="${uid?'#perfil':'#entrar'}" title="${uid?'Tu perfil':'Entrar'}">${uid&&st.avatar?`<span class="hudav">${esc(st.avatar.e)}</span>`:ico('user')}<span class="lbl">${uid?esc((myName||'').split(' ')[0]):'Entrar'}</span></a>${isOwner?`<a class="hudp" href="#instructor">${ico('table')}<span class="lbl">Instructor</span></a>`:''}${isOwner?`<a class="hudp cr" href="#creador">${ico('wrench')}<span class="lbl">Creador</span></a>`:''}</span>`;
  $('#thm').addEventListener('click',()=>{const n={'':'light',light:'dark',dark:''}[curTheme()];setTheme(n);toast('Tema: '+({light:'claro',dark:'oscuro'}[n]||'automático (como tu sistema)'));renderMe()});
  $('#snd').addEventListener('click',()=>{st.mute=!st.mute;save(true);if(!st.mute)sfx('ok')})}
 
@@ -204,7 +204,7 @@ function renderMap(){migrateFast();if(!st.intro&&!isOwner&&(!sb||uid||guest)){st
   <div class="card"><a class="prof mprof" href="${uid?'#perfil':'#entrar'}" title="Ver mi perfil">${avatarX({name:myName||'Invitado',avatar:myAvatarStr()},true)}<div><b>${esc(myName||'Invitado')}</b><span>${isOwner?'Instructor · modo prueba':esc(rankTitle())+' · Zona '+(st.unlocked||0)}</span>${st.lema&&!isOwner?`<span class="small" style="font-style:italic">“${esc(st.lema)}”</span>`:''}${uid&&!isOwner?`<span class="small mlink">${st.avatar?'Ver mi perfil':'Elige tu avatar →'}</span>`:''}</div></a><div class="xpbar"><i style="width:${xpPct()}%"></i></div><div class="small">${nextTxt()} · ${saved}</div></div>
   <div class="kpis"><div class="kpi"><b>${p}</b><span>XP</span></div><div class="kpi"><b>${st.streak||0}d</b><span>Uptime</span></div><div class="kpi"><b>${closed}/${ids.length}</b><span>Tickets cerrados</span></div><div class="kpi"><b>${nBadges()}/${BADGES.length}</b><span>Insignias</span></div></div>
   ${C?`<div class="next"><span class="tid">${esc(TID[cur])} · Zona ${C.L.n}</span><h3>${esc(C.t)}</h3><p>${desc}</p><a class="btnl" href="${C.h}">${st.done[cur]?'Continuar ticket':'Abrir ticket'} →</a></div>`:`<div class="next"><h3>Todo al día</h3><p>Cerraste todos los tickets disponibles. Pronto llegan más zonas.</p></div>`}
-  ${caminoCard()}${retoCard()}${arenaCard()}
+  ${caminoCard()}${misionCard()}${arenaCard()}
   ${st.placed===null||st.placed===undefined?`<a class="btnl sec" href="#ubicacion">${ico('map')} Ya sé algo: examen de ubicación</a>`:(fastZone(0)?`<div class="card"><strong>Ruta rápida activa</strong>${(st.placed||0)>=2?`<p class="small" style="margin:4px 0 0">Tu examen de ubicación te puso en la <strong>Zona ${st.placed}</strong>${st.placed>=3?' o más':''}. Esa zona todavía se está construyendo: se abrirá aquí en cuanto salga. Mientras, certifica las anteriores para subir de rango.</p>`:''}<p class="small" style="margin:4px 0 0">Puedes certificar directo: ${[...Array(Math.min(st.fast,2)).keys()].map(z=>`<a href="#examen-${z}">${TID['x'+z]}</a>${isPassed('x'+z)?' ✓':''}`).join(' · ')}</p></div>`:'')+`<a class="btnl sec" href="#ubicacion">${ico('map')} Repetir examen de ubicación</a>`}
  </aside><section><div class="netcard"><div class="nethead"><h2>Tu red</h2><div class="nleg"><span><i style="background:var(--ok)"></i>enlace up</span><span><i style="background:var(--line)"></i>pendiente</span><span><i style="background:var(--trunk)"></i>siguiente</span></div></div><div class="netbox"></div></div>
  <div class="netcard queue"><h2>Cola de tickets</h2>${ids.map(id=>{const I=itemById(id);return`<a class="qrow ${itemOpen(id)?'':'lock'}" href="${itemOpen(id)?I.h:'#mapa'}" data-q="${id}"><span class="qid">${esc(TID[id])}</span><span class="qt"><b>${esc(I.t)}</b><span>Zona ${I.L.n} · ${esc(I.L.t)}</span></span>${sig(starsFor(id))}${stChip(id)}</a>`}).join('')}</div></section></div>`;
@@ -263,7 +263,7 @@ function renderRepaso(){const v=$('#v-repaso'),due=revDue(),tot=Object.keys(st.r
   const k=deck[i],q=revCard(k),c=st.rev[k],o=gshuf(q.o.map((t,j)=>({t,j})));
   v.innerHTML=head+`<div class="lecw"><div class="q flash"><p class="small mono">${esc(TID[q.lid]||'')} · tarjeta ${i+1} de ${deck.length} · nivel ${c.box} de 4</p><p>${esc(q.q)}</p><div class="opts">${o.map(x=>`<button data-j="${x.j}">${esc(x.t)}</button>`).join('')}</div><div class="why"></div></div></div>`;
   let d=false;v.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>{if(d)return;d=true;const g=+b.dataset.j===q.a;b.classList.add(g?'right':'wrong');v.querySelector(`[data-j="${q.a}"]`).classList.add('right');
-   if(g){ok++;c.box++;sfx('ok');st.revPts=(st.revPts||0)+2;floatXP(2);if(c.box>4){delete st.rev[k];st.revDone=(st.revDone||0)+1;toast('¡Tarjeta dominada!')}else c.due=addDays(REVDAYS[c.box])}else{c.box=1;c.due=addDays(1);sfx('bad')}
+   if(g){ok++;c.box++;sfx('ok');st.revPts=(st.revPts||0)+2;floatXP(2);misTick('rev');if(c.box>4){delete st.rev[k];st.revDone=(st.revDone||0)+1;toast('¡Tarjeta dominada!')}else c.due=addDays(REVDAYS[c.box])}else{c.box=1;c.due=addDays(1);sfx('bad')}
    save(true);v.querySelector('.why').innerHTML=`${g?'<strong style="color:var(--ok)">Correcto. +2 XP</strong>':'<strong style="color:var(--bad)">No.</strong>'} ${esc(q.why||'')} <button class="btnl" id="rn" style="margin-left:6px">${i+1<deck.length?'Siguiente':'Terminar'}</button>`;$('#rn').onclick=()=>{i++;show()}})};
  show()}
 /* --- Turno NOC: tickets rápidos con reloj; si fallas, baja el uptime --- */
@@ -294,7 +294,7 @@ function renderNoc(){const v=$('#v-noc');st.noc=st.noc||{best:0,pts:0,day:'',day
  v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#arena">Arena</a> / turno NOC</p><h1>Turno NOC</h1><p>Estás de guardia en el centro de monitoreo de NetCorp. Llegan incidentes uno tras otro: cada uno tiene 12 segundos. Si fallas o se te acaba el tiempo, el uptime de la red baja. El turno dura 3 minutos o hasta que la red se caiga.</p></div></header>
  <div class="lecw"><div class="card"><p>Tu mejor turno: <strong>${st.noc.best}</strong> incidentes. Ganas 1 XP por incidente resuelto (máximo 30 XP al día).</p><button class="btnl" id="ngo">Empezar turno</button></div></div>`;
  $('#ngo').onclick=()=>{const R=Math.random;let up=100,pts=0,streak=0,k=0,end=Date.now()+180000,qT,tick,cur;
-  const fin=()=>{clearInterval(tick);const t=today();if(st.noc.day!==t){st.noc.day=t;st.noc.dayXp=0}const xp=Math.min(pts,30-st.noc.dayXp);if(xp>0){st.noc.dayXp+=xp;st.noc.pts=(st.noc.pts||0)+xp}const rec=pts>st.noc.best;st.noc.best=Math.max(st.noc.best,pts);st.noc.n=(st.noc.n||0)+1;save();sfx(up>0?'win':'bad');
+  const fin=()=>{clearInterval(tick);misTick('noc');const t=today();if(st.noc.day!==t){st.noc.day=t;st.noc.dayXp=0}const xp=Math.min(pts,30-st.noc.dayXp);if(xp>0){st.noc.dayXp+=xp;st.noc.pts=(st.noc.pts||0)+xp}const rec=pts>st.noc.best;st.noc.best=Math.max(st.noc.best,pts);st.noc.n=(st.noc.n||0)+1;save();sfx(up>0?'win':'bad');
    v.querySelector('.lecw').innerHTML=`<div class="res"><div class="log">%NOC-5-SHIFT: turno terminado · uptime ${up}%</div><h3>${up>0?'Turno completado':'La red se cayó'}</h3><p><strong>${pts}</strong> incidentes resueltos${rec?' · ¡nuevo récord!':''}. Uptime final: <strong>${up}%</strong>.${xp>0?` +${xp} XP`:''}</p><button class="btnl" id="ngo2">Otro turno</button> <a class="btn" href="#arena">Arena</a></div>`;$('#ngo2').onclick=()=>renderNoc()};
   const seen=new Set(),bag=[];const next=()=>{let q,tries=0;do{q=nocQ(R);tries++}while((seen.has(q.q)||(cur&&q.q===cur.q))&&tries<60);if(tries>=60)seen.clear();seen.add(q.q);cur=q;k++;qT=Date.now()+12000;draw()};
   const draw=()=>{v.querySelector('.lecw').innerHTML=`<div class="noc"><div class="nocbar"><span>INC-${4800+k} · P${1+(k%3)}</span><span>Uptime <b>${up}%</b></span><span>Resueltos <b>${pts}</b>${streak>=3?` · racha ${streak}`:''}</span><span class="mono" id="nt"></span></div><div class="uptime"><i style="width:${up}%;background:${up>60?'var(--ok)':up>30?'var(--trunk)':'var(--bad)'}"></i></div>
@@ -337,9 +337,10 @@ async function claimDuels(){await loadDuels();let ch=false;for(const d of DUELS)
 /* --- La Arena --- */
 function renderArena(){const v=$('#v-arena'),d=dailySt(),rk=Object.keys(d.ans).length,due=revDue().length;
  v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / arena</p><h1>Arena</h1><p>Practica fuera de los tickets: repasa lo que fallaste, aguanta un turno de guardia o reta a un compañero.</p></div></header>
- <div class="lecw arena">
+ <div class="lecw" style="padding-bottom:0">${datoCard()}</div><div class="lecw arena">
   <a class="card ar" href="#reto"><span class="tid">${ico('trophy')} Reto del día</span><b>${rk>=3?'Completado hoy':`${rk} de 3`}</b><span class="small">3 preguntas nuevas cada día. +5 XP por acierto.</span></a>
   <a class="card ar" href="#repaso"><span class="tid">${ico('book')} Repaso inteligente</span><b>${due?`${due} ${due===1?'tarjeta pendiente':'tarjetas pendientes'}`:'Al día'}</b><span class="small">Lo que fallaste regresa hasta que lo domines. +2 XP por acierto.</span></a>
+  <a class="card ar" href="#tarjetas"><span class="tid">${ico('book')} Tarjetas</span><b>${(()=>{const n=fcDeck().filter(c=>!st.fc||!st.fc[c.k]||st.fc[c.k].due<=today()).length;return n?n+' por estudiar':'Al día'})()}</b><span class="small">El vocabulario de tus tickets, con repetición espaciada.</span></a>
   <a class="card ar" href="#noc"><span class="tid">${ico('bolt')} Turno NOC</span><b>Récord: ${st.noc&&st.noc.best||0}</b><span class="small">3 minutos de incidentes con reloj. No dejes que se caiga la red.</span></a>
   <a class="card ar" href="#duelos"><span class="tid">${ico('multi')} Duelos</span><b>${duelPend()?`${duelPend()} por jugar`:'Reta a alguien'}</b><span class="small">Mismas 10 preguntas para los dos. El ganador se lleva 20 XP.</span></a>
   <a class="card ar" href="#jefes"><span class="tid">${ico('flame')} Jefes de zona</span><b>${Object.keys(st.boss||{}).length} de ${BOSS.length} vencidos</b><span class="small">Un incidente grande por zona, con 3 vidas.</span></a>
@@ -350,6 +351,8 @@ function renderArena(){const v=$('#v-arena'),d=dailySt(),rk=Object.keys(d.ans).l
   <a class="card ar" href="#juego-switch"><span class="tid">${ico('table')} Sé el switch</span><b>${st.mini&&st.mini.switch?'Superado':'Nuevo'}</b><span class="small">Decide por dónde va cada frame con tu tabla MAC.</span></a>
   <a class="card ar" href="#juego-paquete"><span class="tid">${ico('packet')} Viaje del paquete</span><b>${st.mini&&st.mini.paquete?'Superado':'Nuevo'}</b><span class="small">Sigue un ping salto por salto: ARP, switch, router.</span></a>
   <a class="card ar" href="#juego-cable"><span class="tid">${ico('wrench')} Ponchado de cable</span><b>${st.mini&&st.mini.cableBest?'Récord: '+st.mini.cableBest+' s':'Nuevo'}</b><span class="small">Arma un RJ45 con el estándar T568B.</span></a>
+  <a class="card ar" href="#juego-comando"><span class="tid">${ico('term')} Arma el comando</span><b>${st.mini&&st.mini.cmdBest?'Récord: '+st.mini.cmdBest+'/8':'Nuevo'}</b><span class="small">Tarea, vendor y piezas sueltas: arma el comando exacto.</span></a>
+  <a class="card ar" href="#juego-binario"><span class="tid">${ico('bolt')} Binario y hex</span><b>${st.mini&&st.mini.binBest?'Récord: '+st.mini.binBest+'/10':'Nuevo'}</b><span class="small">Conversiones, máscaras y tipos de MAC contra el reloj.</span></a>
  </div>`;loadTeam().then(()=>{const b=$('#teambox');if(b)b.innerHTML=teamHTML()})}
 
 /* ================= Juegos de la Arena ================= */
@@ -536,7 +539,7 @@ async function renderPares(){const v=$('#v-pares'),head=`<header class="band her
  $('#pcm').addEventListener('input',()=>{$('#psend').disabled=!cl||wc($('#pcm').value)<4});$('#pskip').onclick=renderPares;
  $('#psend').onclick=async()=>{$('#psend').disabled=true;const ideas=[...v.querySelectorAll('[data-i]')].filter(x=>x.checked).length;const r=await sb.from('peer_reviews').insert({pool_id:p.id,reviewer:uid,ideas,clarity:cl,comment:$('#pcm').value.trim().slice(0,600)});
   if(r.error){$('#pout').innerHTML='<p class="warn">No se pudo enviar. Intenta otra vez.</p>';$('#psend').disabled=false;return}
-  if((st.peer.n||0)<5){st.peer.n=(st.peer.n||0)+1;st.peerPts=(st.peerPts||0)+3;floatXP(3)}st.peer.total=(st.peer.total||0)+1;save();sfx('ok');
+  if((st.peer.n||0)<5){st.peer.n=(st.peer.n||0)+1;st.peerPts=(st.peerPts||0)+3;floatXP(3)}st.peer.total=(st.peer.total||0)+1;misTick('peer');save();sfx('ok');
   $('#pout').innerHTML=`<div class="closed"><div class="in"><div><h3 style="margin:0">¡Gracias!</h3><p>Tu revisión ya le llega a tu compañero.</p><button class="btnl" id="pmore">Revisar otra</button></div></div></div>`;$('#pmore').onclick=renderPares}}
 async function peerReceived(){if(!sb||!uid)return'';try{const a=await sb.from('peer_pool').select('id,module').eq('user_id',uid);if(a.error)return'';const ids=(a.data||[]).map(x=>x.id);if(!ids.length)return'';const b=await sb.from('peer_reviews').select('id,pool_id,ideas,clarity,comment,created_at').in('pool_id',ids).order('created_at',{ascending:false}).limit(40);const R=b.data||[];if(!R.length)return'';
   const mod=Object.fromEntries((a.data||[]).map(x=>[x.id,x.module]));return`<h2>Lo que opinan tus compañeros</h2>${R.map(r=>`<div class="card" style="margin:8px 0"><div class="small">${esc(TID[mod[r.pool_id]]||'')} · ideas mencionadas: ${r.ideas}/4 · ${['','confusa','más o menos clara','muy clara'][r.clarity]||''}</div>${r.comment?`<p style="margin:6px 0;white-space:pre-wrap">${esc(r.comment)}</p><button class="btn" data-prrep="${r.id}" type="button" style="font-size:13px">Reportar comentario ofensivo</button>`:''}</div>`).join('')}`}catch(e){return''}}
@@ -587,7 +590,7 @@ function renderReto(){const d=dailySt(),qs=retoQs(),v=$('#v-reto');
   v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / reto del día</p><h1>Reto del día</h1><p>Tres preguntas de repaso de las zonas que tienes abiertas. Cambian cada día. Solo cuenta tu primera respuesta: +5 XP por acierto.</p></div></header>
   <div class="lecw">${qs.map((q,i)=>{const a=d.ans[i];return`<div class="q" data-i="${i}"><p class="small mono" style="margin:0 0 4px">${esc(TID[q.from]||'')}</p><p>${esc(q.q)}</p><div class="opts">${q.o.map((o,j)=>`<button data-j="${j}" class="${a!==undefined?(j===q.a?'right':j===a?'wrong':''):''}" ${a!==undefined?'disabled':''}>${esc(o)}</button>`).join('')}</div>${a!==undefined?`<div class="why">${a===q.a?'<strong style="color:var(--ok)">Correcto. +5 XP</strong> ':'<strong style="color:var(--bad)">No.</strong> '}${esc(q.why||'')}</div>`:''}</div>`}).join('')}
   ${k>=3?`<div class="res"><h3 style="margin:0">Reto de hoy completo</h3><p>${qs.filter((q,i)=>d.ans[i]===q.a).length} de 3 correctas. Llevas <strong>${d.n}</strong> ${d.n===1?'reto':'retos'} en total. Mañana hay otro.</p><a class="btnl" href="#mapa">Volver a mi red →</a></div>`:''}${qs.length<3?'<p class="small">Abre más tickets para tener más preguntas en el reto.</p>':''}</div>`;
-  v.querySelectorAll('.q').forEach(box=>box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const i=+box.dataset.i,j=+b.dataset.j;if(d.ans[i]!==undefined)return;d.ans[i]=j;
+  v.querySelectorAll('.q').forEach(box=>box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const i=+box.dataset.i,j=+b.dataset.j;if(d.ans[i]!==undefined)return;d.ans[i]=j;misTick('reto');
    if(j===qs[i].a){d.pts=(d.pts||0)+5;sfx('ok');floatXP(5)}else{sfx('bad');missByText(qs[i].from,qs[i].q)}if(Object.keys(d.ans).length>=3&&d.doneDay!==today()){d.doneDay=today();d.n=(d.n||0)+1;touchStreak()}save();draw()})))};
  draw()}
 function renderGlosario(){const seen=new Map();for(const[k,list]of Object.entries(VOCAB)){const L=LES[k];for(const[e,t]of list){const key=e.toLowerCase();if(!seen.has(key))seen.set(key,{e,t,from:L?L.id:null})}}
@@ -653,7 +656,7 @@ const SEG_TAG=[SEG_ETH[0],SEG_ETH[1],{n:'802.1Q',b:'4 bytes',c:'#d49b00',w:2,d:'
 /* LabRed: minijuegos de las lecciones (Zona 0 y "Tu primera consola").
    Cada juego recibe el contenedor y guarda su avance en st.mini. */
 const MINIXP=10;
-function miniWin(key,lesId,msg){st.mini=st.mini||{};const first=!st.mini[key+'_xp'];st.mini[key]=true;
+function miniWin(key,lesId,msg){st.mini=st.mini||{};misTick('game');const first=!st.mini[key+'_xp'];st.mini[key]=true;
  if(first){st.mini[key+'_xp']=1;if(lesId==='arena'||!lesById(lesId))st.arenaPts=(st.arenaPts||0)+MINIXP;else{const r=item(lesId);r.miniPts=(r.miniPts||0)+MINIXP}floatXP(MINIXP)}sfx('win');save();if(msg)toast(msg)}
 const gshuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const GAMES={
@@ -1125,12 +1128,12 @@ function renderLock(){const blk=blockedAt(),h=location.hash.slice(1),tid=h.start
 /* ---------- router ---------- */
 function route(){
  migrateFast();const h=location.hash.slice(1)||'mapa';let id='v-mapa';
- if(h.startsWith('leccion-')&&LES[h.slice(8)])id=itemOpen(LES[h.slice(8)].id)?'v-lec':'v-lock';else if(/^examen-\d$/.test(h)&&EXAMS['x'+h.slice(7)])id='v-examen';else if(Object.values(LABS).some(x=>x.hash===h)){const lk=Object.keys(LABS).find(k=>LABS[k].hash===h);if(!(EX&&EX.phase==='lab'))curLab=lk;id=(unlocked(LABS[lk].z)&&itemOpen(lk))||(EX&&EX.phase==='lab')?'v-lab1':'v-lock'}else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes','reto','glosario','arena','repaso','noc','duelos','jefes','pares','ayuda','privacidad'].includes(h))id='v-'+h;else if(h==='perfil'||/^perfil-[0-9a-f-]{8,}$/.test(h))id='v-perfil';else if(/^juego-(traductor|switch|paquete|cable)$/.test(h))id='v-juego';else if(/^diploma-\d$/.test(h))id='v-diploma';else if(/^chuleta-\d$/.test(h))id='v-chuleta';
+ if(h.startsWith('leccion-')&&LES[h.slice(8)])id=itemOpen(LES[h.slice(8)].id)?'v-lec':'v-lock';else if(/^examen-\d$/.test(h)&&EXAMS['x'+h.slice(7)])id='v-examen';else if(Object.values(LABS).some(x=>x.hash===h)){const lk=Object.keys(LABS).find(k=>LABS[k].hash===h);if(!(EX&&EX.phase==='lab'))curLab=lk;id=(unlocked(LABS[lk].z)&&itemOpen(lk))||(EX&&EX.phase==='lab')?'v-lab1':'v-lock'}else if(['ubicacion','ranking','logros','creador','entrar','instructor','mensajes','reto','glosario','arena','repaso','noc','duelos','jefes','pares','ayuda','privacidad','tarjetas'].includes(h))id='v-'+h;else if(h==='perfil'||/^perfil-[0-9a-f-]{8,}$/.test(h))id='v-perfil';else if(/^juego-(traductor|switch|paquete|cable|comando|binario)$/.test(h))id='v-juego';else if(/^diploma-\d$/.test(h))id='v-diploma';else if(/^chuleta-\d$/.test(h))id='v-chuleta';
  if(sb&&!uid&&!guest&&id!=='v-ayuda'&&id!=='v-privacidad')id='v-entrar';
  if(EX&&!EX.admin){const keep=EX.phase==='lab'?LABS[EXAMS[EX.id].labId||'lab1'].hash:'examen-'+EXAMS[EX.id].zone;if(h!==keep){history.replaceState(null,'','#'+keep);toast('Estás en tu certificación: no puedes salir hasta terminar.');sfx('bad');return}}
  if(EX&&id!=='v-examen'&&!(EX.phase==='lab'&&id==='v-lab1'))examAbort();
  $$('.view').forEach(v=>v.classList.toggle('on',v.id===id));renderMe();
- if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();if(id==='v-mensajes')renderMensajes();if(id==='v-reto')renderReto();if(id==='v-arena')renderArena();if(id==='v-perfil')renderPerfil(h.startsWith('perfil-')?h.slice(7):null);if(id==='v-jefes')renderJefes();if(id==='v-pares')renderPares();if(id==='v-juego')({'juego-traductor':gameTraductor,'juego-switch':gameSwitch,'juego-paquete':gamePaquete,'juego-cable':gameCable})[h]();if(id==='v-diploma')renderDiploma(+h.slice(8));if(id==='v-chuleta')renderChuleta(+h.slice(8));if(id==='v-repaso')renderRepaso();if(id==='v-noc')renderNoc();if(id==='v-duelos')renderDuelos();if(id==='v-glosario')renderGlosario();if(id==='v-ayuda')renderAyuda();if(id==='v-privacidad')renderPrivacidad();
+ if(id==='v-lec')showLesson(h.slice(8));if(id==='v-examen'&&!EX)renderExam(+h.slice(7));if(id==='v-mapa')renderMap();if(id==='v-ubicacion')renderPlace();if(id==='v-ranking')renderRank();if(id==='v-lock')renderLock();if(id==='v-logros')renderLogros();if(id==='v-creador')renderCreador();if(id==='v-entrar')renderEntrar();if(id==='v-instructor')renderInstructor();if(id==='v-mensajes')renderMensajes();if(id==='v-reto')renderReto();if(id==='v-arena')renderArena();if(id==='v-perfil')renderPerfil(h.startsWith('perfil-')?h.slice(7):null);if(id==='v-jefes')renderJefes();if(id==='v-pares')renderPares();if(id==='v-juego')({'juego-traductor':gameTraductor,'juego-switch':gameSwitch,'juego-paquete':gamePaquete,'juego-cable':gameCable,'juego-comando':gameComando,'juego-binario':gameBinario})[h]();if(id==='v-diploma')renderDiploma(+h.slice(8));if(id==='v-chuleta')renderChuleta(+h.slice(8));if(id==='v-repaso')renderRepaso();if(id==='v-noc')renderNoc();if(id==='v-duelos')renderDuelos();if(id==='v-glosario')renderGlosario();if(id==='v-ayuda')renderAyuda();if(id==='v-tarjetas')renderTarjetas();if(id==='v-privacidad')renderPrivacidad();
  if(id==='v-lab1')dispatchEvent(new Event('lab-show'));
  scrollTo(0,0);
 }
@@ -1405,6 +1408,119 @@ async function instrExtra(v,names){
   (out.pw_requests||[]).forEach?.(q=>{delete q.temp_pass;delete q.token_hash});
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}));a.download=`labred-respaldo-${today()}.json`;document.body.appendChild(a);a.click();a.remove();m.textContent='Listo.'});
 }
+
+/* ================= Aprender más: misiones, tarjetas, arma el comando, binario y hex, ¿sabías que? ================= */
+const MIS={
+ reto:{t:'Completa el Reto del día',n:3,h:'#reto'},
+ rev:{t:'Acierta 3 tarjetas del Repaso',n:3,h:'#repaso',ok:()=>revDue().length>=3},
+ cards:{t:'Estudia 10 tarjetas de vocabulario',n:10,h:'#tarjetas'},
+ cmd:{t:'Arma 5 comandos correctos',n:5,h:'#juego-comando'},
+ bin:{t:'Acierta 8 conversiones de binario y hex',n:8,h:'#juego-binario'},
+ noc:{t:'Aguanta un turno NOC',n:1,h:'#noc'},
+ game:{t:'Supera un juego de la Arena',n:1,h:'#arena'},
+ peer:{t:'Revisa la explicación de un compañero',n:1,h:'#pares',ok:()=>!!uid}};
+const MISXP=10,MISBONUS=15,ldays=n=>new Date(Date.now()+n*864e5).toLocaleDateString('sv');
+function misDay(){const t=today();if(!st.mis||st.mis.day!==t){const prev=st.mis;const pool=Object.keys(MIS).filter(k=>k!=='reto'&&(!MIS[k].ok||MIS[k].ok()));let h=[...(t+(uid||'g'))].reduce((a,c)=>a*31+c.charCodeAt(0)>>>0,7);const pick=[];while(pick.length<2&&pool.length){pick.push(pool.splice(h%pool.length,1)[0]);h=(h*1103515245+12345)>>>0}
+  st.mis={day:t,list:['reto',...pick],prog:{},got:{},pts:prev&&prev.pts||0,streak:prev&&prev.allDay===ldays(-1)?prev.streak||0:0,allDay:prev&&prev.allDay,best:prev&&prev.best||0}}return st.mis}
+function misTick(kind,n){if(isOwner)return;const m=misDay();if(!m.list.includes(kind)||m.got[kind])return;m.prog[kind]=Math.min(MIS[kind].n,(m.prog[kind]||0)+(n||1));
+ if(m.prog[kind]>=MIS[kind].n){m.got[kind]=1;m.pts+=MISXP;floatXP(MISXP);toast(`Misión cumplida: ${MIS[kind].t}. +${MISXP} XP`);sfx('win');
+  if(m.list.every(k=>m.got[k])){m.pts+=MISBONUS;m.streak=(m.streak||0)+1;m.allDay=today();m.best=Math.max(m.best||0,m.streak);setTimeout(()=>{toast(`¡Las 3 misiones de hoy! +${MISBONUS} XP extra · racha de ${m.streak} ${m.streak===1?'día':'días'}`);floatXP(MISBONUS)},1800)}}
+ save()}
+function misionCard(){if(isOwner)return retoCard();const m=misDay(),n=m.list.filter(k=>m.got[k]).length;
+ return`<div class="card mis"><div class="mishead"><span class="tid">${ico('trophy')} Misiones de hoy</span><span class="small">${n}/3${m.streak?` · racha ${m.streak}d`:''}</span></div>${m.list.map(k=>{const M=MIS[k],p=m.prog[k]||0,ok=m.got[k];return`<a class="misr${ok?' ok':''}" href="${M.h}"><span class="mck">${ok?'✓':''}</span><span class="mt">${esc(M.t)}<i class="mbar"><b style="width:${Math.round(100*p/M.n)}%"></b></i></span><span class="small">${ok?'+'+MISXP:p+'/'+M.n}</span></a>`}).join('')}<p class="small" style="margin:6px 0 0">${n===3?'¡Completaste el día! Mañana hay misiones nuevas.':`+${MISXP} XP cada una y +${MISBONUS} si haces las 3.`}</p></div>`}
+
+/* --- ¿Sabías que? --- */
+const DATOS=[
+ 'Ethernet se inventó en Xerox PARC en 1973. Su nombre viene del "éter", el medio por el que antes se creía que viajaba la luz.',
+ 'Los primeros 24 bits de una MAC (el OUI) los asigna el IEEE a cada fabricante. Con ellos puedes saber quién hizo una tarjeta de red.',
+ 'Una MAC tiene 48 bits: alcanzan para más de 281 billones de direcciones distintas.',
+ 'El tag 802.1Q mide 4 bytes y deja 12 bits para el número de VLAN: por eso hay de la 0 a la 4095, y se pueden usar de la 1 a la 4094.',
+ 'Un switch aprende MACs mirando la dirección de ORIGEN de cada frame, nunca la de destino.',
+ 'Por defecto, un switch Cisco borra una MAC de su tabla si no la ve en 300 segundos (5 minutos).',
+ 'La dirección ff:ff:ff:ff:ff:ff es el broadcast de capa 2: todos los equipos de la VLAN la reciben.',
+ 'El cable UTP trenza sus pares para cancelar interferencias: cada par lleva un número distinto de vueltas por metro.',
+ 'Un cable Ethernet de cobre (Cat5e, Cat6) no debe pasar de 100 metros entre dos equipos.',
+ 'T568A y T568B solo cambian de lugar los pares verde y naranja. Lo importante es usar el mismo estándar en las dos puntas.',
+ 'En Juniper, nada de lo que configuras se aplica hasta que escribes commit. Si te equivocas, rollback te regresa a una versión anterior.',
+ 'ARP pregunta "¿quién tiene esta IP?" por broadcast; la respuesta llega por unicast con la MAC.',
+ 'Un router separa dominios de broadcast; un switch (sin VLAN) separa dominios de colisión por puerto.',
+ 'La VLAN nativa de un trunk viaja sin tag. Si las dos puntas tienen una nativa distinta, el tráfico termina en la VLAN equivocada.',
+ 'STP existe porque un loop de capa 2 hace que los broadcasts den vueltas para siempre: en segundos la red se satura.',
+ 'El FCS al final de cada frame es un CRC de 32 bits: si no cuadra, el switch tira el frame sin avisar a nadie.',
+ 'Muchos switches trabajan en "store-and-forward": reciben el frame completo y revisan el FCS antes de mandarlo. Otros usan "cut-through" y lo mandan apenas leen la MAC destino.',
+ 'El MTU estándar de Ethernet es de 1500 bytes de datos por frame. Los "jumbo frames" llegan a unos 9000.',
+ 'Los rangos 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16 son IP privadas: no se enrutan en Internet.',
+ 'Una máscara /24 (255.255.255.0) deja 254 direcciones para equipos: la primera es la red y la última el broadcast.',
+ 'En una SVI (interface vlan) el switch actúa como router de esa VLAN: es el gateway de las PCs.',
+ 'show ip interface brief en Cisco, show ip interface brief en Aruba y show interfaces terse en Juniper: tres formas de ver lo mismo.',
+ 'El estado "up/down" en Cisco significa: la interfaz está encendida pero no detecta nada del otro lado (cable o equipo apagado).',
+ 'Un hub repite todo por todos los puertos; un switch decide por dónde mandar cada frame. Por eso los hubs ya casi no existen.',
+ 'Wi-Fi también usa direcciones MAC, pero sus frames llevan hasta 4 direcciones en lugar de 2.',
+ 'Los primeros switches Ethernet comerciales salieron en 1990, de una empresa llamada Kalpana, que después compró Cisco.',
+ 'Aruba Networks nació como empresa de Wi-Fi en 2002; HP la compró en 2015 y hoy su sistema de switches es AOS-CX.',
+ 'Juniper se fundó en 1996 y su sistema operativo Junos usa la misma base en routers, switches y firewalls.',
+ 'Un switch de 48 puertos Gigabit necesita una capacidad interna de al menos 96 Gbps para no perder frames (48 × 1 Gbps × 2 sentidos).',
+ 'Muchísimas fallas de red en oficinas son de capa 1: cables, conectores o puertos apagados. Por eso siempre se revisa primero lo físico.'];
+function datoCard(){const i=(Math.floor(Date.now()/864e5)+(st.datoOff||0))%DATOS.length;return`<p class="dato"><b>¿Sabías que?</b> ${esc(DATOS[i])} <button class="linkb" id="datonext" type="button">Otro →</button></p>`}
+document.addEventListener('click',e=>{if(e.target.closest('#datonext')){st.datoOff=(st.datoOff||0)+1;const c=e.target.closest('.dato');if(c)c.outerHTML=datoCard();save(true)}});
+
+/* --- Tarjetas de vocabulario (repetición espaciada) --- */
+const FCDAYS=[0,1,2,4,8,16];
+function fcDeck(){const out=[];for(const[k,list]of Object.entries(VOCAB)){const L=LES[k];if(!L)continue;if(!isOwner&&!itemOpen(L.id)&&!st.done[L.id])continue;list.forEach(([t,d])=>out.push({k:t,t,d,from:L.id}))}return out}
+function renderTarjetas(){const v=$('#v-tarjetas');st.fc=st.fc||{};const deck=fcDeck(),now=today();
+ const due=deck.filter(c=>st.fc[c.k]&&st.fc[c.k].due<=now),fresh=deck.filter(c=>!st.fc[c.k]),known=deck.filter(c=>st.fc[c.k]&&st.fc[c.k].box>=5).length;
+ const ses=[...gshuf(due),...gshuf(fresh)].slice(0,10);let i=0,ok=0;
+ v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#arena">Arena</a> / tarjetas</p><h1>Tarjetas de vocabulario</h1><p>Los términos de los tickets que ya abriste. Lo que sabes regresa cada vez más espaciado; lo que no, regresa mañana. Así se queda en la memoria de largo plazo.</p></div></header>
+ <div class="lecw"><div class="fcstats"><span><b>${deck.length}</b> términos</span><span><b>${known}</b> dominados</span><span><b>${due.length}</b> para hoy</span><span><b>${fresh.length}</b> nuevos</span></div><div id="fcbox"></div></div>`;
+ const box=$('#fcbox');
+ const draw=()=>{if(i>=ses.length){box.innerHTML=`<div class="res"><h3 style="margin:0 0 6px">${ses.length?`Sesión terminada: ${ok} de ${ses.length} los sabías`:'No hay tarjetas para hoy'}</h3><p>${ses.length?'Vuelve mañana: las que fallaste regresan primero.':'Abre más tickets para desbloquear términos nuevos, o vuelve mañana.'}</p><div class="cta"><a href="#arena">Volver a la Arena</a>${deck.length?'<a class="sec" href="#tarjetas" id="fcmore">Otra sesión</a>':''}</div></div>`;$('#fcmore')?.addEventListener('click',e=>{e.preventDefault();renderTarjetas()});return}
+  const c=ses[i],rev=Math.random()<.35;
+  box.innerHTML=`<p class="small">Tarjeta ${i+1} de ${ses.length} · ${esc(TID[c.from]||'')}${st.fc[c.k]?'':' · <strong>nueva</strong>'}</p><div class="fc" tabindex="0" role="button" aria-label="Voltear tarjeta"><div class="fcin"><div class="fcf"><span class="small">${rev?'¿Qué término es?':'¿Qué significa?'}</span><b>${esc(rev?c.d:c.t)}</b><span class="small">Toca para voltear</span></div><div class="fcb"><b>${esc(rev?c.t:c.d)}</b><span class="small">${esc(rev?c.d:c.t)}</span></div></div></div><div class="fcbtn" hidden><button class="btn" data-k="0">Todavía no</button><button class="btnl" data-k="1">Lo sabía</button></div>`;
+  const f=box.querySelector('.fc'),flip=()=>{f.classList.add('on');box.querySelector('.fcbtn').hidden=false};f.addEventListener('click',flip);f.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();flip()}});
+  box.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{const yes=b.dataset.k==='1',s=st.fc[c.k]||{box:0};s.box=yes?Math.min(5,s.box+1):1;s.due=ldays(FCDAYS[s.box]||1);st.fc[c.k]=s;
+   if(yes){ok++;sfx('ok');const d=st.fcDay&&st.fcDay.d===now?st.fcDay:(st.fcDay={d:now,n:0});if(d.n<10){d.n++;st.fcPts=(st.fcPts||0)+1;floatXP(1)}}else sfx('bad');misTick('cards');i++;save();draw()}))};
+ draw()}
+
+/* --- Arma el comando --- */
+function gameComando(){const box=gameShell('comando','Arma el comando','Te damos la tarea y el vendor. Toca las piezas en orden para armar el comando correcto. Cuidado: hay piezas de otros vendors que sobran.');
+ const VN={cisco:'Cisco IOS',aruba:'Aruba AOS-CX',juniper:'Juniper Junos'};
+ const pool=[];TRD.forEach(([t,V])=>Object.entries(V).forEach(([vd,L])=>{const tk=L[0].split(' ');if(tk.length<=10)pool.push({t,vd,ans:L[0],tk})}));
+ const R=gshuf(pool).slice(0,8);let k=0,ok=0,streak=0;
+ const draw=()=>{if(k>=R.length){if(ok>=6)miniWin('comando','arena','¡Dominas la sintaxis de los tres vendors!');else save(true);st.mini=st.mini||{};st.mini.cmdBest=Math.max(st.mini.cmdBest||0,ok);save(true);
+   box.innerHTML=`<div class="game"><h3 style="margin-top:0">${ok} de ${R.length} comandos correctos</h3><p>${ok>=6?'Excelente: ya piensas en tres sintaxis.':'Tip: Juniper casi siempre empieza con set y se aplica con commit; Aruba se parece a Cisco pero cambia el orden (vlan access 10).'}</p><button class="btnl" id="cmre">Otra ronda</button> <a class="btn" href="#arena">Volver a la Arena</a></div>`;$('#cmre').onclick=gameComando;return}
+  const r=R[k],others=pool.filter(p=>p.t===r.t&&p.vd!==r.vd).flatMap(p=>p.tk).filter(x=>!r.tk.includes(x)),extra=gshuf([...new Set(others.length>=2?others:pool.flatMap(p=>p.tk).filter(x=>!r.tk.includes(x)))]).slice(0,3);
+  const pieces=gshuf([...r.tk.map((t,i)=>({t,i})),...extra.map(t=>({t,i:-1}))]);let built=[];
+  box.innerHTML=`<div class="game"><p class="small">Comando ${k+1} de ${R.length} · aciertos ${ok}${streak>1?` · racha ${streak} 🔥`:''}</p><p class="cmdtask"><span class="chip ${r.vd==='cisco'?'go':r.vd==='aruba'?'open':'ok'}">${VN[r.vd]}</span> ${esc(r.t)}</p>
+   <div class="cmdline mono" aria-live="polite"><span class="prm">${r.vd==='juniper'?'admin@sw#':'SW1(config)#'}</span> <span id="cmout"></span><span class="cur">▌</span></div>
+   <div class="pieces">${pieces.map((p,j)=>`<button class="pc mono" data-j="${j}">${esc(p.t)}</button>`).join('')}</div>
+   <div class="ctrl" style="padding-left:0"><button class="btn" id="cmundo">Borrar última</button><button class="btnl" id="cmok">Enter</button></div><div class="why" id="cmwhy"></div></div>`;
+  const out=$('#cmout'),upd=()=>{out.textContent=built.map(j=>pieces[j].t).join(' ');box.querySelectorAll('.pc').forEach(b=>b.disabled=built.includes(+b.dataset.j))};
+  box.querySelectorAll('.pc').forEach(b=>b.addEventListener('click',()=>{built.push(+b.dataset.j);upd()}));
+  $('#cmundo').onclick=()=>{built.pop();upd()};
+  $('#cmok').onclick=()=>{const s=built.map(j=>pieces[j].t).join(' '),g=s===r.ans;if(g){ok++;streak++;sfx('ok');misTick('cmd')}else{streak=0;sfx('bad')}
+   $('#cmwhy').innerHTML=`${g?'<strong style="color:var(--ok)">Correcto.</strong>':'<strong style="color:var(--bad)">No.</strong> Era:'} <code>${esc(r.ans)}</code>${r.vd==='juniper'?' · en Junos se aplica después con <code>commit</code>.':''}`;
+   $('#cmok').textContent='Siguiente →';$('#cmok').onclick=()=>{k++;draw()};$('#cmundo').disabled=true;box.querySelectorAll('.pc').forEach(b=>b.disabled=true)};
+  upd()};
+ draw()}
+
+/* --- Binario y hex --- */
+function gameBinario(){const box=gameShell('binario','Binario y hex','Las redes hablan en binario y en hexadecimal: las MAC van en hex y las máscaras en binario. 10 retos contra el reloj.');
+ const ri=n=>Math.random()*n|0,hx=n=>n.toString(16).padStart(2,'0'),bn=n=>n.toString(2).padStart(8,'0');
+ const mkQ=()=>{const t=ri(6);
+  if(t===0){const n=[1,2,4,8,16,32,64,128,192,224,240,248,252,254,255,10,100,168][ri(18)];return{q:`Escribe <b>${n}</b> en binario (8 bits)`,a:bn(n),why:`${n} = ${bn(n)}`,ph:'00000000'}}
+  if(t===1){const n=ri(256);return{q:`¿Cuánto vale <b class="mono">${bn(n)}</b> en decimal?`,a:String(n),why:`${bn(n)} = ${n}`,ph:'0 a 255'}}
+  if(t===2){const n=ri(256);return{q:`¿Cuánto vale el byte hex <b class="mono">${hx(n)}</b> en decimal?`,a:String(n),why:`${hx(n)} = ${Math.floor(n/16)}×16 + ${n%16} = ${n}`,ph:'0 a 255'}}
+  if(t===3){const n=ri(256);return{q:`Escribe <b>${n}</b> en hexadecimal (2 dígitos)`,a:hx(n),why:`${n} = ${Math.floor(n/16)}×16 + ${n%16} → ${hx(n)}`,ph:'00'}}
+  if(t===4){const k=ri(3),mac=k===0?'ff:ff:ff:ff:ff:ff':k===1?`01:00:5e:${hx(ri(128))}:${hx(ri(256))}:${hx(ri(256))}`:`${hx(ri(64)*4)}:${hx(ri(256))}:${hx(ri(256))}:${hx(ri(256))}:${hx(ri(256))}:${hx(ri(256))}`;return{q:`¿Qué tipo de MAC es <b class="mono">${mac}</b>?`,o:['Unicast','Multicast','Broadcast'],a:['Broadcast','Multicast','Unicast'][k],why:k===0?'Todo en ff = broadcast: para todos.':k===1?'Empieza con 01:00:5e: multicast (el bit más bajo del primer byte está en 1).':'El bit más bajo del primer byte está en 0: es unicast, para un solo equipo.'}}
+  const p=[8,16,24,25,26,27,28,30][ri(8)],m=[...Array(4)].map((_,i)=>{const b=Math.max(0,Math.min(8,p-8*i));return 256-2**(8-b)}).join('.');return{q:`¿Qué máscara es <b>/${p}</b>?`,a:m,why:`/${p} = ${p} bits en 1 → ${m}`,ph:'255.255.255.0'}};
+ const Q=[...Array(10)].map(mkQ);let k=0,ok=0,t0=Date.now();
+ const draw=()=>{if(k>=Q.length){const s=Math.round((Date.now()-t0)/1000);st.mini=st.mini||{};const better=ok>(st.mini.binBest||0)||(ok===(st.mini.binBest||0)&&s<(st.mini.binT||1e9));if(better){st.mini.binBest=ok;st.mini.binT=s}if(ok>=8)miniWin('binario','arena','¡Hablas binario!');else save(true);
+   box.innerHTML=`<div class="game"><h3 style="margin-top:0">${ok} de 10 en ${s} s${better?' · ¡nuevo récord!':''}</h3><p>Truco: memoriza 128 64 32 16 8 4 2 1. Para pasar a binario, ve restando de izquierda a derecha.</p><button class="btnl" id="bnre">Otra vez</button> <a class="btn" href="#arena">Volver a la Arena</a></div>`;$('#bnre').onclick=gameBinario;return}
+  const q=Q[k];box.innerHTML=`<div class="game"><p class="small">Reto ${k+1} de 10 · aciertos ${ok}</p><p style="font-size:20px">${q.q}</p>${q.o?`<div class="opts row">${q.o.map(o=>`<button data-o="${o}">${o}</button>`).join('')}</div>`:`<form id="bnf" class="row" style="gap:8px"><input id="bni" class="mono" autocomplete="off" placeholder="${q.ph}" style="font-size:20px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:220px"><button class="btnl">Revisar</button></form>`}<div class="bitref mono">${[128,64,32,16,8,4,2,1].map(n=>`<span>${n}</span>`).join('')}</div><div class="why" id="bnw"></div></div>`;
+  const check=val=>{const g=String(val).trim().toLowerCase().replace(/\s/g,'')===q.a.toLowerCase();if(g){ok++;sfx('ok');misTick('bin')}else sfx('bad');
+   $('#bnw').innerHTML=`${g?'<strong style="color:var(--ok)">Correcto.</strong>':'<strong style="color:var(--bad)">No.</strong>'} ${esc(q.why)} <button class="btnl" id="bnn" style="margin-left:8px">Siguiente →</button>`;box.querySelectorAll('.opts button,#bnf button,#bni').forEach(x=>x.disabled=true);$('#bnn').onclick=()=>{k++;draw()};$('#bnn').focus()};
+  box.querySelectorAll('[data-o]').forEach(b=>b.addEventListener('click',()=>check(b.dataset.o)));$('#bnf')?.addEventListener('submit',e=>{e.preventDefault();check($('#bni').value)});$('#bni')?.focus()};
+ draw()}
 
 /* ---------- feedback ---------- */
 function openFeedback(){const el=$('#celeb');let rating=0;
