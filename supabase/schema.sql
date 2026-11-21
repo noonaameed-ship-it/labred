@@ -151,3 +151,26 @@ join auth.users u on u.id = p.user_id
 left join public.ranking r on r.user_id = p.user_id
 cross join lateral jsonb_each(p.data->'done') m;
 revoke all on public.explicaciones from anon, authenticated;
+
+-- 8. Duelos entre becarios (Arena)
+create table if not exists public.duels (
+  id bigint generated always as identity primary key,
+  a uuid not null references auth.users(id) on delete cascade,
+  a_name text,
+  b uuid not null references auth.users(id) on delete cascade,
+  b_name text,
+  seed bigint not null,
+  zone integer not null default 0,
+  a_score integer, a_ms integer,
+  b_score integer, b_ms integer,
+  created_at timestamptz not null default now(),
+  done_at timestamptz
+);
+alter table public.duels enable row level security;
+drop policy if exists "duelos: ver los míos" on public.duels;
+drop policy if exists "duelos: crear" on public.duels;
+drop policy if exists "duelos: jugar" on public.duels;
+create policy "duelos: ver los míos" on public.duels for select to authenticated using (auth.uid() = a or auth.uid() = b or public.is_admin());
+create policy "duelos: crear" on public.duels for insert to authenticated with check (auth.uid() = a and a <> b);
+create policy "duelos: jugar" on public.duels for update to authenticated using (auth.uid() = a or auth.uid() = b);
+notify pgrst, 'reload schema';
