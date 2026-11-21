@@ -89,7 +89,7 @@ function checkLevels(){for(const L of LEVELS){if(L.soon||!L.items)continue;if(L.
 let wt=null,writing=false,again=false;
 let prevPts=null,prevPassed=null,prevCerts=null;
 const allIds=()=>LEVELS.flatMap(L=>L.items||[]).map(i=>i.id);
-function save(quiet){const p=calcPts();st.pts=p;st.badges=st.badges||{};
+function save(quiet){const p=calcPts();st.pts=p;st.ts=Date.now();st.badges=st.badges||{};
  if(prevPts===null||quiet){prevPts=p;prevPassed=new Set(allIds().filter(isPassed));BADGES.forEach(b=>{if(b.f()&&!st.badges[b.id])st.badges[b.id]=today()})}
  else{if(p>prevPts){floatXP(p-prevPts);sfx('xp');touchStreak();const wk=isoWeek();if(!st.wk||st.wk.id!==wk)st.wk={id:wk,xp:0};st.wk.xp+=p-prevPts}
   const cc=certCount(st.done);if(!isOwner&&prevCerts!==null&&cc>prevCerts)celebrate('up','Subiste de rango',`Ahora eres <strong>${esc(rankTitle())}</strong>.`,'Continuar',`%LABRED-5-PRIV: privilege level changed to ${rankTitle()}`);
@@ -748,6 +748,7 @@ addEventListener('lab-done',e=>{if(e.detail.exam)return;const r=item(curLab),d=e
  const ok=d.score>=LABPASS;r.labPasses=labPasses(r)+(ok?1:0);if(ok)r.labSc=null;if(d.score>(r.labScore||0))r.labScore=d.score;r.labPts=Math.max(prevPts,d.score*2+(d.mixed?50:0));checkLevels();save();
  const n=labPasses(r),left=Math.max(0,LABRUNS-n);
  $('#labres').innerHTML=`<div class="${ok?'closed':'res'}" ${ok?'':'style="border-color:var(--bad)"'}>${ok?`<div class="log">%LABRED-5-TICKET: práctica ${Math.min(n,LABRUNS)} de ${LABRUNS} aprobada con ${d.score}/100</div><div class="in">${sig(starsPct(d.score),true)}<div><h3>Práctica aprobada: ${d.score}/100 (${Math.min(n,LABRUNS)} de ${LABRUNS})</h3><p>Comandos con error: ${d.err} (no restan) · pistas: ${d.hints} · pings fallidos: ${d.fails}.</p>${left?`<p><strong>Te faltan ${left} ${left===1?'práctica':'prácticas'}.</strong> La siguiente será con otra VLAN. Apréndete bien los comandos: en la certificación no podrás ver la guía, las pistas ni este lab.</p><button class="btnl" id="labnext">Siguiente práctica (otra VLAN)</button>`:`<p>Completaste las ${LABRUNS} prácticas.${r.exp>=PASS?'':` Para cerrar el ticket, explica abajo lo que hiciste; tu instructor lo revisará.`} Puedes seguir practicando con otras VLANs y vendors cuando quieras.</p><button class="btn" id="labnext">Practicar otra vez</button>`}</div></div>`:`<div class="sc" style="color:var(--bad)">${d.score}/100</div><div class="meter"><i style="width:${d.score}%;background:var(--bad)"></i></div><p><strong>El ping funcionó, pero necesitas ${LABPASS}/100 para que cuente como práctica aprobada.</strong> pistas: ${d.hints} (−${10*d.hints}) · pings fallidos: ${d.fails} (−${5*d.fails}).</p><p class="tip">Así se practica en la vida real: repítelo hasta que te salga limpio, sin pistas.</p><button class="btnl" id="labagain">Reiniciar el lab</button>`}</div>`;
+ renderLabProg();
  $('#labagain')?.addEventListener('click',()=>dispatchEvent(new Event('lab-reset')));
  $('#labnext')?.addEventListener('click',()=>{labScenario(true);scrollTo(0,0)});
 });
@@ -777,6 +778,7 @@ function route(){
  scrollTo(0,0);
 }
 addEventListener('hashchange',route);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&sb&&uid){clearTimeout(wt);flush()}});
 addEventListener('beforeunload',e=>{if(EX&&!EX.admin){e.preventDefault();e.returnValue=''}});
 save(true);route();
 
@@ -818,7 +820,7 @@ async function onSession(session){
  st=clone(BASE);prevPts=null;lastRank=null;
  if(uid){try{const l=JSON.parse(localStorage.getItem(LSK())||'null');if(l&&l.done)st=Object.assign(clone(BASE),l)}catch(e){}
   const r=await sb.from('progress').select('data').eq('user_id',uid).maybeSingle();
-  if(r.data&&r.data.data&&(Number(r.data.data.pts)||0)>=calcPts())st=Object.assign(clone(BASE),r.data.data);
+  const R=r.data&&r.data.data;if(R){const lt=st.ts||0,rt=R.ts||0;if(rt>lt||(!rt&&!lt&&(Number(R.pts)||0)>=calcPts())||(!rt&&lt&&(Number(R.pts)||0)>calcPts()))st=Object.assign(clone(BASE),R)}
   let gi=false;if(!Object.keys(st.done).length&&!isOwner){try{const g=JSON.parse(localStorage.getItem('labred')||'null');if(g&&g.done&&Object.values(g.done).some(used)){st=Object.assign(clone(BASE),g);delete st.cUnlock;delete st.noRank;gi=true}}catch(e){}}
   if(isOwner&&st.noRank===undefined)st.noRank=true;
   if(gi)setTimeout(()=>toast('Pasamos a tu cuenta el avance que hiciste como invitado.'),400);
