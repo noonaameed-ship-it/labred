@@ -519,3 +519,29 @@ details.more>summary,details.queue>summary,details.queue>summary h2{color:var(--
 .howfast{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--bg)}
 .howfast h3{margin:0 0 6px;font-size:16px}
 .howfast ul{margin:0;padding-left:18px}.howfast li{margin:4px 0;font-size:15px}
+/* certificado verificable */
+.dshare{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.verok{display:inline-block;background:var(--ok);color:#fff;font-weight:700;padding:6px 12px;border-radius:8px}
+.verno{display:inline-block;background:var(--bad);color:#fff;font-weight:700;padding:6px 12px;border-radius:8px}
+/* ligas */
+.liga{display:inline-flex;align-items:center;gap:4px;font:600 12px "IBM Plex Mono",monospace;padding:2px 8px;border-radius:999px;border:1px solid var(--lc);color:var(--lc);background:color-mix(in srgb,var(--lc) 12%,transparent)}
+.wkbar .liga{font-size:14px;padding:4px 12px;margin-right:6px}
+.rrow.promo{box-shadow:inset 3px 0 0 var(--ok)}
+.premios{border:1px dashed var(--trunk);border-radius:12px;padding:10px 14px;margin:0 0 14px;background:color-mix(in srgb,var(--trunk) 6%,transparent)}
+.premios p{margin:4px 0 0;font-size:14px;color:var(--mut)}
+/* incidente en vivo */
+.livebar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:18;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);background:#b91c1c;color:#fff;text-decoration:none;padding:10px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px;animation:popin .3s}
+.livebar .lvgo{font-weight:700;text-decoration:underline}
+.lvdot{width:10px;height:10px;border-radius:50%;background:#fff;animation:blinkp .8s infinite}
+.card.ar.live.hot{border-color:#b91c1c;box-shadow:0 0 0 2px #b91c1c33}
+.lvboard{list-style:none;padding:0;margin:10px 0 0}
+.lvboard li{display:grid;grid-template-columns:40px 1fr auto auto;gap:10px;align-items:center;padding:8px 6px;border-top:1px solid var(--line)}
+.lvboard li.me{background:var(--soft);border-radius:8px}
+/* historia */
+.storyl{display:block;margin-top:8px;font-size:13px;color:var(--blue);text-decoration:none}
+.storyl b{background:var(--bad);color:#fff;border-radius:999px;padding:0 7px;font-size:11px;margin-left:4px}
+.mails .mail{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0;background:var(--paper)}
+.mails .mail.new{border-left:4px solid var(--blue)}
+.mails .mail h3{margin:4px 0 6px}.mails .mail p{margin:0;line-height:1.55}
+/* desbloqueables */
+.ave.lockd,.avc.lockd{opacity:.25;filter:grayscale(1);cursor:help}

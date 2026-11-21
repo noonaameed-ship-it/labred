@@ -463,3 +463,130 @@ create policy "feedback: enviar" on public.feedback for insert to authenticated
   with check (user_id = auth.uid());
 drop policy if exists "feedback: instructor borra" on public.feedback;
 create policy "feedback: instructor borra" on public.feedback for delete to authenticated using (public.is_admin());
+
+-- 16. Certificado verificable (LinkedIn), ligas semanales e incidentes en vivo
+-- Verificación pública de un certificado: cualquiera con el código puede confirmar que es real
+create or replace function public.cert_code(p_user uuid, p_zone int) returns text
+language sql immutable set search_path = public, extensions as $$
+  select 'LR' || p_zone || '-' || upper(substr(encode(extensions.digest(p_user::text || ':x' || p_zone, 'sha256'), 'hex'), 1, 10)) $$;
+
+create or replace function public.verify_cert(p_code text)
+returns table (name text, zone int, score int, passed_at text)
+language plpgsql stable security definer set search_path = public, extensions as $$
+declare z int; r record;
+begin
+  p_code := upper(trim(coalesce(p_code, '')));
+  if p_code !~ '^LR[0-9]-[0-9A-F]{10}$' then return; end if;
+  z := substr(p_code, 3, 1)::int;
+  for r in select p.user_id, coalesce(nullif(p.name, ''), k.name, 'Becario') as nm, p.data->'done'->('x' || z) as e
+             from public.progress p left join public.ranking k on k.user_id = p.user_id loop
+    if public.cert_code(r.user_id, z) = p_code and r.e is not null
+       and coalesce((r.e->>'examBest')::numeric, 0) >= 80 and r.e->>'v' = '2' then
+      return query select r.nm::text, z, (r.e->>'examBest')::numeric::int, coalesce(r.e->>'passAt', '');
+      return;
+    end if;
+  end loop;
+end $$;
+revoke all on function public.verify_cert(text) from public;
+grant execute on function public.verify_cert(text) to anon, authenticated;
+
+-- Ligas: Bronce (0), Plata (1), Oro (2), Diamante (3). Al cambiar de semana se decide si subes o bajas.
+alter table public.ranking add column if not exists league integer not null default 0;
+create table if not exists public.week_results (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week text not null,
+  xp integer not null default 0,
+  league integer not null default 0,
+  next_league integer,
+  primary key (user_id, week)
+);
+alter table public.week_results enable row level security;
+drop policy if exists "semanas: todos ven" on public.week_results;
+create policy "semanas: todos ven" on public.week_results for select to authenticated using (true);
+
+create or replace function public.ranking_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare d jsonb; pos int; nl int;
+begin
+  select data into d from public.progress where user_id = new.user_id;
+  if d is not null then
+    new.xp := least(100000, greatest(0, coalesce((d->>'pts')::numeric, 0)::int));
+    new.certs := (select count(*) from jsonb_each(coalesce(d->'done','{}'::jsonb)) x
+                  where x.key ~ '^x[0-9]$' and jsonb_typeof(x.value) = 'object'
+                    and coalesce((x.value->>'examBest')::numeric, 0) >= 80 and x.value->>'v' = '2');
+    new.streak := least(3650, greatest(0, coalesce((d->>'streak')::int, 0)));
+    new.nivel := least(50, greatest(0, coalesce((d->>'unlocked')::int, 0)));
+    if d->'wk'->>'id' is not null then
+      new.week := d->'wk'->>'id';
+      new.week_xp := least(new.xp, greatest(0, coalesce((d->'wk'->>'xp')::numeric, 0)::int));
+    end if;
+  end if;
+  new.stars := least(coalesce(new.stars, 0), 200);
+  if new.avatar is not null and new.avatar !~ '^[^|<>"]{1,16}\|#[0-9a-fA-F]{6}$' then new.avatar := null; end if;
+  if new.pub is not null and pg_column_size(new.pub) > 8000 then new.pub := null; end if;
+  -- liga: solo la mueve el servidor
+  if tg_op = 'INSERT' then new.league := 0;
+  else
+    new.league := coalesce(old.league, 0);
+    if old.week is not null and new.week is distinct from old.week then
+      select 1 + count(*) into pos from (
+        select w.xp from public.week_results w where w.week = old.week and w.league = old.league and w.user_id <> old.user_id
+        union all
+        select r.week_xp from public.ranking r where r.week = old.week and r.league = old.league and r.user_id <> old.user_id
+      ) o where o.xp > old.week_xp;
+      nl := old.league;
+      if old.week_xp >= 50 and pos <= 3 and old.league < 3 then nl := old.league + 1;
+      elsif old.week_xp = 0 and old.league > 0 then nl := old.league - 1;
+      end if;
+      insert into public.week_results (user_id, week, xp, league, next_league)
+        values (old.user_id, old.week, old.week_xp, old.league, nl) on conflict do nothing;
+      new.league := nl;
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- Incidentes en vivo: se lanzan solos cuando hay al menos un becario activo (máximo uno cada 3 horas, de 8 a 20 h)
+create table if not exists public.live_incidents (
+  id bigint generated always as identity primary key,
+  seed integer not null,
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz not null default now() + interval '15 minutes',
+  created_by uuid default auth.uid()
+);
+create table if not exists public.live_results (
+  incident_id bigint not null references public.live_incidents(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  score integer not null check (score between 0 and 10),
+  ms integer not null check (ms between 0 and 3600000),
+  created_at timestamptz not null default now(),
+  primary key (incident_id, user_id)
+);
+alter table public.live_incidents enable row level security;
+alter table public.live_results enable row level security;
+drop policy if exists "vivo: todos ven" on public.live_incidents;
+drop policy if exists "vivo: resultados visibles" on public.live_results;
+drop policy if exists "vivo: mando mi resultado" on public.live_results;
+create policy "vivo: todos ven" on public.live_incidents for select to authenticated using (true);
+create policy "vivo: resultados visibles" on public.live_results for select to authenticated using (true);
+create policy "vivo: mando mi resultado" on public.live_results for insert to authenticated
+  with check (user_id = auth.uid() and exists (select 1 from public.live_incidents i where i.id = incident_id and now() between i.starts_at and i.ends_at + interval '1 minute'));
+
+create or replace function public.live_tick(p_force boolean default false)
+returns setof public.live_incidents
+language plpgsql security definer set search_path = public as $$
+declare h int := extract(hour from now() at time zone 'America/Mexico_City');
+        dow int := extract(isodow from now() at time zone 'America/Mexico_City');
+begin
+  if auth.uid() is null then return; end if;
+  if p_force and not public.is_admin() then p_force := false; end if;
+  if not exists (select 1 from public.live_incidents where ends_at > now())
+     and (p_force or (h between 8 and 19
+          and not exists (select 1 from public.live_incidents where starts_at > now() - interval '3 hours'))) then
+    insert into public.live_incidents (seed) values ((random() * 1000000000)::int);
+  end if;
+  return query select * from public.live_incidents where ends_at > now() - interval '30 minutes' order by id desc limit 1;
+end $$;
+revoke all on function public.live_tick(boolean) from public, anon;
+grant execute on function public.live_tick(boolean) to authenticated;
+notify pgrst, 'reload schema';
