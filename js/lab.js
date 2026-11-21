@@ -302,8 +302,16 @@ const DESC={ping:'Probar conectividad',ip:'Configuración IP',address:'Direcció
 const J_HELP={op:[['configure','Entrar a modo configuración'],['show','Mostrar información (vlans, configuration, interfaces terse)'],['exit','Salir']],conf:[['set','Agregar configuración'],['delete','Borrar configuración'],['commit','Aplicar la configuración candidata'],['show','Ver configuración candidata ( | compare para ver cambios)'],['run','Ejecutar comando operacional'],['rollback','Descartar cambios sin commit'],['exit','Salir de modo configuración']]};
 function helpList(sw,body){const endsSpace=body===''||/\s$/.test(body);const toks=body.trim()?prep(sw,body.trim()).split(/\s+/):[];const k=endsSpace?toks.length:toks.length-1,part=endsSpace?'':toks[toks.length-1].toLowerCase();const m=new Map();
   for(const[p]of tbl(sw)){const pt=p.split(' ');let ok=true;for(let i=0;i<k;i++){if(!pt[i]||!tokOk(pt[i],toks[i],sw.vendor)){ok=false;break}if(pt[i]==='<rest>'){ok=false;break}}if(!ok)continue;
-    if(pt.length===k){if(endsSpace)m.set('<cr>','');continue}const nx=pt[k];if(nx[0]==='<'){if(endsSpace)m.set(nx,DESC[nx]||'')}else if(nx.startsWith(part))m.set(nx,DESC[nx]||'')}
+    if(pt.length===k){if(endsSpace)m.set('<cr>','');continue}const nx=pt[k];
+    if(ARGS[nx]){for(const[a,b]of ARGS[nx](sw.vendor,part,endsSpace))m.set(a,b);continue}
+    if(nx[0]==='<'){if(endsSpace)m.set(nx,DESC[nx]||'')}else if(nx.startsWith(part))m.set(nx,DESC[nx]||'')}
   return{m,part,endsSpace}}
+/* Ayuda real para nombres de interfaz: "interface ?", "interface gi?" y Tab */
+const ARGS={'<svi>':()=>[],
+ '<if>':(v,part,sp)=>{const P=ports(v);
+  if(v==='cisco'){if(sp)return[['GigabitEthernet','Puerto físico: GigabitEthernet0/1 a 0/24 (abreviado: g0/1)']];const m=part.match(/^(g[a-z]*)(\d.*)?$/i);if(!m||!'gigabitethernet'.startsWith(m[1].toLowerCase()))return[];
+   if(!m[2])return[['GigabitEthernet','Puerto físico: GigabitEthernet0/1 a 0/24']];return P.filter(n=>n.slice(15).startsWith(m[2])).map(n=>[n,''])}
+  if(sp)return[[v==='aruba'?'1/1/<1-24>':'<interfaz>',v==='aruba'?'Puerto físico, ej. 1/1/1':'']];return P.filter(n=>n.startsWith(part)).map(n=>[n,''])}};
 /* Junos: árbol de comandos para ? y Tab, según el contexto */
 const JT={vlans:{d:'VLANs',arg:{n:'<nombre>',d:'Nombre de la VLAN, por ejemplo VENTAS',list:d=>Object.keys(d.cand.vlans),next:{'vlan-id':{d:'Número de la VLAN',arg:{n:'<1-4094>',d:'VLAN ID'}},'l3-interface':{d:'Interfaz de capa 3 (SVI) de la VLAN',arg:{n:'irb.<unidad>',d:'Por ejemplo irb.10',list:d=>Object.keys(d.cand.irb||{}).map(u=>'irb.'+u)}},description:{d:'Descripción',arg:{n:'<texto>',d:'Texto libre'}}}}},
  interfaces:{d:'Interfaces del equipo',arg:{n:'<interfaz>',d:'De ge-0/0/0 a ge-0/0/23, o irb',list:()=>ports('juniper').concat(['irb']),alt:{irb:{unit:{d:'Unidad lógica (usa el número de la VLAN)',arg:{n:'<unidad>',d:'Por ejemplo 10',next:{family:{d:'Familia de protocolo',next:{inet:{d:'IPv4',next:{address:{d:'Dirección IP con prefijo',arg:{n:'<ip/prefijo>',d:'Por ejemplo 192.168.10.2/24'}}}}}}}}}}},next:{unit:{d:'Unidad lógica de la interfaz',arg:{n:'0',d:'Unidad 0 (la que se usa en switching)',list:()=>['0'],next:{family:{d:'Familia de protocolo',next:{'ethernet-switching':{d:'Switching de capa 2 (VLANs)',next:{'interface-mode':{d:'Modo del puerto',next:{access:{d:'Una sola VLAN, sin tag'},trunk:{d:'Varias VLAN con tag 802.1Q'}}},vlan:{d:'Pertenencia a VLAN',next:{members:{d:'VLANs del puerto',arg:{n:'<vlan>',d:'Nombre o número de VLAN',list:d=>Object.keys(d.cand.vlans)}}}}}}}}}}},disable:{d:'Apagar la interfaz'},description:{d:'Descripción',arg:{n:'<texto>',d:'Texto libre'}}}}}};
@@ -334,7 +342,9 @@ function complete(d,val){if(d.type==='pc'||!val||/\s$/.test(val))return val;
     if(o.length===1)return val.slice(0,val.length-part.length)+o[0][0]+' ';
     if(o.length>1){let p=o[0][0];for(const[k]of o)while(!k.startsWith(p))p=p.slice(0,-1);if(p.length>part.length)return val.slice(0,val.length-part.length)+p}
     return val}
-  const{m,part}=helpList(d,val);const ks=[...m.keys()].filter(x=>x[0]!=='<');if(ks.length===1)return val.slice(0,val.length-part.length)+ks[0]+' ';return val}
+  const{m,part}=helpList(d,val);const ks=[...m.keys()].filter(x=>x[0]!=='<'&&x.toLowerCase().startsWith(part.replace(/^g[a-z]*(?=\d)/i,'gigabitethernet')));
+  if(ks.length===1)return val.slice(0,val.length-part.length)+ks[0]+(ks[0]==='GigabitEthernet'?'':' ');
+  if(ks.length>1){let p=ks[0];for(const k of ks)while(!k.toLowerCase().startsWith(p.toLowerCase()))p=p.slice(0,-1);if(p.length>part.length)return val.slice(0,val.length-part.length)+p}return val}
 
 /* ---------- prompt / exec ---------- */
 function prompt(d){if(d.type==='pc')return 'C:\\>';if(d.vendor==='juniper')return jPrompt(d);
