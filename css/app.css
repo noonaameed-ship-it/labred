@@ -437,3 +437,4 @@ details.extra{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14
 .pbadges .pb{justify-content:center;min-height:78px}
 @media(max-width:820px){.profhead{grid-template-columns:auto 1fr}.profhead .pacts,.profhead>a.btnl{grid-column:1/-1;flex-wrap:wrap}}
 .pacts>*{height:40px;box-sizing:border-box;display:inline-flex;align-items:center;margin:0}
+a.mprof{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit}a.mprof>div{display:flex;flex-direction:column}a.mprof .mlink{color:var(--blue);margin-top:2px}a.mprof:hover b{text-decoration:underline}
