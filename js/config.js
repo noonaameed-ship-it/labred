@@ -9,5 +9,5 @@ window.LABRED_CONFIG = {
   admins: ['noonaameed@gmail.com'],
   // Dirección pública para verificar certificados (por ejemplo 'https://packetpath.mx/').
   // Vacía = el certificado y LinkedIn solo muestran el código, sin la dirección de la página.
-  publicUrl: ''
+  publicUrl: 'https://packetpath.com.mx/'
 };
