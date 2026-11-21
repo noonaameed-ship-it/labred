@@ -516,3 +516,6 @@ details.queue[open]>summary{margin-bottom:8px}
 @media(max-width:560px){.op .next p{display:none}.card.mis>p.small{display:none}}
 details.more>summary,details.queue>summary,details.queue>summary h2{color:var(--ink)}
 .kstrip{gap:4px 10px}
+.howfast{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--bg)}
+.howfast h3{margin:0 0 6px;font-size:16px}
+.howfast ul{margin:0;padding-left:18px}.howfast li{margin:4px 0;font-size:15px}
