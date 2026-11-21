@@ -1531,7 +1531,7 @@ function renderGate(){$('#v-gate').innerHTML=`<div class="authw" style="min-heig
 document.addEventListener('click',e=>{if(e.target.closest('[data-signup]'))$('#v-entrar').dataset.mode='signup'});
 /* ================= Certificado verificable, ligas, incidentes en vivo, historia y desbloqueables ================= */
 async function certCode(u,z){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(u+':x'+z));return'PP'+z+'-'+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,10).toUpperCase()}catch(e){return''}}
-const verURL=c=>location.origin+location.pathname+'#verificar-'+c;
+const PUBURL=(LABRED_CONFIG.publicUrl||'').replace(/\/?$/,'/'),verURL=c=>PUBURL.length>1?PUBURL+'#verificar-'+c:'';
 async function renderVerificar(code){const v=$('#v-verificar');code=(code||'').toUpperCase();
  v.innerHTML=`<div class="authw" style="min-height:70vh"><div class="auth" style="max-width:520px"><p class="crumb">PacketPath · verificación de certificados</p><h2>Verificando ${esc(code)}…</h2></div></div>`;
  let row=null;if(sb){const r=await sb.rpc('verify_cert',{p_code:code});row=r.data&&(Array.isArray(r.data)?r.data[0]:r.data)}
@@ -1539,10 +1539,10 @@ async function renderVerificar(code){const v=$('#v-verificar');code=(code||'').t
  v.querySelector('.auth').innerHTML=row?`<p class="crumb">PacketPath · verificación de certificados</p><div class="verok">✓ Certificado válido</div><h2 style="margin:10px 0 4px">${esc(row.name)}</h2><p>Aprobó la certificación de la <strong>Zona ${row.zone}${L?': '+esc(L.t):''}</strong> de PacketPath con <strong>${row.score}/100</strong>${row.passed_at?`, el ${esc(new Date(row.passed_at+'T12:00').toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'}))}`:''}.</p><p class="small">La certificación incluye teoría y un laboratorio práctico con tiempo, sin ayuda, en switches Cisco, Aruba y Juniper. Código: ${esc(code)}</p>`
   :`<p class="crumb">PacketPath · verificación de certificados</p><div class="verno">No encontramos este certificado</div><p>Revisa que el código esté bien escrito (por ejemplo <code>PP1-3F9A0C21B7</code>). Si el certificado fue revocado por su instructor, tampoco aparece.</p>`}
 async function diplomaShare(n){const box=$('#dshare');if(!box||!uid)return;const code=await certCode(uid,n),L=LEVELS[n],r=st.done['x'+n]||{},d=new Date(String(r.passAt||today()).slice(0,10)+'T12:00'),url=verURL(code);
- const li='https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&'+new URLSearchParams({name:`PacketPath · Zona ${n}: ${L.t}`,organizationName:'PacketPath',issueYear:d.getFullYear(),issueMonth:d.getMonth()+1,certUrl:url,certId:code});
- box.innerHTML=`<a class="btnl" href="${esc(li)}" target="_blank" rel="noopener">Agregar a LinkedIn</a> <button class="btn" id="dcopy">Copiar enlace de verificación</button> <span class="small">Código: <b class="mono">${code}</b></span>`;
- $('#dcopy').onclick=async()=>{try{await navigator.clipboard.writeText(url);$('#dcopy').textContent='Enlace copiado'}catch(e){toast(url)}};
- const f=$('.dfolio');if(f)f.innerHTML=`Código de verificación ${code} · ${esc(location.host+location.pathname)}#verificar`}
+ const q={name:`PacketPath · Zona ${n}: ${L.t}`,organizationName:'PacketPath',issueYear:d.getFullYear(),issueMonth:d.getMonth()+1,certId:code};if(url)q.certUrl=url;const li='https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&'+new URLSearchParams(q);
+ box.innerHTML=`<a class="btnl" href="${esc(li)}" target="_blank" rel="noopener">Agregar a LinkedIn</a>${url?' <button class="btn" id="dcopy">Copiar enlace de verificación</button>':''} <span class="small">Código: <b class="mono">${code}</b></span>`;
+ if($('#dcopy'))$('#dcopy').onclick=async()=>{try{await navigator.clipboard.writeText(url);$('#dcopy').textContent='Enlace copiado'}catch(e){toast(url)}};
+ const f=$('.dfolio');if(f)f.innerHTML=`Código de verificación ${code}${url?' · '+esc(PUBURL.replace(/^https?:\/\//,''))+'#verificar':' · verificable con PacketPath'}`}
 
 /* --- Ligas semanales --- */
 const LIGAS=[['Bronce','#b87333'],['Plata','#9aa4ae'],['Oro','#d4a017'],['Diamante','#38bdf8']];
