@@ -105,16 +105,22 @@ const HINTF=()=>{const V=SC.vid,N=SC.name;return{
   juniper:{vlan:`configure\nset vlans ${N} vlan-id ${V}\ncommit`,pc:`set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access\nset interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members ${N}\ncommit`,up:`set interfaces ge-0/0/23 unit 0 family ethernet-switching interface-mode trunk\nset interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members ${N}\ncommit`}}};
 
 /* ---------- command tables (Cisco / Aruba) ---------- */
-const TY={ip:s=>isIP(s),mask:s=>mask2len(s)!==null,cidr:s=>{const m=s.match(/^([\d.]+)\/(\d{1,2})$/);return!!m&&isIP(m[1])&&+m[2]<=32},svi:s=>/^vlan\d+$/i.test(s)&&+s.slice(4)>=1&&+s.slice(4)<=4094,vid:s=>/^\d+$/.test(s)&&+s>=1&&+s<=4094,word:s=>s.length>0,vlist:s=>!!parseList(s),if:(s,v)=>!!normIf(v,s)};
+const TY={ip:s=>isIP(s),mask:s=>mask2len(s)!==null,cidr:s=>{const m=s.match(/^([\d.]+)\/(\d{1,2})$/);return!!m&&isIP(m[1])&&+m[2]<=32},svi:s=>/^vlan\d+$/i.test(s)&&+s.slice(4)>=1&&+s.slice(4)<=4094,vid:s=>/^\d+$/.test(s)&&+s>=1&&+s<=4094,word:s=>s.length>0,vlist:s=>!!parseList(s),arange:s=>/^1\/1\/\d+-(1\/1\/)?\d+(,1\/1\/\d+(-(1\/1\/)?\d+)?)*$/.test(s),if:(s,v)=>!!normIf(v,s)};
 const linkMsg=(n,up)=>up?[`%LINK-3-UPDOWN: Interface ${n}, changed state to up`,`%LINEPROTO-5-UPDOWN: Line protocol on Interface ${n}, changed state to up`]:[`%LINK-5-CHANGED: Interface ${n}, changed state to administratively down`];
 const cIf=sw=>sw.ifs[sw.ctx.if];
-const C_SHOW=[['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['show ip interface brief',sw=>ipBrief(sw)],['show vlan brief',sw=>cShowVlan(sw)],['show vlan',sw=>cShowVlan(sw)],['show interfaces trunk',sw=>cShowTrunk(sw)],['show interfaces status',sw=>cShowStatus(sw)],['show running-config',sw=>cRun(sw)]];
+const C_SHOW=[['show running-config interface <if>',(sw,[i])=>xRunIf(sw,normIf('cisco',i))],['show interfaces <if>',(sw,[i])=>xIfDetail(sw,normIf('cisco',i))],['show interfaces <if> switchport',(sw,[i])=>xSwitchport(sw,normIf('cisco',i))],['show interfaces <if> status',(sw,[i])=>{const n=normIf('cisco',i);const r=cShowStatus(sw);return r.slice(0,2).concat(r.filter(l=>l.startsWith(shortIf(n)+' ')))}],['show interfaces <if> trunk',(sw,[i])=>{const s=shortIf(normIf('cisco',i));const r=cShowTrunk(sw);return r.filter(l=>typeof l!=='string'||!/^Gi/.test(l)||l.startsWith(s+' '))}],
+ ['show interfaces description',sw=>xIfDesc(sw)],['show mac address-table',sw=>xMac(sw)],['show mac address-table dynamic',sw=>xMac(sw)],['show mac address-table vlan <vid>',(sw,[v])=>xMac(sw,{vlan:+v})],['show mac address-table interface <if>',(sw,[i])=>xMac(sw,{port:normIf('cisco',i)})],['show mac-address-table',sw=>xMac(sw)],
+ ['show vlan id <vid>',(sw,[v])=>{const r=cShowVlan(sw),row=r.find(l=>l.startsWith(v+' ')&&!/^100[2-5]/.test(l));return row?r.slice(0,3).concat([row]):['VLAN id '+v+' not found in current VLAN database']}],['show vlan name <word>',(sw,[n])=>{const r=cShowVlan(sw),row=r.find(l=>l.slice(5,38).trim().toUpperCase()===n.toUpperCase());return row?r.slice(0,3).concat([row]):['VLAN '+n+' not found in current VLAN database']}],
+ ['show cdp neighbors',sw=>xCdp(sw)],['show lldp neighbors',sw=>sw.lldp?xLldp(sw):[{t:'% LLDP is not enabled',c:'err'},{t:'[tutor] En Cisco LLDP viene apagado. Se activa en configuración global con: lldp run',c:'tut'}]],['show version',sw=>xVer(sw)],['show startup-config',sw=>sw.startup||['startup-config is not present']],['show spanning-tree',()=>[{t:'[tutor] Spanning Tree se ve a fondo en la Zona 4. Aquí todavía no hay enlaces redundantes.',c:'tut'}]],['show spanning-tree vlan <vid>',()=>[{t:'[tutor] Spanning Tree se ve a fondo en la Zona 4. Aquí todavía no hay enlaces redundantes.',c:'tut'}]],
+ ['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['show ip interface brief',sw=>ipBrief(sw)],['show vlan brief',sw=>cShowVlan(sw)],['show vlan',sw=>cShowVlan(sw)],['show interfaces trunk',sw=>cShowTrunk(sw)],['show interfaces status',sw=>cShowStatus(sw)],['show running-config',sw=>cRun(sw)]];
 const CIS={
   user:[['enable',sw=>{sw.mode='priv'}],['exit',()=>{}],...C_SHOW],
-  priv:[['configure terminal',sw=>{sw.mode='config';return['Enter configuration commands, one per line.  End with CNTL/Z.']}],['disable',sw=>{sw.mode='user'}],['write',()=>['Building configuration...','[OK]']],['write memory',()=>['Building configuration...','[OK]']],['copy running-config startup-config',()=>['Destination filename [startup-config]? ','Building configuration...','[OK]']],['exit',sw=>{sw.mode='user'}],...C_SHOW],
+  priv:[['configure terminal',sw=>{sw.mode='config';return['Enter configuration commands, one per line.  End with CNTL/Z.']}],['disable',sw=>{sw.mode='user'}],['write',sw=>{sw.startup=cRun(sw).slice(2);return['Building configuration...','[OK]']}],['write memory',sw=>{sw.startup=cRun(sw).slice(2);return['Building configuration...','[OK]']}],['copy running-config startup-config',sw=>{sw.startup=cRun(sw).slice(2);return['Destination filename [startup-config]? ','Building configuration...','[OK]']}],['exit',sw=>{sw.mode='user'}],...C_SHOW],
   config:[['vlan <vid>',(sw,[id])=>{id=+id;if(!sw.vlans[id])sw.vlans[id]='VLAN'+String(id).padStart(4,'0');sw.ctx.vlan=id;sw.mode='config-vlan'}],
     ['no vlan <vid>',(sw,[id])=>{id=+id;if(id===1)return['%Default VLAN 1 may not be deleted.'];delete sw.vlans[id]}],
-    ['interface <if>',(sw,[i])=>{sw.ctx.if=normIf('cisco',i);sw.mode='config-if'}],
+    ['interface <if>',(sw,[i])=>{delete sw.ctx.range;sw.ctx.if=normIf('cisco',i);sw.mode='config-if'}],
+    ['interface range <rest>',(sw,[r])=>{const L=xRange('cisco',r);if(!L)return[{t:"% Invalid input detected at '^' marker.",c:'err'},{t:'[tutor] Ejemplo: interface range g0/1 - 4  (o g0/1-4, g0/10)',c:'tut'}];sw.ctx.range=L;sw.ctx.if=L[0];sw.mode='config-if'}],
+    ['lldp run',sw=>{sw.lldp=true}],['no lldp run',sw=>{sw.lldp=false}],
     ['interface vlan <vid>',(sw,[id])=>enterSvi(sw,+id)],['interface <svi>',(sw,[x])=>enterSvi(sw,+x.slice(4))],
     ['hostname <word>',(sw,[h])=>{sw.host=h}],['end',sw=>{sw.mode='priv'}],['exit',sw=>{sw.mode='priv'}],
     ['do <rest>',(sw,[r])=>{const m=sw.mode;sw.mode='priv';const o=runTable(sw,r);sw.mode=m;return o}]],
@@ -134,12 +140,15 @@ const CIS={
     ['no ip address',sw=>{const i=cIf(sw);if(i.svi){i.ip=null;i.len=null}}],
     ['description <rest>',(sw,[d])=>{cIf(sw).desc=d}],['exit',sw=>{sw.mode='config'}],['end',sw=>{sw.mode='priv'}]]
 };
-const A_SHOW=[['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['show ip interface brief',sw=>ipBrief(sw)],['show vlan',sw=>aShowVlan(sw)],['show interface brief',sw=>aShowBrief(sw)],['show running-config',sw=>aRun(sw)]];
+const A_SHOW=[['show running-config interface <if>',(sw,[i])=>xRunIf(sw,normIf('aruba',i))],['show running-config current-context',sw=>sw.mode==='config-if'&&!cIf(sw).svi?xRunIf(sw,sw.ctx.if):aRun(sw)],['show interface <if>',(sw,[i])=>xIfDetail(sw,normIf('aruba',i))],['show vlan <vid>',(sw,[v])=>{const r=aShowVlan(sw),row=r.find(l=>l.startsWith(v+' '));return row?r.slice(0,4).concat([row]):['VLAN '+v+' does not exist.']}],
+ ['show mac-address-table',sw=>xMac(sw)],['show mac-address-table vlan <vid>',(sw,[v])=>xMac(sw,{vlan:+v})],['show lldp neighbor-info',sw=>xLldp(sw)],['show version',sw=>xVer(sw)],['show startup-config',sw=>sw.startup||['No saved configuration.']],['show interface description',sw=>xIfDesc(sw)],
+ ['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['show ip interface brief',sw=>ipBrief(sw)],['show vlan',sw=>aShowVlan(sw)],['show interface brief',sw=>aShowBrief(sw)],['show running-config',sw=>aRun(sw)]];
 const ARU={
-  priv:[['configure terminal',sw=>{sw.mode='config'}],['write memory',()=>['Copying configuration: [Success]']],['exit',()=>{}],...A_SHOW],
+  priv:[['configure terminal',sw=>{sw.mode='config'}],['write memory',sw=>{sw.startup=aRun(sw);return['Copying configuration: [Success]']}],['copy running-config startup-config',sw=>{sw.startup=aRun(sw);return['Copying configuration: [Success]']}],['exit',()=>{}],...A_SHOW],
   config:[['vlan <vid>',(sw,[id])=>{id=+id;if(!sw.vlans[id])sw.vlans[id]='VLAN'+id;sw.ctx.vlan=id;sw.mode='config-vlan'}],
     ['no vlan <vid>',(sw,[id])=>{id=+id;if(id===1)return['VLAN 1 no se puede borrar.'];delete sw.vlans[id]}],
-    ['interface <if>',(sw,[i])=>{sw.ctx.if=normIf('aruba',i);sw.mode='config-if'}],
+    ['interface <if>',(sw,[i])=>{delete sw.ctx.range;sw.ctx.if=normIf('aruba',i);sw.mode='config-if'}],
+    ['interface <arange>',(sw,[r])=>{const L=xRange('aruba',r);if(!L)return[{t:'Invalid input: '+r,c:'err'}];sw.ctx.range=L;sw.ctx.if=L[0];sw.mode='config-if'}],
     ['interface vlan <vid>',(sw,[id])=>enterSvi(sw,+id)],['interface <svi>',(sw,[x])=>enterSvi(sw,+x.slice(4))],
     ['hostname <word>',(sw,[h])=>{sw.host=h}],['end',sw=>{sw.mode='priv'}],['exit',sw=>{sw.mode='priv'}],...A_SHOW],
   'config-vlan':[['name <word>',(sw,[n])=>{sw.vlans[sw.ctx.vlan]=n}],['exit',sw=>{sw.mode='config'}],['end',sw=>{sw.mode='priv'}]],
@@ -275,7 +284,11 @@ function jEsIf(sw){const a=sw.act,e=eff(sw),nm=id=>(Object.entries(a.vlans).find
     for(const id of ids.sort((x,y)=>x-y))r.push(' '.repeat(16)+nm(id).slice(0,13).padEnd(14)+String(id).padEnd(8)+'294912  '+(up?'Forwarding':'Discarding').padEnd(12)+(i.mode==='trunk'&&id!==i.native?'tagged':'untagged'))}
   return r}
 function jTerse(sw){const sv=svis(sw);return['Interface               Admin Link Proto    Local                 Remote',...ports('juniper').flatMap(p=>{const i=eff(sw).ifs[p],l=linkUp(sw,p)?'up':'down',ad=i.up?'up':'down';return[p.padEnd(24)+ad.padEnd(6)+l,(p+'.0').padEnd(24)+ad.padEnd(6)+l.padEnd(5)+'eth-switch']}),...(sv.length?['irb'.padEnd(24)+'up    up']:[]),...Object.keys(sw.act.irb||{}).map(u=>{const x=sv.find(y=>String(y.vid)===u||y.ip&&sw.act.irb[u].addr&&sw.act.irb[u].addr.startsWith(y.ip))||{};return('irb.'+u).padEnd(24)+'up    '+(x.up?'up  ':'down')+' inet     '+(sw.act.irb[u].addr||'')})]}
-const J_OP=[['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['ping <ip> count <word>',(sw,[ip])=>swPing(sw,ip)],['configure',sw=>{sw.mode='conf';return['Entering configuration mode','','[edit]']}],['show vlans',jShowVlans],['show configuration',sw=>jTree(sw.act)],['show interfaces terse',jTerse],['show ethernet-switching interfaces',jEsIf],['exit',()=>{}],['quit',()=>{}]];
+const J_OP=[['show configuration interfaces <if>',(sw,[i])=>jBlock(jTree(sw.act,'interfaces'),normIf('juniper',i))],['show configuration interfaces',sw=>jTree(sw.act,'interfaces')],['show configuration vlans',sw=>jTree(sw.act,'vlans')],['show configuration vlans <word>',(sw,[n])=>jBlock(jTree(sw.act,'vlans'),n)],
+ ['show interfaces <if> terse',(sw,[i])=>{const n=normIf('juniper',i);const r=jTerse(sw);return[r[0],...r.filter(l=>typeof l==='string'&&(l.startsWith(n+' ')||l.startsWith(n+'.0')))]}],['show interfaces <if>',(sw,[i])=>xIfDetail(sw,normIf('juniper',i))],['show interfaces descriptions',sw=>xIfDesc(sw)],
+ ['show ethernet-switching table',sw=>xMac(sw)],['show ethernet-switching interface <if>',(sw,[i])=>{const n=normIf('juniper',i),r=jEsIf(sw);const k=r.findIndex(l=>l.startsWith(n+'.0'));if(k<0)return r.slice(0,4);let e=k+1;while(e<r.length&&r[e].startsWith(' '))e++;return r.slice(0,4).concat(r.slice(k,e))}],
+ ['show vlans <word>',(sw,[n])=>{const r=jShowVlans(sw);const k=r.findIndex(l=>l.slice(24,46).trim().toLowerCase()===n.toLowerCase());if(k<0)return['error: vlan '+n+' does not exist'];let e=k+1;while(e<r.length&&r[e].startsWith(' '))e++;return r.slice(0,2).concat(r.slice(k,e))}],
+ ['show lldp neighbors',sw=>xLldp(sw)],['show version',sw=>xVer(sw)],['ping <ip>',(sw,[ip])=>swPing(sw,ip)],['ping <ip> count <word>',(sw,[ip])=>swPing(sw,ip)],['configure',sw=>{sw.mode='conf';return['Entering configuration mode','','[edit]']}],['show vlans',jShowVlans],['show configuration',sw=>jTree(sw.act)],['show interfaces terse',jTerse],['show ethernet-switching interfaces',jEsIf],['exit',()=>{}],['quit',()=>{}]];
 function jOp(sw,line,echo){const toks=line.split(/\s+/);let best=null;
   for(const[p,h]of J_OP){const r=tryPat(p,toks,'juniper');if(r.args&&(!best||r.score>best.s))best={h,s:r.score,a:r.args}}
   if(best)return best.h(sw,best.a)||[];
@@ -283,7 +296,17 @@ function jOp(sw,line,echo){const toks=line.split(/\s+/);let best=null;
   return[{t:' '.repeat(jPrompt(sw).length)+'^',c:'err'},{t:"unknown command.",c:'err'}]}
 function jExec(sw,line){
   if(sw.mode==='op')return jOp(sw,line);
-  const toks=line.split(/\s+/),v=kw(toks[0],['set','delete','commit','show','run','exit','quit','rollback','top','edit']);const ed=['','[edit]'];
+  let toks=line.split(/\s+/);const v=kw(toks[0],['set','delete','commit','show','run','exit','quit','rollback','top','edit','up']);const E=sw.jedit||[];const ed=['','[edit'+(E.length?' '+E.join(' '):'')+']'];
+  if(v==='edit'){const r=jPath(E.concat(toks.slice(1)));if(r.inc&&!toks[1])return ed;if(r.err!==undefined)return jErr(sw,line,toks,{err:r.err-E.length,msg:r.msg,tut:r.tut}).concat(ed);sw.jedit=E.concat(toks.slice(1).map((t,i)=>i===0&&!E.length?(kw(t,['vlans','interfaces'])||t):t));return['','[edit '+sw.jedit.join(' ')+']']}
+  if(v==='top'){sw.jedit=[];return['','[edit]']}
+  if(v==='up'){sw.jedit=E.length>2?E.slice(0,-2):E.length?E.slice(0,-1).length===1?[]:E.slice(0,-1):[];return['','[edit'+(sw.jedit.length?' '+sw.jedit.join(' '):'')+']']}
+  if((v==='exit'||v==='quit')&&E.length&&!/configuration-mode/.test(line)){sw.jedit=[];return['','[edit]']}
+  if((v==='set'||v==='delete')&&E.length)toks=[toks[0],...E,...toks.slice(1)];
+  if(v==='commit'&&toks[1]&&/^and-quit$/i.test(toks[1])){const e=jCheck(sw.cand);if(e.length)return e.map(t=>({t,c:'err'})).concat([{t:'error: configuration check-out failed',c:'err'}],ed);(sw.jhist=sw.jhist||[]).unshift(clone(sw.act));sw.jhist.length=Math.min(sw.jhist.length,5);sw.act=clone(sw.cand);sw.jedit=[];sw.mode='op';return['commit complete','Exiting configuration mode']}
+  if(v==='commit'&&!(toks[1]&&'check'.startsWith(toks[1].toLowerCase()))){const e=jCheck(sw.cand);if(!e.length){(sw.jhist=sw.jhist||[]).unshift(clone(sw.act));sw.jhist.length=Math.min(sw.jhist.length,5)}
+   if(toks[1]&&/^confirmed$/i.test(toks[1])&&!e.length){sw.act=clone(sw.cand);return['commit confirmed will be automatically rolled back in '+(toks[2]||10)+' minutes unless confirmed','commit complete',{t:'[tutor] En producción, si pierdes acceso no confirmas y el equipo regresa solo a la configuración anterior. Confirma con otro commit.',c:'tut'}].concat(ed)}}
+  if(v==='rollback'&&toks[1]&&/^[1-5]$/.test(toks[1])){const h=(sw.jhist||[])[+toks[1]-1];if(!h)return[{t:'error: rollback '+toks[1]+' does not exist',c:'err'}].concat(ed);sw.cand=clone(h);return['load complete',{t:'[tutor] Cargaste la versión de hace '+toks[1]+' commit(s). Revisa con show | compare y aplica con commit.',c:'tut'}].concat(ed)}
+  if(v==='show'&&E.length&&!toks[1]){return jBlockPath(jTree(sw.cand,E[0]==='vlans'?'vlans':'interfaces'),E).concat(ed)}
   if(!v)return jErr(sw,line,toks,{err:-1}).concat(ed);
   if(v==='run')return jOp(sw,toks.slice(1).join(' ')).concat(ed);
   if(v==='top'||v==='edit')return ed;
@@ -336,7 +359,7 @@ function jWalk(d,toks){let node=JT,arg=null;
  if(arg)return{arg};if(!node)return{end:true};return{node}}
 function jOptions(d,toks,part){
  const top=d.mode==='op'?[['configure','Entrar a modo configuración'],['show','Mostrar información'],['exit','Salir']]:[['set','Agregar configuración'],['delete','Borrar configuración'],['commit','Aplicar la configuración candidata'],['show','Ver la configuración candidata ( | compare para ver los cambios)'],['run','Ejecutar un comando operacional'],['rollback','Descartar los cambios sin commit'],['exit','Salir de modo configuración']];
- const opSub={show:[['vlans','VLANs y sus interfaces'],['configuration','Configuración activa'],['interfaces','Estado de interfaces (terse)'],['ethernet-switching','Puertos de capa 2: VLAN, tagged o untagged (interfaces)']],configure:[]};if(d.mode==='op')top.splice(2,0,['ping','Probar conectividad: ping <ip>']);
+ const opSub={show:[['vlans','VLANs y sus interfaces (o show vlans <nombre>)'],['configuration','Configuración activa (| display set para verla en líneas set)'],['interfaces','Interfaces: terse, descriptions o una en detalle (ge-0/0/1)'],['ethernet-switching','Capa 2: table (MAC) o interface'],['lldp','Vecinos LLDP: show lldp neighbors'],['version','Modelo y versión de Junos']],configure:[]};if(d.mode==='op')top.splice(2,0,['ping','Probar conectividad: ping <ip>']);
  if(!toks.length)return top.filter(([k])=>k.startsWith(part));
  const c0=toks[0].toLowerCase();
  if(d.mode==='conf'&&/^(set|delete)$/.test(c0)){const w=jWalk(d,toks.slice(1));if(w.bad)return null;if(w.end)return[['<Enter>','Ejecutar']];
@@ -362,13 +385,77 @@ function complete(d,val){if(d.type==='pc'||!val||/\s$/.test(val))return val;
 
 /* ---------- prompt / exec ---------- */
 function prompt(d){if(d.type==='pc')return 'C:\\>';if(d.vendor==='juniper')return jPrompt(d);
-  const h=d.host;if(d.vendor==='cisco')return h+{user:'>',priv:'#',config:'(config)#','config-vlan':'(config-vlan)#','config-if':'(config-if)#'}[d.mode];
+  const h=d.host;if(d.vendor==='cisco')return h+{user:'>',priv:'#',config:'(config)#','config-vlan':'(config-vlan)#','config-if':d.ctx.range?'(config-if-range)#':'(config-if)#'}[d.mode];
   return h+{priv:'#',config:'(config)#','config-vlan':`(config-vlan-${d.ctx.vlan})#`,'config-if':'(config-if)#'}[d.mode]}
+/* ---------- comandos avanzados y atajos reales (para quien ya sabe) ---------- */
+const xMacOf=(n,v)=>{let h=7;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;const b=[0xa4,0xbb,(h>>16)&255,(h>>8)&255,h&255,0x11];return v==='cisco'?[0,2,4].map(k=>(b[k]*256+b[k+1]).toString(16).padStart(4,'0')).join('.'):b.map(x=>x.toString(16).padStart(2,'0')).join(':')};
+const xSw=n=>TP()?swByName(n):[S1,S2].find(s=>s&&s.name===n);
+function xNb(sw){if(TP())return Object.entries(T.att[sw.name]).map(([port,a])=>({port,sw:a.sw,rport:a.port,pc:a.pc}));const v=VEND[sw.vendor],o=other(sw),pc=sw===S1?PCA:PCB;return[{port:v.pc,pc:pc&&pc.name},{port:v.up,sw:o.name,rport:VEND[o.vendor].up}]}
+const xPcVlan=name=>{const p=TP()?pcByName(name):[PCA,PCB].find(x=>x&&x.name===name);return p&&p.vlan};
+function xMacRows(sw){const out=[],seen=new Set(),E=eff(sw);
+ const walk=(s,inPort,from,depth,vset)=>{for(const nb of xNb(s)){if(!linkUp(s,nb.port))continue;const i=eff(s).ifs[nb.port];if(!i)continue;
+   if(nb.pc){const vl=i.mode==='access'?i.access:(i.native||1);if(vset&&!vset(vl))continue;const k=nb.pc;if(!seen.has(k)){seen.add(k);out.push({mac:nb.pc,vlan:vl,port:inPort||nb.port})}}
+   else if(nb.sw&&nb.sw!==from&&depth<4&&i.mode==='trunk'){const o=xSw(nb.sw);if(!o)continue;const j=eff(o).ifs[nb.rport];if(!j||j.mode!=='trunk')continue;const ok=vl=>allows(i,vl)&&allows(j,vl)&&(!vset||vset(vl));walk(o,inPort||nb.port,s.name,depth+1,ok)}}};
+ walk(sw,null,null,0,null);return out.filter(r=>E.vlans[r.vlan]!==undefined||r.vlan===1)}
+function xMac(sw,f={}){const R=xMacRows(sw).filter(r=>(!f.vlan||r.vlan===f.vlan)&&(!f.port||r.port===f.port)).sort((a,b)=>a.vlan-b.vlan),v=sw.vendor;
+ if(v==='cisco')return['          Mac Address Table','-------------------------------------------','','Vlan    Mac Address       Type        Ports','----    -----------       --------    -----',...R.map(r=>String(r.vlan).padStart(4)+'    '+xMacOf(r.mac,v)+'    DYNAMIC     '+shortIf(r.port)),'Total Mac Addresses for this criterion: '+R.length];
+ if(v==='aruba')return['','MAC age-time            : 300 seconds','Number of MAC addresses : '+R.length,'','MAC Address          VLAN     Type                      Port','--------------------------------------------------------------',...R.map(r=>xMacOf(r.mac,v).padEnd(21)+String(r.vlan).padEnd(9)+'dynamic'.padEnd(26)+r.port)];
+ const nm=id=>(Object.entries(sw.act.vlans).find(([k,x])=>x.id===id)||[String(id)])[0];
+ return['','MAC flags (S - static MAC, D - dynamic MAC)','Ethernet switching table : '+R.length+' entries, '+R.length+' learned','Routing instance : default-switch','   Vlan                MAC                 MAC      Logical','   name                address             flags    interface',...R.map(r=>'   '+nm(r.vlan).slice(0,19).padEnd(20)+xMacOf(r.mac,v).padEnd(20)+'D        '+r.port+'.0')]}
+function xRunIf(sw,n){if(!n)return[];if(sw.vendor==='cisco'){const r=cRun(sw),k=r.indexOf('interface '+n);let e=k+1;while(e<r.length&&r[e]!=='!')e++;return['Building configuration...','','Current configuration : '+(40+r.slice(k,e).join('').length)+' bytes','!',...r.slice(k,e),'end']}
+ const r=aRun(sw),k=r.indexOf('interface '+n);let e=k+1;while(e<r.length&&r[e].startsWith(' '))e++;return[...r.slice(k,e),'    exit']}
+function xIfDetail(sw,n){if(!n)return[];const i=eff(sw).ifs[n],c=linkUp(sw,n),d=(sw.vendor==='juniper'?((sw.act.ifs[n]||{}).desc):(sw.ifs[n]||{}).desc)||'';
+ if(sw.vendor==='cisco')return[`${n} is ${!i.up?'administratively down, line protocol is down (disabled)':c?'up, line protocol is up (connected)':'down, line protocol is down (notconnect)'}`,`  Hardware is Gigabit Ethernet, address is ${xMacOf(sw.name+n,'cisco')} (bia ${xMacOf(sw.name+n,'cisco')})`,...(d?['  Description: '+d]:[]),'  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,',`  ${c?'Full-duplex, 1000Mb/s':'Auto-duplex, Auto-speed'}, media type is 10/100/1000BaseTX`,'  5 minute input rate 0 bits/sec, 0 packets/sec','     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored'];
+ if(sw.vendor==='aruba')return[`Interface ${n} is ${c?'up':'down'}`,` Admin state is ${i.up?'up':'down'}`,...(c?[]:[' State information: '+(i.up?'Waiting for link':'Administratively down')]),` Link state: ${c?'up':'down'}`,...(d?[' Description: '+d]:[]),` Hardware: Ethernet, MAC Address: ${xMacOf(sw.name+n,'aruba')}`,' MTU 1500',' Type 1GbT',` Speed ${c?'1000':'0'} Mb/s`,...(i.mode==='trunk'?[' VLAN Mode: native-untagged',` Native VLAN: ${i.native||1}`,` Allowed VLAN List: ${i.allowed==='all'?'all':rangeStr(i.allowed)||'none'}`]:[' VLAN Mode: access',` Access VLAN: ${i.access}`])];
+ return[`Physical interface: ${n}, ${i.up?'Enabled':'Administratively down'}, Physical link is ${c?'Up':'Down'}`,...(d?[`  Description: ${d}`]:[]),'  Link-level type: Ethernet, MTU: 1514, Speed: 1000mbps, Duplex: Full-Duplex',`  Current address: ${xMacOf(sw.name+n,'juniper')}`,'',`  Logical interface ${n}.0 (Index 555) (SNMP ifIndex 520)`,`    Flags: ${c?'Up':'Device-Down'} SNMP-Traps 0x0 Encapsulation: Ethernet-Bridge`,`    Protocol eth-switch, MTU: 1514`]}
+function xSwitchport(sw,n){if(!n)return[];const i=sw.ifs[n],nm=id=>sw.vlans[id]?` (${sw.vlans[id]})`:' (Inactive)',c=linkUp(sw,n);
+ return['Name: '+shortIf(n),'Switchport: Enabled','Administrative Mode: '+(i.mode==='dynamic'?'dynamic auto':i.mode==='trunk'?'trunk':'static access'),'Operational Mode: '+(!c?'down':i.mode==='trunk'?'trunk':'static access'),'Administrative Trunking Encapsulation: dot1q','Negotiation of Trunking: '+(i.mode==='trunk'?'On':'Off'),'Access Mode VLAN: '+i.access+nm(i.access),'Trunking Native Mode VLAN: '+(i.native||1)+nm(i.native||1),'Trunking VLANs Enabled: '+(i.allowed==='all'?'ALL':rangeStr(i.allowed)||'NONE')]}
+function xIfDesc(sw){const v=sw.vendor,P=ports(v).filter(n=>{const d=v==='juniper'?(sw.act.ifs[n]||{}).desc:(sw.ifs[n]||{}).desc;return v!=='juniper'||d}),D=n=>(v==='juniper'?(sw.act.ifs[n]||{}).desc:sw.ifs[n].desc)||'';
+ if(v==='cisco')return['Interface                      Status         Protocol Description',...P.map(n=>{const i=sw.ifs[n],c=linkUp(sw,n);return shortIf(n).padEnd(31)+(!i.up?'admin down':c?'up':'down').padEnd(15)+(c?'up':'down').padEnd(9)+D(n)})];
+ if(v==='aruba')return['','Port      Admin   Link    Description','-------------------------------------------',...P.map(n=>{const i=sw.ifs[n];return n.padEnd(10)+(i.up?'up':'down').padEnd(8)+(linkUp(sw,n)?'up':'down').padEnd(8)+D(n)})];
+ return P.length?['Interface       Admin Link Description',...P.map(n=>n.padEnd(16)+(eff(sw).ifs[n].up?'up':'down').padEnd(6)+(linkUp(sw,n)?'up':'down').padEnd(5)+D(n))]:[]}
+function xCdp(sw){const L=xNb(sw).filter(x=>x.sw&&linkUp(sw,x.port)),C=L.filter(x=>{const o=xSw(x.sw);return o&&o.vendor==='cisco'});
+ const r=['Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge','                  S - Switch, H - Host, I - IGMP, r - Repeater, P - Phone','','Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID',...C.map(x=>x.sw.padEnd(17)+('Gig '+x.port.slice(15)).padEnd(18)+'150'.padEnd(16)+'S I'.padEnd(6)+'WS-C2960X '+'Gig '+x.rport.slice(15)),'','Total cdp entries displayed : '+C.length];
+ if(L.length>C.length)r.push({t:'[tutor] CDP es de Cisco: los vecinos Aruba o Juniper no aparecen aquí. Para verlos se usa LLDP (lldp run y luego show lldp neighbors).',c:'tut'});return r}
+function xLldp(sw){const L=xNb(sw).filter(x=>x.sw&&linkUp(sw,x.port)).map(x=>({...x,o:xSw(x.sw)})).filter(x=>x.o&&(x.o.vendor!=='cisco'||x.o.lldp)),v=sw.vendor,pid=x=>x.o.vendor==='cisco'?shortIf(x.rport):x.rport;
+ if(v==='cisco')return['Capability codes:','    (R) Router, (B) Bridge, (T) Telephone, (C) DOCSIS Cable Device','','Device ID           Local Intf     Hold-time  Capability      Port ID',...L.map(x=>x.sw.padEnd(20)+shortIf(x.port).padEnd(15)+'120'.padEnd(11)+'B'.padEnd(16)+pid(x)),'','Total entries displayed: '+L.length,...(xNb(sw).some(x=>x.sw&&xSw(x.sw)&&xSw(x.sw).vendor==='cisco'&&!xSw(x.sw).lldp)?[{t:'[tutor] Los vecinos Cisco solo aparecen si también tienen lldp run.',c:'tut'}]:[])];
+ if(v==='aruba')return['','LLDP Neighbor Information','=========================','','Total Neighbor Entries          : '+L.length,'','LOCAL-PORT  CHASSIS-ID         PORT-ID                     PORT-DESC     TTL   SYS-NAME','------------------------------------------------------------------------------------------',...L.map(x=>x.port.padEnd(12)+xMacOf(x.sw,'aruba').padEnd(19)+pid(x).padEnd(28)+pid(x).padEnd(14)+'120   '+x.sw)];
+ return['Local Interface    Parent Interface    Chassis Id          Port info          System Name',...L.map(x=>x.port.padEnd(19)+'-'.padEnd(20)+xMacOf(x.sw,'juniper').padEnd(20)+pid(x).padEnd(19)+x.sw)]}
+function xVer(sw){return sw.vendor==='cisco'?['Cisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version 15.2(7)E8, RELEASE SOFTWARE (fc1)',sw.host+' uptime is 3 days, 4 hours, 12 minutes','System image file is "flash:c2960x-universalk9-mz.152-7.E8.bin"','','Model number                    : WS-C2960X-24TS-L']:sw.vendor==='aruba'?['-----------------------------------------------------------------------------','ArubaOS-CX','(c) Copyright 2017-2026 Hewlett Packard Enterprise Development LP','-----------------------------------------------------------------------------','Version      : PL.10.13.1000','Build Date   : 2026-06-02','Platform     : 6100 (JL678A)']:['Hostname: '+sw.host,'Model: ex2300-24t','Junos: 22.4R3-S2','JUNOS OS Kernel 64-bit  [20240510]']}
+function xRange(v,s){const L=[];for(let p of s.split(',')){p=p.trim();if(!p)continue;
+  if(v==='cisco'){const m=p.match(/^(?:g[a-z]*)?\s*0\/(\d+)\s*(?:-\s*(?:(?:g[a-z]*)?\s*0\/)?(\d+))?$/i);if(!m)return null;for(let k=+m[1];k<=+(m[2]||m[1]);k++){const n='GigabitEthernet0/'+k;if(!ports('cisco').includes(n))return null;L.push(n)}}
+  else{const m=p.match(/^1\/1\/(\d+)(?:-(?:1\/1\/)?(\d+))?$/);if(!m)return null;for(let k=+m[1];k<=+(m[2]||m[1]);k++){const n='1/1/'+k;if(!ports('aruba').includes(n))return null;L.push(n)}}}
+ return L.length?[...new Set(L)]:null}
+function jBlock(lines,key){const k=lines.findIndex(l=>typeof l==='string'&&l.trim()===key+' {');if(k<0)return[];const ind=lines[k].match(/^ */)[0].length;let e=k+1;while(e<lines.length&&!(lines[e].match(/^ */)[0].length===ind&&lines[e].trim()==='}'))e++;return lines.slice(k+1,e).map(l=>l.slice(ind+4))}
+function jBlockPath(lines,E){let L=lines.slice(1,-1).map(l=>l.slice(4));for(const k of E.slice(1)){const b=jBlock(L,k);if(!b.length)return[];L=b}return L}
+/* filtros con | : include/exclude/begin/section (Cisco/Aruba), match/except/count/display set (Junos) */
+function xPipe(d,line){
+ const parts=line.split(/\s+\|\s+/);if(parts.length<2)return null;
+ let base=parts[0],F=parts.slice(1);
+ if(d.vendor==='juniper'&&d.mode==='conf'&&/^show$/i.test(base)&&/^(c|co|com|comp|compa|compar|compare|d|di|dis|disp|displ|displa|display)\b/i.test(F[0])){base=base+' | '+F[0];F=F.slice(1);if(!F.length)return null}
+ let out;
+ if(d.vendor==='juniper'&&F.length&&/^display\s+set$/i.test(F[0])&&/^(run\s+)?sh\w*\s+conf\w*$/i.test(base)){out=jSetLines(d.act);F=F.slice(1)}
+ else out=d.vendor==='juniper'?jExec(d,base):runTable(d,base,prompt(d).length);
+ if(out.some(x=>x&&x.c==='err'))return out;
+ for(const f of F){const m=f.trim().match(/^(\S+)\s*(.*)$/),k=(m[1]||'').toLowerCase(),arg=(m[2]||'').trim().replace(/^"|"$/g,'');const T=x=>typeof x==='string'?x:x.t;const isTxt=x=>typeof x==='string'||(x&&!x.c);
+  const re=()=>{try{return new RegExp(arg,'i')}catch(e){return new RegExp(arg.replace(/[.*+?^${}()[\]\\]/g,'\\$&'),'i')}};
+  if(/^(i|in|inc|incl|inclu|includ|include|m|ma|mat|matc|match)$/.test(k)){const r=re();out=out.filter(x=>!isTxt(x)||r.test(T(x)))}
+  else if(/^(e|ex|exc|excl|exclu|exclud|exclude|except)$/.test(k)){const r=re();out=out.filter(x=>!isTxt(x)||!r.test(T(x)))}
+  else if(/^(b|be|beg|begi|begin)$/.test(k)){const r=re(),i=out.findIndex(x=>isTxt(x)&&r.test(T(x)));out=i<0?[]:out.slice(i)}
+  else if(/^(s|se|sec|sect|secti|sectio|section)$/.test(k)&&d.vendor!=='juniper'){const r=re(),o=[];let blk=[];const fl=()=>{if(blk.some(x=>r.test(T(x))))o.push(...blk);blk=[]};for(const x of out){if(!isTxt(x))continue;const t=T(x);if(!/^\s/.test(t)){fl();blk=[x]}else blk.push(x)}fl();out=o}
+  else if(k==='count'&&d.vendor==='juniper'){out=['Count: '+out.filter(isTxt).filter(x=>T(x)!==''&&!/^\[edit/.test(T(x))).length+' lines']}
+  else if(k==='no-more'){}
+  else return[{t:d.vendor==='juniper'?'syntax error, expecting <command>.':"% Invalid input detected at '^' marker.",c:'err'},{t:'[tutor] Filtros: '+(d.vendor==='juniper'?'| match texto · | except texto · | count · | display set':d.vendor==='cisco'?'| include texto · | exclude texto · | begin texto · | section texto':'| include texto · | exclude texto · | begin texto'),c:'tut'}]}
+ return out}
 function exec(d,raw){
   const echo=prompt(d);push(d,echo+raw,'cmd');const line=raw.trim();if(line){d.hist.push(raw);d.hp=d.hist.length}
   if(!line)return;
   if(d.type==='pc')return pcExec(d,line);
-  const o=d.vendor==='juniper'?jExec(d,line):runTable(d,line,echo.length);if(o.some(x=>x&&x.c==='err'))LS.err++;push(d,o);
+  let o=xPipe(d,line);
+  if(!o&&d.vendor!=='juniper'&&d.mode==='config-if'&&d.ctx.range&&!/^(int|inte|inter|interf|interfa|interfac|interface|exit|end|do|show|sh)\b/i.test(line)){o=[];const seen=new Set();for(const n of d.ctx.range){d.ctx.if=n;const r=runTable(d,line,echo.length);for(const x of r){const k=typeof x==='string'?x:x.t;if(!seen.has(k)){seen.add(k);o.push(x)}}if(d.mode!=='config-if')break}}
+  if(!o)o=d.vendor==='juniper'?jExec(d,line):runTable(d,line,echo.length);
+  if(d.mode!=='config-if'&&d.ctx)delete d.ctx.range;
+  if(o.some(x=>x&&x.c==='err'))LS.err++;push(d,o);
 }
 function pcExec(p,line){
   const[c,arg]=line.split(/\s+/);const cl=c.toLowerCase();

@@ -892,7 +892,114 @@ const GAMES={
     cmds:{op:[['show vlans','vlan'],['show interfaces terse','int'],['configure','Entering configuration mode\n\n[edit]','conf']],conf:[['set interfaces ge-0/0/1 description PC-LUPITA','\n[edit]'],['show | compare','cmp'],['commit','commit complete\n\n[edit]'],['exit','Exiting configuration mode','op'],['quit','Exiting configuration mode','op'],['run show vlans','vlan']]},
     out:{vlan:'Routing instance        VLAN name             Tag          Interfaces\ndefault-switch          default               1\n                                                           ge-0/0/0.0*\n                                                           ge-0/0/1.0*',int:'Interface               Admin Link Proto    Local                 Remote\nge-0/0/0                up    up\nge-0/0/0.0              up    up   eth-switch\nge-0/0/1                up    down',cmp:'[edit interfaces ge-0/0/1]\n+   description PC-LUPITA;\n\n[edit]'},
     mis:[['Mira las VLAN sin cambiar nada.',['show vlans'],'show vlans'],['Revisa el estado de las interfaces.',['show interfaces terse'],'show interfaces terse'],['Entra al modo configuración.',['configure'],'configure'],['Ponle a ge-0/0/1 la descripción PC-LUPITA.',['set interfaces ge-0/0/1 description PC-LUPITA'],'set interfaces ge-0/0/1 description PC-LUPITA'],['Revisa tus cambios antes de aplicarlos.',['show | compare'],'show | compare'],['Aplica los cambios.',['commit'],'commit'],['Sal del modo configuración.',['exit','quit'],'exit']]}};
-  let ven='cisco',mode,step,lines,hist=[],hp=0;
+  let ven='cisco',mode,step,lines,hist=[],hp=0,S={};
+  /* Formas reales y avanzadas: abreviaturas, show de una interfaz, do/run, filtros con |, edit en Junos */
+  const ab=(w,n)=>w.slice(0,n).replace(/[-]/g,'\\-')+w.slice(n).split('').reduceRight((acc,ch)=>`(?:${ch.replace(/[-]/g,'\\-')}${acc})?`,'');
+  const W=(...p)=>new RegExp('^'+p.join('\\s+')+'$','i'),SH=ab('show',2),RUN=ab('running-config',3),INT=ab('interfaces',3),CONF=ab('configuration',4);
+  const cIf=s=>{const m=String(s).match(/^(?:g|gi|gig|giga|gigabit|gigabitethernet)\s*0\/([1-4])$/i);return m?+m[1]:0},aIf=s=>{const m=String(s).match(/^1\/1\/([1-4])$/);return m?+m[1]:0},jIf=s=>{const m=String(s).match(/^ge-0\/0\/([0-3])$/i);return m?+m[1]:-1};
+  const dsc=n=>S.desc&&S.desc[n]?S.desc[n]:'';
+  const OUT={
+   cisco:{
+    runif:n=>`Building configuration...\n\nCurrent configuration : 72 bytes\n!\ninterface GigabitEthernet0/${n}\n${dsc(n)?` description ${dsc(n)}\n`:''}end`,
+    run:()=>`Building configuration...\n!\nhostname SW1\n!\n${[1,2,3,4].map(n=>`interface GigabitEthernet0/${n}\n${dsc(n)?` description ${dsc(n)}\n`:''}!`).join('\n')}\nend`,
+    ifst:n=>`Port      Name               Status       Vlan  Duplex  Speed Type\nGi0/${n}     ${(dsc(n)||'').padEnd(18).slice(0,18)} ${n===1?'connected   ':'notconnect  '} 1     ${n===1?'a-full  a-1000':'  auto    auto'} 10/100/1000BaseTX`,
+    ifd:()=>`Interface                      Status         Protocol Description\n${[1,2,3,4].map(n=>`Gi0/${n}`.padEnd(31)+(n===1?'up             up       ':'down           down     ')+dsc(n)).join('\n')}`,
+    ifx:n=>`GigabitEthernet0/${n} is ${n===1?'up, line protocol is up (connected)':'down, line protocol is down (notconnect)'}\n  Hardware is Gigabit Ethernet, address is 0011.2233.440${n}\n${dsc(n)?`  Description: ${dsc(n)}\n`:''}  MTU 1500 bytes, BW 1000000 Kbit/sec\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX`,
+    mac:()=>`          Mac Address Table\n-------------------------------------------\nVlan    Mac Address       Type        Ports\n----    -----------       --------    -----\n   1    a4bb.6d21.0c11    DYNAMIC     Gi0/1\nTotal Mac Addresses for this criterion: 1`,
+    ipb:()=>`Interface              IP-Address      OK? Method Status                Protocol\nVlan1                  unassigned      YES unset  administratively down down\nGigabitEthernet0/1     unassigned      YES unset  up                    up\nGigabitEthernet0/2     unassigned      YES unset  down                  down`,
+    ver:()=>`Cisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version 15.2(7)E\nSW1 uptime is 3 days, 4 hours\nModel number: WS-C2960X-24TS-L`,
+    vlanid:v=>v==='1'?`VLAN Name                             Status    Ports\n---- -------------------------------- --------- ----------------------------\n1    default                          active    Gi0/1, Gi0/2, Gi0/3, Gi0/4`:`VLAN id ${v} not found in current VLAN database`},
+   aruba:{
+    runif:n=>`interface 1/1/${n}\n${dsc(n)?`    description ${dsc(n)}\n`:''}    no shutdown\n    vlan access 1\n    exit`,
+    ifx:n=>`Interface 1/1/${n} is ${n===1?'up':'down'}\n Admin state is up\n${dsc(n)?` Description: ${dsc(n)}\n`:''} Link state: ${n===1?'up for 3 days':'down'}\n Link transitions: 1\n Speed ${n===1?'1000':'0'} Mb/s\n VLAN Mode: access\n Access VLAN: 1`,
+    mac:()=>`MAC age-time            : 300 seconds\nNumber of MAC addresses : 1\n\nMAC Address          VLAN     Type                      Port\n--------------------------------------------------------------\na4:bb:6d:21:0c:11    1        dynamic                   1/1/1`,
+    ipb:()=>`Interface       IP Address        Interface Status\n                                  link/admin\nvlan1           No Address        up/up`,
+    ver:()=>`-----------------------------------------------------------------------------\nArubaOS-CX\n(c) Copyright 2017-2026 Hewlett Packard Enterprise Development LP\n-----------------------------------------------------------------------------\nVersion      : FL.10.13.1000\nPlatform     : 6100`,
+    lldp:()=>`LLDP Neighbor Information\n=========================\nTotal Neighbor Entries          : 0`,
+    vlanid:v=>v==='1'?`--------------------------------------------------------------------------\nVLAN  Name             Status  Reason  Type     Interfaces\n--------------------------------------------------------------------------\n1     DEFAULT_VLAN_1   up      ok      default  1/1/1-1/1/4`:`VLAN ${v} does not exist.`},
+   juniper:{
+    cfgif:(n,c)=>{const d=c?(S.jc||{})[n]:(S.desc||{})[n];return d?`description ${d};\nunit 0 {\n    family ethernet-switching;\n}`:`unit 0 {\n    family ethernet-switching;\n}`},
+    terse:n=>`Interface               Admin Link Proto    Local                 Remote\nge-0/0/${n}                up    ${n===0?'up  ':'down'}\nge-0/0/${n}.0              up    ${n===0?'up  ':'down'} eth-switch`,
+    descs:()=>{const d=S.jc||{},r=Object.keys(d).map(n=>`ge-0/0/${n}`.padEnd(24)+'up    '+(+n===0?'up  ':'down')+' '+d[n]);return r.length?`Interface       Admin Link Description\n${r.join('\n')}`:''},
+    dset:c=>{const d=c?(S.desc||{}):(S.jc||{});return['set version 22.4R3','set system host-name SW1',...[0,1,2,3].map(n=>`set interfaces ge-0/0/${n} unit 0 family ethernet-switching`),...Object.entries(d).map(([n,t])=>`set interfaces ge-0/0/${n} description ${t}`)].join('\n')},
+    mac:()=>`MAC flags (S - static MAC, D - dynamic MAC)\nEthernet switching table : 1 entries, 1 learned\nRouting instance : default-switch\n   Vlan                MAC                 MAC      Logical\n   name                address             flags    interface\n   default             a4:bb:6d:21:0c:11   D        ge-0/0/0.0`,
+    ver:()=>`Hostname: SW1\nModel: ex2300-24t\nJunos: 22.4R3`}};
+  const flt=(txt,pp)=>{let L=String(txt).split('\n');for(const p of pp){const m=p.match(/^(\S+)\s*(.*)$/),k=(m[1]||'').toLowerCase(),arg=(m[2]||'').trim().replace(/^"|"$/g,'');
+    if(/^(i|in|inc|incl|inclu|includ|include|m|ma|mat|matc|match)$/.test(k)){const re=new RegExp(arg.replace(/[.*+?^${}()[\]\\]/g,'\\$&'),'i');L=L.filter(l=>re.test(l))}
+    else if(/^(e|ex|exc|excl|exclu|exclud|exclude|except)$/.test(k)){const re=new RegExp(arg.replace(/[.*+?^${}()[\]\\]/g,'\\$&'),'i');L=L.filter(l=>!re.test(l))}
+    else if(/^(b|be|beg|begi|begin)$/.test(k)){const i=L.findIndex(l=>l.toLowerCase().includes(arg.toLowerCase()));L=i<0?[]:L.slice(i)}
+    else if(/^(no-more|count)$/.test(k)){if(k==='count')L=[`Count: ${L.length} lines`]}}return L.join('\n')};
+  const adv=(c,md)=>{const v=ven,ok=(out,mis,to)=>({out,mis:mis?[].concat(mis):[],to});let m;
+   const pipe=c.match(/^(.*?)\s+\|\s+(.+)$/);
+   if(v==='juniper'&&md==='conf'&&/^show\s+\|\s+(compare|display\s+set)$/i.test(c)){return /compare/i.test(c)?ok(Object.keys(S.desc||{}).filter(n=>(S.desc||{})[n]!==(S.jc||{})[n]).map(n=>`[edit interfaces ge-0/0/${n}]\n+   description ${S.desc[n]};`).join('\n')+'\n\n[edit]','show | compare'):ok(OUT.juniper.dset(true))}
+   if(pipe){const base=pipe[1],pp=pipe[2].split(/\s+\|\s+/);const r=adv(base,md)||std(base,md);if(r&&r.out!=null&&!r.err)return{...r,out:flt(r.out,pp)};return r}
+   if(v==='cisco'){
+    if(md!=='user'&&md!=='priv'&&(m=c.match(/^do\s+(.+)$/i))){const r=adv(m[1],'priv')||std(m[1],'priv');return r&&!r.err?{...r,to:null}:r}
+    if(md==='user'&&/^sh\S*\s+(ru|sta|start)/i.test(c))return ok("% Invalid input detected at '^' marker.\n  (En modo usuario > no puedes ver la configuración: primero escribe enable)");
+    if(md==='user'||md==='priv'){
+     if(m=c.match(W(SH,RUN,INT,'(\\S+)'))){const n=cIf(m[1]);return n?ok(OUT.cisco.runif(n),'show running-config'):{err:1}}
+     if(W(SH,RUN).test(c))return ok(OUT.cisco.run(),'show running-config');
+     if(m=c.match(W(SH,INT,ab('description',4))))return ok(OUT.cisco.ifd(),'show interfaces status');
+     if(m=c.match(W(SH,INT,'(\\S+)',ab('status',2)))){const n=cIf(m[1]);return n?ok(OUT.cisco.ifst(n),'show interfaces status'):{err:1}}
+     if(m=c.match(W(SH,INT,'(\\S+)'))){const n=cIf(m[1]);if(n)return ok(OUT.cisco.ifx(n))}
+     if(m=c.match(W(SH,ab('vlan',2),ab('id',2),'(\\d+)')))return ok(OUT.cisco.vlanid(m[1]),'show vlan brief');
+     if(W(SH,ab('vlan',2)).test(c))return ok(std('show vlan brief',md).out,'show vlan brief');
+     if(W(SH,ab('mac',2),ab('address-table',3)).test(c)||W(SH,ab('mac-address-table',3)).test(c))return ok(OUT.cisco.mac());
+     if(W(SH,ab('ip',2),INT,ab('brief',2)).test(c))return ok(OUT.cisco.ipb());
+     if(W(SH,ab('version',3)).test(c))return ok(OUT.cisco.ver());
+     if(W(SH,ab('startup-config',3)).test(c))return ok(S.saved?OUT.cisco.run().replace('Building configuration...\n',''):'startup-config is not present');
+     if(md==='priv'&&(/^wr$/i.test(c)||W(ab('write',2),ab('memory',3)).test(c)||W(ab('copy',2),ab('running-config',3),ab('startup-config',3)).test(c))){S.saved=1;return ok('Building configuration...\n[OK]','write memory')}}
+    if(md==='conf'&&(m=c.match(W(ab('interface',3),'(\\S+)')))){const n=cIf(m[1].replace(/\s/g,''));if(n){S.cur=n;return ok(null,n===1?'interface gigabitethernet0/1':null,'cif')}return{err:1}}
+    if(md==='conf'&&(m=c.match(/^(?:int|inte|inter|interf|interfa|interfac|interface)\s+(g\S*)\s+(0\/\d)$/i))){const n=cIf(m[1]+m[2]);if(n){S.cur=n;return ok(null,n===1?'interface gigabitethernet0/1':null,'cif')}}
+    if(md==='cif'&&(m=c.match(/^(?:desc|descr|descri|descrip|descript|descripti|descriptio|description)\s+(.+)$/i))){S.desc=S.desc||{};S.desc[S.cur||1]=m[1].trim();return ok(null,(S.cur||1)===1&&m[1].trim().toUpperCase()==='PC-LUPITA'?'description PC-LUPITA':null)}
+    if(md==='cif'&&/^no\s+(desc|description)$/i.test(c)){if(S.desc)delete S.desc[S.cur||1];return ok(null)}
+    if((md==='conf'||md==='cif')&&/^(\^z|ctrl\+z)$/i.test(c))return ok(null,'end','priv')}
+   if(v==='aruba'){
+    if(m=c.match(W(SH,RUN,INT,'(\\S+)'))){const n=aIf(m[1]);return n?ok(OUT.aruba.runif(n),'show running-config'):{err:1}}
+    if(md==='cif'&&W(SH,RUN,ab('current-context',3)).test(c))return ok(OUT.aruba.runif(S.cur||1),'show running-config');
+    if(W(SH,RUN).test(c))return ok(std('show running-config','priv').out.replace(/    description PC-LUPITA\n/,dsc(1)?`    description ${dsc(1)}\n`:''),'show running-config');
+    if(W(SH,INT,ab('brief',2)).test(c))return ok(std('show interface brief','priv').out,'show interface brief');
+    if(m=c.match(W(SH,INT,'(\\S+)'))){const n=aIf(m[1]);if(n)return ok(OUT.aruba.ifx(n))}
+    if(m=c.match(W(SH,ab('vlan',2),'(\\d+)')))return ok(OUT.aruba.vlanid(m[1]),'show vlan');
+    if(W(SH,ab('vlan',2)).test(c))return ok(std('show vlan','priv').out,'show vlan');
+    if(W(SH,ab('mac-address-table',3)).test(c))return ok(OUT.aruba.mac());
+    if(W(SH,ab('ip',2),INT,ab('brief',2)).test(c))return ok(OUT.aruba.ipb());
+    if(W(SH,ab('version',3)).test(c))return ok(OUT.aruba.ver());
+    if(W(SH,ab('lldp',2),ab('neighbor-info',3)).test(c))return ok(OUT.aruba.lldp());
+    if(/^wr\s+mem$/i.test(c)||W(ab('write',2),ab('memory',3)).test(c)||W(ab('copy',2),ab('running-config',3),ab('startup-config',3)).test(c))return ok(/^cop/i.test(c)?'Copying configuration: [Success]':'Configuration changes will take time to process, please be patient.','write memory');
+    if((md==='conf'||md==='cif')&&(m=c.match(W(ab('interface',3),'(\\S+)')))){const n=aIf(m[1]);if(n){S.cur=n;return ok(null,n===1?'interface 1/1/1':null,'cif')}return{err:1}}
+    if(md==='cif'&&(m=c.match(/^(?:desc|descr|descri|descrip|descript|descripti|descriptio|description)\s+(.+)$/i))){S.desc=S.desc||{};S.desc[S.cur||1]=m[1].trim();return ok(null,(S.cur||1)===1&&m[1].trim().toUpperCase()==='PC-LUPITA'?'description PC-LUPITA':null)}
+    if(md==='cif'&&/^no\s+shut(d(o(w(n)?)?)?)?$/i.test(c))return ok(null)}
+   if(v==='juniper'){
+    if(md==='conf'&&(m=c.match(/^run\s+(.+)$/i))){const r=adv(m[1],'op')||std(m[1],'op');return r&&!r.err?{...r,to:null}:r}
+    if(md==='op'){
+     if(m=c.match(W(SH,CONF,INT,'(\\S+)'))){const n=jIf(m[1]);return n>=0?ok(OUT.juniper.cfgif(n,true)):{err:1}}
+     if(W(SH,CONF).test(c))return ok(OUT.juniper.dset(false).split('\n').length?`## Last commit: 2026-11-23 09:00:00 CST by user\nversion 22.4R3;\nsystem {\n    host-name SW1;\n}\ninterfaces {\n${[0,1,2,3].map(n=>`    ge-0/0/${n} {\n${(S.jc||{})[n]?`        description ${(S.jc||{})[n]};\n`:''}        unit 0 {\n            family ethernet-switching;\n        }\n    }`).join('\n')}\n}`:'');
+     if(m=c.match(W(SH,INT,'(\\S+)',ab('terse',2)))){const n=jIf(m[1]);return n>=0?ok(OUT.juniper.terse(n),'show interfaces terse'):{err:1}}
+     if(W(SH,INT,ab('descriptions',4)).test(c))return ok(OUT.juniper.descs());
+     if(W(SH,ab('vlans',3)).test(c)||W(SH,ab('vlans',3),'\\S+').test(c))return ok(std('show vlans','op').out,'show vlans');
+     if(W(SH,ab('ethernet-switching',3),ab('table',2)).test(c))return ok(OUT.juniper.mac());
+     if(W(SH,ab('version',3)).test(c))return ok(OUT.juniper.ver());
+     if(/^(configure|conf|config|configu|configur|edit|configure\s+private|configure\s+exclusive)$/i.test(c)){S.edit='';return ok('Entering configuration mode\n\n[edit]','configure','conf')}}
+    if(md==='conf'){
+     const at=()=>`\n[edit${S.edit?' '+S.edit:''}]`;
+     if(m=c.match(/^edit\s+interfaces\s+(\S+)$/i)){const n=jIf(m[1]);if(n<0)return{err:1};S.edit=`interfaces ge-0/0/${n}`;S.cur=n;return ok(at())}
+     if(/^top$/i.test(c)){S.edit='';return ok(at())}
+     if(/^up$/i.test(c)){S.edit=S.edit.split(' ').length>1?'interfaces':'';if(S.edit==='interfaces')S.edit='';return ok(at())}
+     if(S.edit&&(m=c.match(/^set\s+description\s+(.+)$/i))){const n=S.cur;S.desc=S.desc||{};S.desc[n]=m[1].trim().replace(/^"|"$/g,'');return ok(at(),n===1&&S.desc[n].toUpperCase()==='PC-LUPITA'?'set interfaces ge-0/0/1 description PC-LUPITA':null)}
+     if(m=c.match(/^set\s+interfaces\s+(\S+)\s+description\s+(.+)$/i)){const n=jIf(m[1]);if(n<0)return{err:1};S.desc=S.desc||{};S.desc[n]=m[2].trim().replace(/^"|"$/g,'');return ok(at(),n===1&&S.desc[n].toUpperCase()==='PC-LUPITA'?'set interfaces ge-0/0/1 description PC-LUPITA':null)}
+     if(m=c.match(/^delete\s+interfaces\s+(\S+)\s+description$/i)){const n=jIf(m[1]);if(S.desc)delete S.desc[n];return ok(at())}
+     if(S.edit&&W(SH).test(c))return ok(OUT.juniper.cfgif(S.cur,false)+at());
+     if(m=c.match(W(SH,INT,'(\\S+)'))){const n=jIf(m[1]);if(n>=0)return ok(OUT.juniper.cfgif(n,false)+at())}
+     if(/^commit\s+check$/i.test(c))return ok('configuration check succeeds'+at());
+     if(/^commit(\s+confirmed(\s+\d+)?)?$/i.test(c)){S.jc={...(S.desc||{})};return ok('commit complete'+(/confirmed/i.test(c)?'\n# commit confirmed will be automatically rolled back in '+((c.match(/\d+/)||[10])[0])+' minutes unless confirmed':'')+at(),'commit')}
+     if(/^commit\s+and-quit$/i.test(c)){S.jc={...(S.desc||{})};S.edit='';return ok('commit complete\nExiting configuration mode',['commit','exit'],'op')}
+     if(/^rollback(\s+0)?$/i.test(c)){S.desc={...(S.jc||{})};return ok('load complete'+at())}
+     if(/^(exit|quit)$/i.test(c)&&S.edit){S.edit='';return ok(at())}
+     if(/^(exit|quit)$/i.test(c)&&Object.keys(S.desc||{}).some(n=>(S.desc||{})[n]!==(S.jc||{})[n]))return ok('The configuration has been changed but not committed\nExiting configuration mode',null,'op')}}
+   return null};
+  const std=(c,md)=>{const toks=c.split(/\s+/),m=(D().cmds[md]||[]).filter(x=>{const w=x[0].toLowerCase().split(' ');return w.length===toks.length&&toks.every((t,i)=>w[i].startsWith(nt(t)))});if(m.length!==1)return m.length?{err:2}:null;const[full,o,to]=m[0];return{out:o?(D().out[o]||o):null,mis:[full],to,full}};
+  const adv0=()=>{const d=D();step++;sfx('ok');if(step===d.mis.length){st.mini=st.mini||{};st.mini.cli=st.mini.cli||{};const was=!!st.mini.cli[ven];st.mini.cli[ven]=true;if(!was){const r=item('c1-1');r.miniPts=(r.miniPts||0)+5;floatXP(5)}save();sfx('win');if(Object.keys(V).every(k=>st.mini.cli[k]))toast('¡Tres consolas dominadas!')}};
   el.innerHTML=`<div class="game"><div class="ghead"><b>Consola de práctica</b><span class="small">Aquí no rompes nada. Prueba <code>?</code> y la tecla Tab.</span></div>
    <div class="vtabs">${Object.entries(V).map(([k,v])=>`<button class="gb" data-v="${k}">${v.n}</button>`).join('')}</div><div class="mis" id="gmis"></div>
    <div class="miniterm" id="gterm"><pre id="gout"></pre><div class="inl"><span id="gpr"></span><input id="gin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></div></div></div>`;
@@ -901,18 +1008,21 @@ const GAMES={
   const paint=()=>{const d=D();pr.textContent=d.pr[mode]+' ';out.textContent=lines.join('\n');out.scrollTop=out.scrollHeight;
    el.querySelectorAll('[data-v]').forEach(b=>{b.classList.toggle('sel',b.dataset.v===ven);b.classList.toggle('ok',!!(st.mini&&st.mini.cli&&st.mini.cli[b.dataset.v]))});
    misb.innerHTML=`<ol>${d.mis.map((m,i)=>`<li class="${i<step?'ok':i===step?'cur':''}">${esc(m[0])}${i===step?` <details><summary>Ver pista</summary><code>${esc(m[2])}</code></details>`:''}</li>`).join('')}</ol>${step>=d.mis.length?`<p class="small"><strong style="color:var(--ok)">¡Misiones de ${d.n} completas!</strong> ${Object.keys(V).filter(k=>!(st.mini&&st.mini.cli&&st.mini.cli[k])).length?'Prueba con otro vendor.':'Dominaste las tres consolas.'}</p>`:''}`};
-  const reset=v=>{ven=v;mode=D().start;step=0;lines=[`${D().n} · switch de práctica`,''];paint()};
+  const reset=v=>{ven=v;mode=D().start;step=0;S={};lines=[`${D().n} · switch de práctica`,''];paint()};
   const cands=()=>D().cmds[mode]||[];
   const nt=t=>{t=t.toLowerCase();const m=t.match(/^([a-z]+)(\d+\/\d+)$/);return m&&'gigabitethernet'.startsWith(m[1])?'gigabitethernet'+m[2]:t};
   const match=toks=>cands().filter(c=>{const w=c[0].toLowerCase().split(' ');return w.length===toks.length&&toks.every((t,i)=>w[i].startsWith(nt(t)))});
   const run=raw=>{const d=D(),c=raw.trim();lines.push(d.pr[mode]+' '+raw);if(!c){paint();return}
    if(c.endsWith('?')){const toks=c.slice(0,-1).trim().split(/\s+/).filter(Boolean),partial=!/\s\?$/.test(c)&&c!=='?'&&toks.length,pos=partial?toks.length-1:toks.length,opts=[...new Set(cands().map(x=>x[0].split(' ')).filter(w=>w.length>pos&&toks.slice(0,pos).every((t,i)=>w[i].startsWith(t.toLowerCase()))&&(!partial||w[pos].startsWith(toks[pos].toLowerCase()))).map(w=>w[pos]))];
     lines.push(...(opts.length?opts.map(o=>'  '+o):['  (no hay opciones aquí)']));paint();return}
+   const A=adv(c,mode);
+   if(A&&!A.err){if(A.out!=null&&A.out!=='')lines.push(A.out);if(A.to)mode=A.to;lines.push('');for(const k of A.mis){const ms=d.mis[step];if(ms&&ms[1].includes(k))adv0()}paint();return}
+   if(A&&A.err){lines.push(d.bad(c),'  Revisa el nombre del puerto: '+({cisco:'Gi0/1 a Gi0/4',aruba:'1/1/1 a 1/1/4',juniper:'ge-0/0/0 a ge-0/0/3'})[ven]+'.');sfx('bad');paint();return}
    const toks=c.split(/\s+/),m=match(toks);
    if(!m.length){lines.push(d.bad(c),'  Pista: escribe ? para ver qué puedes escribir aquí.');sfx('bad');paint();return}
    if(m.length>1){lines.push(d.amb(c));paint();return}
    const[full,o,to]=m[0];if(o)lines.push(d.out[o]||o);if(to)mode=to;lines.push('');
-   const ms=d.mis[step];if(ms&&ms[1].includes(full)){step++;sfx('ok');if(step===d.mis.length){st.mini=st.mini||{};st.mini.cli=st.mini.cli||{};const was=!!st.mini.cli[ven];st.mini.cli[ven]=true;if(!was){const r=item('c1-1');r.miniPts=(r.miniPts||0)+5;floatXP(5)}save();sfx('win');if(Object.keys(V).every(k=>st.mini.cli[k]))toast('¡Tres consolas dominadas!')}}
+   const ms=d.mis[step];if(ms&&ms[1].includes(full))adv0();if(/^description /i.test(full)){S.desc=S.desc||{};S.desc[S.cur||1]='PC-LUPITA'}if(/^set interfaces ge-0\/0\/1 description/i.test(full)){S.desc=S.desc||{};S.desc[1]='PC-LUPITA'}if(full==='commit')S.jc={...(S.desc||{})};if(/^interface /i.test(full))S.cur=1;
    paint()};
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const v=inp.value;if(v.trim())hist.push(v);hp=hist.length;inp.value='';run(v)}
    else if(e.key==='Tab'){e.preventDefault();const v=inp.value,toks=v.split(/\s+/);if(!v.trim())return;const last=toks.length-1,opts=[...new Set(cands().map(x=>x[0].split(' ')).filter(w=>w.length>last&&toks.slice(0,last).every((t,i)=>w[i].startsWith(t.toLowerCase()))&&w[last].startsWith(toks[last].toLowerCase())).map(w=>w[last]))];
