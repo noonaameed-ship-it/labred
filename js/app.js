@@ -701,13 +701,20 @@ function renderReto(){const d=dailySt(),qs=retoQs(),v=$('#v-reto');
   v.querySelectorAll('.q').forEach(box=>box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const i=+box.dataset.i,j=+b.dataset.j;if(d.ans[i]!==undefined)return;d.ans[i]=j;misTick('reto');
    if(j===qs[i].a){d.pts=(d.pts||0)+5;sfx('ok');floatXP(5)}else{sfx('bad');missByText(qs[i].from,qs[i].q)}if(Object.keys(d.ans).length>=3&&d.doneDay!==today()){d.doneDay=today();d.n=(d.n||0)+1;touchStreak()}save();draw()})))};
  draw()}
-function renderGlosario(){const seen=new Map();for(const[k,list]of Object.entries(VOCAB)){const L=LES[k];for(const[e,t]of list){const key=e.toLowerCase();if(!seen.has(key))seen.set(key,{e,t,from:L?L.id:null})}}
- const all=[...seen.values()].sort((a,b)=>a.e.localeCompare(b.e,'es',{sensitivity:'base'})),v=$('#v-glosario');
- v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / glosario</p><h1>Glosario</h1><p>Los ${all.length} términos en inglés que vas a oír en el trabajo, con su traducción. Búscalos cuando los veas en un comando o en una junta.</p><p>Guías rápidas para imprimir: ${Object.keys(CHULETA).map(Number).map(z=>`<a class="btn" href="#guia-${z}">Zona ${z}</a>`).join(' ')}</p></div></header>
- <div class="lecw"><input id="gq" class="gq" type="search" placeholder="Buscar: VLAN, trunk, MAC…" aria-label="Buscar término"><dl class="gloss" id="gl"></dl></div>`;
- const paint=q=>{const n=norm(q||'');$('#gl').innerHTML=all.filter(x=>!n||norm(x.e+' '+x.t).includes(n)).map(x=>`<div><dt>${esc(x.e)}</dt><dd>${esc(x.t)}${x.from&&TID[x.from]?` <a class="small mono" href="${itemById(x.from).h}">${esc(TID[x.from])}</a>`:''}</dd></div>`).join('')||'<p class="small">No hay términos con esa búsqueda.</p>'};
+function renderGlosario(){const seen=new Map();for(const[k,list]of Object.entries(VOCAB)){const L=LES[k],from=L?L.id:k;for(const[e,t]of list){const key=e.toLowerCase();if(!seen.has(key))seen.set(key,{e,t,from})}}
+ const got=x=>isOwner||cOn()||!!st.done[x.from],ord=id=>{const k=ORDER.indexOf(id);return k<0?999:k};
+ const all=[...seen.values()].sort((a,b)=>a.e.localeCompare(b.e,'es',{sensitivity:'base'})),mine=all.filter(got),lock=all.filter(x=>!got(x)),v=$('#v-glosario');
+ const lastId=ORDER.filter(id=>st.done[id]&&all.some(x=>x.from===id)).pop(),nuevos=isOwner?0:mine.filter(x=>x.from===lastId).length;
+ const nextL=[...new Set(lock.map(x=>x.from))].sort((a,b)=>ord(a)-ord(b)).slice(0,3).map(id=>({id,n:lock.filter(x=>x.from===id).length}));
+ const zs=Object.keys(CHULETA).map(Number).filter(z=>isOwner||unlocked(z));
+ v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / glosario</p><h1>Glosario</h1><p>Los términos en inglés que vas a oír en el trabajo, con su traducción. Se llena conforme abres tickets.</p>${zs.length?`<p>Guías rápidas para imprimir: ${zs.map(z=>`<a class="btn" href="#guia-${z}">Zona ${z}</a>`).join(' ')}</p>`:''}</div></header>
+ <div class="lecw">${isOwner?'':`<div class="card glprog"><div><b>${mine.length}</b> de ${all.length} términos desbloqueados${nuevos?` · <span class="glnew">${nuevos} nuevos de ${esc(TID[lastId]||'')}</span>`:''}</div><div class="arbar"><i style="width:${Math.round(mine.length/all.length*100)}%"></i></div>${nextL.length?`<p class="small">Siguen: ${nextL.map(x=>`<a href="${itemById(x.id).h}">${esc(TID[x.id]||x.id)}</a> (+${x.n})`).join(' · ')}</p>`:''}</div>`}
+ <input id="gq" class="gq" type="search" placeholder="Buscar: VLAN, trunk, MAC…" aria-label="Buscar término"><dl class="gloss" id="gl"></dl></div>`;
+ const paint=q=>{const n=norm(q||''),hit=x=>!n||norm(x.e+' '+x.t).includes(n),M=mine.filter(hit),Lk=n?lock.filter(x=>norm(x.e).includes(n)):[];
+  $('#gl').innerHTML=M.map(x=>`<div class="${!isOwner&&x.from===lastId?'gnew':''}"><dt>${esc(x.e)}</dt><dd>${esc(x.t)}${x.from&&TID[x.from]?` <a class="small mono" href="${itemById(x.from).h}">${esc(TID[x.from])}</a>`:''}</dd></div>`).join('')
+   +Lk.map(x=>`<div class="glock"><dt>${ico('lock')} ${esc(x.e)}</dt><dd class="small">Lo vas a ver en <a class="mono" href="${itemById(x.from).h}">${esc(TID[x.from]||x.from)}</a></dd></div>`).join('')
+   ||`<p class="small">${mine.length?'No hay términos con esa búsqueda.':'Abre tu primer ticket y aquí aparecerán sus términos.'}</p>`};
  $('#gq').addEventListener('input',e=>paint(e.target.value));paint('')}
-
 /* ---------- examen de ubicación ---------- */
 function renderPlace(){
  const ans={},v=$('#v-ubicacion'),LV=['Básicas','Medias','Difíciles'];let i=0;
