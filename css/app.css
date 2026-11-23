@@ -803,3 +803,17 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 }
 @media (max-width:720px) and (prefers-reduced-motion:reduce){#tabbar,#tabbar *,#msheet *{transition:none!important}}
 @media print{#tabbar,#msheet{display:none!important}}
+.pacts .btn,.pacts .btnl{gap:8px;justify-content:center;border-radius:10px}
+.pacts .btn{background:transparent;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.pacts .btn .ic,.pacts .btnl .ic{width:16px;height:16px}
+.pacts .pout{color:var(--mut)}.pacts .pout:hover{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 50%,var(--line))}
+@media(max-width:560px){
+ .profhead{gap:14px}.profhead .av.big{width:68px;height:68px;font-size:32px}
+ .profhead h1{font-size:26px}.profhead .rk{font-size:14px}
+ .profhead .pacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+ .profhead .pacts .btnl{grid-column:1/-1}
+ .profhead .pacts>*{width:100%;height:46px}
+ .pstats{grid-template-columns:1fr 1fr;gap:8px}
+ .pstats>div:first-child{grid-column:1/-1}
+ .pstats div{padding:12px 8px}.pstats b{font-size:24px}
+}
