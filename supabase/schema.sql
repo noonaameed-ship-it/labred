@@ -804,3 +804,85 @@ begin
 end $$;
 revoke all on function public.community_accept(bigint) from public, anon;
 grant execute on function public.community_accept(bigint) to authenticated;
+
+-- 20. Comunidad: anuncios del instructor (solo lectura) y publicación de bienvenida
+alter table public.community_posts add column if not exists locked boolean not null default false;
+alter table public.community_posts drop constraint if exists community_posts_kind_check;
+alter table public.community_posts add constraint community_posts_kind_check check (kind in ('pregunta','solucion','aporte','debate','anuncio'));
+
+create or replace function public.community_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare n int; adm boolean := public.is_admin();
+begin
+  if coalesce(current_setting('pp.sys', true), '') = '1' then return new; end if;
+  if tg_op = 'INSERT' then
+    new.user_id := auth.uid();
+    new.author := case when adm then 'Instructor' else coalesce((select name from public.ranking where user_id = auth.uid()), 'Becario') end;
+    new.hidden := false; new.likes := 0;
+    if tg_table_name = 'community_posts' then
+      if new.kind = 'anuncio' and not adm then raise exception 'solo_instructor'; end if;
+      new.solved := false; new.pinned := adm and new.pinned; new.locked := adm and new.locked; new.replies := 0;
+      select count(*) into n from public.community_posts where user_id = auth.uid() and created_at > now() - interval '1 hour';
+      if n >= 8 and not adm then raise exception 'limite_publicaciones'; end if;
+    else
+      if not adm and exists (select 1 from public.community_posts where id = new.post_id and locked) then raise exception 'publicacion_cerrada'; end if;
+      new.accepted := false;
+      select count(*) into n from public.community_replies where user_id = auth.uid() and created_at > now() - interval '10 minutes';
+      if n >= 15 and not adm then raise exception 'limite_respuestas'; end if;
+    end if;
+  else
+    new.user_id := old.user_id; new.author := old.author; new.created_at := old.created_at; new.likes := old.likes;
+    if not adm then new.hidden := old.hidden; end if;
+    if tg_table_name = 'community_posts' then
+      new.replies := old.replies; new.updated_at := now();
+      if not adm then
+        new.pinned := old.pinned; new.locked := old.locked;
+        if new.kind = 'anuncio' and old.kind <> 'anuncio' then new.kind := old.kind; end if;
+      end if;
+    else
+      new.post_id := old.post_id;
+      if not adm then new.accepted := old.accepted; end if;
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- Publicación de bienvenida (fijada, sin respuestas). Si ya existe no se duplica.
+do $$
+declare adm uuid;
+begin
+  select a.user_id into adm from public.admins a join auth.users u on u.id = a.user_id order by (u.email = 'noonaameed@gmail.com') desc limit 1;
+  if adm is null then raise exception 'No hay instructor en public.admins'; end if;
+  if exists (select 1 from public.community_posts where kind = 'anuncio' and title = 'Bienvenidos a la Comunidad de PacketPath') then return; end if;
+  perform set_config('pp.sys', '1', true);
+  insert into public.community_posts (user_id, author, kind, zone, title, body, pinned, locked)
+  values (adm, 'Instructor', 'anuncio', null, 'Bienvenidos a la Comunidad de PacketPath',
+$b$Este espacio es para aprender entre todos. En redes casi nada se resuelve solo: en el trabajo vas a preguntarle a un compañero, revisar cómo lo hizo otro y explicar lo que tú encontraste. Aquí practicamos justo eso.
+
+POR QUÉ EXISTE
+• Explicar cómo resolviste un lab te obliga a entenderlo de verdad.
+• Si tienes una duda, seguramente alguien más la tiene también.
+• Ver cómo lo resolvió otro (en otro fabricante o con otro comando) te da más formas de atacar un problema.
+
+QUÉ PUEDES PUBLICAR
+• Pregunta: algo que no te salió o no te quedó claro. Cuenta qué hiciste, qué esperabas y qué pasó.
+• Cómo lo resolví: los pasos o el truco que te funcionó en un lab.
+• Aporte: un comando útil, un recurso o algo que viste en tu trabajo.
+• Debate: una pregunta abierta, por ejemplo: ¿por qué usar una VLAN nativa dedicada y no la 1?
+
+CÓMO FUNCIONA
+• Si una respuesta te ayudó, dale "Me sirvió".
+• Si tú hiciste la pregunta, marca la respuesta que lo resolvió para que otros la encuentren rápido.
+• Para pegar comandos o salidas, ponlos entre tres comillas invertidas ``` y se verán como consola.
+
+REGLAS
+• Respeto siempre: aquí todos estamos aprendiendo.
+• No publiques respuestas de exámenes ni de certificaciones.
+• No compartas contraseñas, IPs ni datos reales de clientes o de tu empresa.
+• El instructor modera: las publicaciones que no cumplan se ocultan o se borran.
+
+Esta publicación es solo de lectura. Si tienes una duda, abre una Pregunta nueva con el botón "Nueva publicación".
+
+Tu instructor de PacketPath$b$, true, true);
+  perform set_config('pp.sys', '', true);
+end $$;

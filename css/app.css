@@ -694,3 +694,9 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 .clike.on{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,var(--paper))}
 .crh{margin:22px 0 10px}.creps{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:10px}.crep.acc{border-color:var(--ok);box-shadow:inset 4px 0 0 var(--ok)}
 #crb{margin:8px 0 10px}
+
+.k-anuncio{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+.clock{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--mut);margin-left:8px}
+.clock svg{width:13px;height:13px}
+.clocked{display:flex;gap:10px;align-items:center;color:var(--mut)}
+.clocked svg{width:18px;height:18px;flex:none}
