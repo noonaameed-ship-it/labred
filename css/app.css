@@ -896,3 +896,8 @@ details.vocab[open]>summary::after{content:'−'}
 .accdel2{background:var(--bad)!important;border-color:var(--bad)!important;color:#fff!important}
 .accdel2:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:560px){.acclist{grid-template-columns:1fr}}
+
+/* Arena según avance */
+.arintro p{margin:4px 0 10px}.arbar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}.arbar i{display:block;height:100%;background:linear-gradient(90deg,#33d17f,var(--blue));border-radius:3px}
+.card.ar.lockd{opacity:.72}.card.ar .alk{display:flex;align-items:center;gap:5px;margin-top:auto;color:var(--mut)}.card.ar .alk .ic{width:13px;height:13px}
+.alock p{margin:6px 0 10px}.alneed{line-height:1.9}.alneed a{text-decoration:none;color:var(--ink)}.alneed a b{color:var(--blue)}
