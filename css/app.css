@@ -581,3 +581,28 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 .kcc{border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
 .kcc b{font-size:15px}.kcc p{margin:0;font-size:14px;line-height:1.45}
 .kcc .ref{align-self:flex-start;margin-top:4px;font:500 11px "IBM Plex Mono",monospace;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+/* Chuleta con marca PacketPath (pantalla e impresión) */
+.sheet{--g:#33d17f;--y:#f5b300;--d:#0f1d24;background:#fff;color:#16202a;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);max-width:860px;margin:18px auto 40px;font-family:'IBM Plex Sans',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.shhead{display:flex;justify-content:space-between;align-items:center;background:var(--d);padding:14px 26px}
+.shbrand{display:flex;align-items:center;gap:10px;color:#fff;font:600 20px 'IBM Plex Sans',sans-serif;letter-spacing:-.01em}.shbrand svg{width:30px;height:30px}.shbrand b{color:var(--g);font-weight:700}
+.shtag{font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:var(--d);background:var(--g);padding:5px 10px;border-radius:6px}
+.shtitle{padding:22px 26px 6px;border-bottom:3px solid var(--g)}
+.shtitle h1{margin:0;font:700 28px 'IBM Plex Sans',sans-serif;color:var(--d);letter-spacing:-.02em}.shtitle p{margin:4px 0 12px;color:#56636e;font-size:14px}
+.shbody{padding:8px 26px 16px}
+.sheet h2{font:700 16px 'IBM Plex Sans',sans-serif;color:var(--d);margin:20px 0 8px;padding-left:10px;border-left:4px solid var(--g)}
+.sheet ol,.sheet ul{margin:6px 0 4px;padding-left:22px;font-size:14px;line-height:1.55}
+.sheet table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0;border:1px solid #d9e0e5;border-radius:8px;overflow:hidden}
+.sheet th,.sheet td{border:none;border-bottom:1px solid #e4e9ed;padding:7px 10px;text-align:left;vertical-align:top;color:#16202a;background:#fff}
+.sheet thead th{background:#eef6f1;color:var(--d);font-weight:700;font-size:12px;letter-spacing:.02em}
+.sheet tr:last-child td{border-bottom:none}.sheet td:first-child{font-weight:600;color:var(--d);white-space:nowrap}
+.sheet table:has(thead) td+td{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.sheet strong{color:var(--d)}
+.shfoot{display:flex;justify-content:space-between;gap:16px;background:#f3f6f8;border-top:1px solid #e4e9ed;padding:10px 26px;font:500 11px 'IBM Plex Mono',monospace;color:#56636e}
+@media (max-width:640px){.shhead,.shtitle,.shbody,.shfoot{padding-left:14px;padding-right:14px}.shfoot{flex-direction:column;gap:4px}.sheet td:first-child{white-space:normal}}
+@media print{@page{size:letter;margin:0}
+ #v-chuleta .lecw{padding:0!important;margin:0!important;max-width:none!important}
+ .sheet{box-shadow:none;border-radius:0;margin:0;max-width:none;width:100%;min-height:11in;display:flex;flex-direction:column}
+ .shbody{flex:1;padding:4px .5in 10px}.shhead,.shtitle,.shfoot{padding-left:.5in;padding-right:.5in}
+ .sheet table,.sheet tr{break-inside:avoid}.sheet h2{break-after:avoid;margin:12px 0 6px;font-size:14px}
+ .shhead{padding-top:10px;padding-bottom:10px}.shtitle{padding-top:14px}.shtitle h1{font-size:24px}.shtitle p{margin:2px 0 8px}
+ .sheet th,.sheet td{padding:4px 9px;font-size:11.5px;line-height:1.35}.sheet table:has(thead) td+td{font-size:11px}.sheet ol,.sheet ul{font-size:12.5px;line-height:1.45}}
