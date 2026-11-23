@@ -145,3 +145,65 @@ const LABEXP1B={q:'En el lab a ciegas, ¿qué configuraste en cada switch, en qu
  ins(1,'tsh1',{id:'lab1b',t:'A ciegas: dos VLAN, dos switches',h:'#lab-1b'});
  ins(2,'tsh2',{id:'lab2b',t:'A ciegas: dos áreas, tres switches',h:'#lab-2b'});
  Object.assign(TID,{lab1b:'TK-1043',lab2b:'TK-2002'});Object.assign(GLYPH,{lab1b:'txt:SOLO',lab2b:'txt:SOLO'})})();
+/* Exámenes: quita preguntas que dicen lo mismo con otras palabras (mismo concepto y misma respuesta),
+   para que en una certificación no salga dos veces la misma pregunta. */
+(()=>{const STOP=new Set('que qué quien quién cual cuál cuales cuáles como cómo cuando cuándo donde dónde una uno unos unas el la los las de del al se en es son con por para sirve hace pasa tiene tienen esta está estan están y o a lo le su sus mi tu un ese esa este final usa puede'.split(' '));
+ const tk=s=>new Set((s.toLowerCase().match(/[a-záéíóúñ0-9./:-]+/g)||[]).filter(x=>x.length>1&&!STOP.has(x)&&!/\d/.test(x)));
+ const dg=s=>(s.match(/\d+/g)||[]).join(','),jac=(a,b)=>{let i=0;for(const x of a)if(b.has(x))i++;const u=a.size+b.size-i;return u?i/u:1};
+ for(const E of Object.values(EXAMS)){const keep=[];for(const q of E.pool){const t=tk(q.q),d=dg(q.q),ans=tk(q.o[q.a]);
+  if(!keep.some(p=>{const pa=tk(p.o[p.a]);return dg(p.q)===d&&jac(t,tk(p.q))>=0.6&&((ans.size||pa.size)?jac(ans,pa)>=0.5:q.o[q.a].trim()===p.o[p.a].trim())}))keep.push(q)}E.pool=keep}})();
+/* Definición formal al inicio de cada lección: primero el concepto como lo dice el estándar o el libro,
+   luego la explicación en palabras simples. [término, definición, referencia] */
+(()=>{const D={
+ 'n0-1':[['Red de datos','Conjunto de dispositivos interconectados mediante medios de transmisión que intercambian información siguiendo protocolos comunes.',''],
+  ['LAN y WAN','Una LAN (Local Area Network) cubre un área limitada, como un edificio o un campus, bajo una misma administración. Una WAN (Wide Area Network) interconecta redes en ubicaciones geográficas distantes, normalmente con enlaces de un proveedor.',''],
+  ['Dispositivo intermedio','Equipo que conecta y dirige el tráfico entre dispositivos finales (endpoints): switch, router, access point y firewall.','']],
+ 'n0-2':[['Modelo OSI','Modelo de referencia que divide la comunicación entre sistemas en siete capas; cada capa presta servicios a la capa superior y usa los de la inferior.','ISO/IEC 7498-1'],
+  ['Encapsulamiento','Proceso por el que cada capa agrega su propio encabezado a los datos que recibe de la capa superior antes de transmitirlos.',''],
+  ['PDU','Unidad de datos de protocolo de cada capa: bits (1), trama o frame (2), paquete (3) y segmento (4).','']],
+ 'n0-3':[['Par trenzado (UTP)','Cable de cobre con cuatro pares de hilos trenzados para reducir la interferencia electromagnética. En Ethernet, cada segmento admite hasta 100 m.','ANSI/TIA-568'],
+  ['Fibra óptica','Medio que transmite la información como pulsos de luz. La multimodo se usa en distancias cortas; la monomodo, en distancias largas.',''],
+  ['Transceptor SFP','Módulo intercambiable que adapta un puerto del equipo al medio físico: fibra multimodo, monomodo o cobre.','']],
+ 'n0-4':[['Dirección MAC','Identificador de 48 bits de una interfaz de red, usado para entregar tramas dentro de la red local. Los primeros 24 bits (OUI) identifican al fabricante.','IEEE 802'],
+  ['Dirección IPv4','Identificador lógico de 32 bits de una interfaz en una red IP, escrito como cuatro octetos en decimal.','RFC 791'],
+  ['Puerto','Número de 16 bits de la capa de transporte que identifica la aplicación o el servicio dentro de un equipo; por ejemplo, 443 para HTTPS.','']],
+ 'l0-1':[['Trama Ethernet (frame)','PDU de la capa 2. Lleva un encabezado con MAC destino, MAC origen y EtherType, los datos de la capa superior y un FCS para detectar errores.','IEEE 802.3'],
+  ['FCS','Frame Check Sequence: valor CRC de 32 bits que permite al receptor detectar si la trama se dañó en el camino.',''],
+  ['Tipos de destino','Unicast: un solo destino. Broadcast (ff:ff:ff:ff:ff:ff): todos los equipos del dominio. Multicast: un grupo.','']],
+ 'l0-2':[['Switch','Dispositivo de capa 2 que reenvía tramas entre sus puertos según la dirección MAC de destino.','IEEE 802.1D'],
+  ['Tabla de direcciones MAC','Tabla que asocia cada MAC de origen con el puerto por el que se aprendió. Sus entradas expiran tras un tiempo sin tráfico (aging; 300 s por defecto).',''],
+  ['Inundación (flooding)','Reenvío de una trama por todos los puertos de la VLAN, excepto el de entrada, cuando el destino es desconocido o es broadcast.','']],
+ 'l0-3':[['VLAN','Red de área local virtual: dominio de broadcast lógico, definido en uno o varios switches, independiente de la ubicación física de los equipos.','IEEE 802.1Q'],
+  ['Dominio de broadcast','Conjunto de dispositivos que reciben las tramas de broadcast que envía cualquiera de ellos.',''],
+  ['Puerto de acceso y trunk','Un puerto de acceso pertenece a una sola VLAN y transmite tramas sin etiqueta. Un trunk transporta varias VLAN e identifica cada trama con una etiqueta 802.1Q.','']],
+ 'c1-1':[['CLI','Interfaz de línea de comandos: medio de administración de un equipo mediante comandos de texto, por consola, SSH o Telnet.',''],
+  ['Modos de la CLI','Niveles jerárquicos (usuario, privilegiado, configuración global, interfaz) que limitan qué comandos se pueden ejecutar en cada momento.',''],
+  ['Configuración activa y guardada','En Cisco y Aruba, los cambios se aplican al instante en la configuración en ejecución (running-config) y se pierden al reiniciar si no se guardan. En Juniper, los cambios quedan en una configuración candidata que se aplica con commit.','']],
+ 'i2-1':[['Máscara de subred','Valor de 32 bits que separa la porción de red de la porción de host de una dirección IPv4.',''],
+  ['Puerta de enlace predeterminada','Dirección del router al que un equipo envía los paquetes destinados a redes distintas de la suya.',''],
+  ['Dirección de red y de broadcast','La dirección de red tiene todos los bits de host en 0 e identifica a la subred. La de broadcast tiene todos los bits de host en 1 y llega a todos los equipos de la subred.','']],
+ 'i2-2':[['CIDR','Classless Inter-Domain Routing: notación que indica la longitud del prefijo de red con una barra, por ejemplo /24.','RFC 4632'],
+  ['Hosts utilizables','En una subred con n bits de prefijo: 2^(32−n) − 2, porque se excluyen la dirección de red y la de broadcast.','']],
+ 'i2-3':[['Subnetting','División de una red IP en subredes más pequeñas, tomando bits de la porción de host para extender la porción de red.',''],
+  ['Tamaño de bloque','Cantidad de direcciones de cada subred: 256 menos el valor del octeto de la máscara donde se hace el corte.',''],
+  ['VLSM','Variable Length Subnet Mask: uso de máscaras de distinta longitud dentro de una misma red para ajustar cada subred a su tamaño.','']],
+ 'i2-4':[['DHCP','Protocolo que asigna automáticamente la configuración IP (dirección, máscara, gateway y DNS) mediante el intercambio Discover, Offer, Request y Acknowledge.','RFC 2131'],
+  ['DNS','Sistema jerárquico y distribuido que traduce nombres de dominio a direcciones IP.','RFC 1034 / 1035'],
+  ['ICMP','Protocolo de mensajes de control de IP. ping usa los mensajes Echo Request y Echo Reply.','RFC 792']],
+ 'i2-5':[['SVI','Switch Virtual Interface: interfaz lógica de capa 3 asociada a una VLAN, usada para administrar el switch o como gateway de esa VLAN.',''],
+  ['Plan de direccionamiento','Asignación documentada de una subred y un gateway a cada VLAN.',''],
+  ['Ruteo entre VLAN','Reenvío de paquetes entre VLAN distintas por medio de un dispositivo de capa 3.','']],
+ 'i2-6':[['IPv6','Versión 6 del protocolo IP, con direcciones de 128 bits escritas en ocho grupos de cuatro dígitos hexadecimales.','RFC 8200'],
+  ['Link-local','Dirección del rango fe80::/10, válida solo en el enlace local, que cada interfaz IPv6 se asigna automáticamente.','RFC 4291'],
+  ['SLAAC','Mecanismo por el que un equipo genera su propia dirección IPv6 a partir del prefijo que anuncia el router.','RFC 4862']],
+ 'i2-7':[['Direcciones privadas','Rangos reservados para uso interno, no enrutables en internet: 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16.','RFC 1918'],
+  ['NAT','Network Address Translation: traducción de direcciones IP en un dispositivo de frontera, normalmente de privadas a públicas.','RFC 3022'],
+  ['PAT (NAT overload)','Variante de NAT que también traduce el número de puerto, para que muchos equipos compartan una sola dirección pública.','']],
+ 't3-1':[['Trunk (enlace troncal)','Enlace entre dispositivos que transporta tramas de varias VLAN e identifica cada una con una etiqueta.',''],
+  ['Etiqueta 802.1Q','Campo de 4 bytes insertado en la trama Ethernet entre la MAC origen y el EtherType. Contiene el VLAN ID (12 bits, 1-4094) y la prioridad PCP (3 bits).','IEEE 802.1Q'],
+  ['Lista de VLAN permitidas','Conjunto de VLAN autorizadas a transitar por un trunk. Podar es reducirla a las VLAN necesarias.','']],
+ 't3-2':[['VLAN nativa','VLAN cuyas tramas se transmiten sin etiqueta en un trunk 802.1Q. Por defecto es la VLAN 1.','IEEE 802.1Q'],
+  ['Native VLAN mismatch','Configuración distinta de la VLAN nativa en los dos extremos de un trunk: el tráfico sin etiqueta termina asignado a VLAN diferentes en cada lado.','']],
+ 't3-3':[['Comando show','Comando de solo lectura que muestra el estado operativo o la configuración de un equipo sin modificarlo.',''],
+  ['Troubleshooting','Proceso sistemático de diagnóstico que aísla la causa raíz de una falla antes de aplicar una corrección.','']]};
+ for(const L of Object.values(LES))if(D[L.id])L.def=D[L.id]})();
