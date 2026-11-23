@@ -768,3 +768,38 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 .wkbar span.wkt{display:block;line-height:1.5;flex:1 1 220px;min-width:0}
 .wkbar span.wkt svg{vertical-align:-3px;margin-right:4px}
 .liga{white-space:nowrap;flex:none}
+
+/* ---------- barra inferior en celular ---------- */
+#tabbar,#msheet{display:none}
+@media (max-width:720px){
+ body.hastabs{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+ body.hastabs .links{display:none!important}
+ body.hastabs #hud .chips .hudp:not([href="#logros"]):not([href="#perfil"]):not([href="#entrar"]):not(.cr):not([href="#instructor"]){display:none}
+ body.hastabs #hud .chips .hudp.fl,body.hastabs #hud .chips .hudp.cr,body.hastabs #hud .chips .hudp[href="#instructor"]{display:none}
+ body.hastabs nav.top{flex-wrap:nowrap}body.hastabs #hud{width:auto;flex:1;justify-content:flex-end}
+ #tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:15;height:58px;padding:0 4px;border-radius:18px;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.18);transition:transform .25s,opacity .25s}
+ body.kb #tabbar{transform:translateY(140%);opacity:0;pointer-events:none}
+ #tabbar a,#tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:0;color:var(--mut);text-decoration:none;font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;min-width:0}
+ #tabbar .ic{width:22px;height:22px;stroke-width:1.8;transition:transform .2s}
+ #tabbar .on{color:var(--ink)}
+ #tabbar .on .ic{color:var(--blue);stroke-width:2.1;transform:translateY(-1px)}
+ #tabbar .tpk{position:absolute;top:5px;width:6px;height:6px;border-radius:1.5px;background:#f5b300;transform:scale(0) rotate(45deg);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+ #tabbar .on .tpk{transform:scale(1) rotate(0)}
+ #tabbar .tdot{position:absolute;top:6px;left:calc(50% + 6px);min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bad);color:#fff;font:700 10px/16px 'IBM Plex Sans',sans-serif;text-align:center}
+ #toast{bottom:calc(78px + env(safe-area-inset-bottom))}
+ #msheet{display:block;position:fixed;inset:0;z-index:30}
+ #msheet[hidden]{display:none}
+ #msheet .mback{position:absolute;inset:0;background:rgba(5,12,15,.45);opacity:0;transition:opacity .2s}
+ #msheet .mpanel{position:absolute;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));background:light-dark(#ffffff,#13211f);border:1px solid var(--line);border-radius:20px;padding:8px 14px 14px;transform:translateY(110%);transition:transform .25s cubic-bezier(.2,.9,.3,1);box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+ #msheet.open .mback{opacity:1}#msheet.open .mpanel{transform:none}
+ #msheet .mgrab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:2px auto 12px}
+ #msheet .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ #msheet .mitem{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:14px;background:light-dark(#eef3f2,#1c2e2b);color:var(--ink);text-decoration:none;font:500 12.5px 'IBM Plex Sans',sans-serif}
+ #msheet .mitem .ic{width:22px;height:22px;color:var(--blue)}
+ #msheet .mitem .tdot{position:absolute;top:8px;right:12px;min-width:16px;height:16px;border-radius:8px;background:var(--bad);color:#fff;font:700 10px/16px sans-serif;text-align:center;padding:0 4px}
+ #msheet .mrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+ #msheet .mbtn{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font:500 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap;padding:0 8px}
+ #msheet .mbtn .ic{width:16px;height:16px}
+}
+@media (max-width:720px) and (prefers-reduced-motion:reduce){#tabbar,#tabbar *,#msheet *{transition:none!important}}
+@media print{#tabbar,#msheet{display:none!important}}
