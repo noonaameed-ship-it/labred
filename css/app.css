@@ -754,7 +754,7 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 .v2 .frame span:last-child{border-right:0}.v2 .frame .big{flex:1.6;background:#fff}.v2 .frame .opt{flex:1.7;background:#fff3cc;color:#7a5600}
 .v2 .frame small{display:block;font:400 9px 'IBM Plex Mono',monospace;color:#6b7a84;margin-top:2px}
 .v2 .shfoot{margin-top:auto}
-@media screen and (max-width:760px){.v2 .shbody{grid-template-columns:1fr;padding:14px}.v2 .shkeys{grid-template-columns:repeat(2,1fr)}.v2 .shtitle,.v2 .shhead{padding-left:14px;padding-right:14px}.v2 .vend,.v2 .pref{display:block;overflow-x:auto}.v2 .ct td:first-child{white-space:normal}}
+@media screen and (max-width:760px){.v2 .shbody{grid-template-columns:1fr;padding:14px}.v2 .osit,.v2 .trio{display:block;overflow-x:auto}.v2 .osit td,.v2 .trio td{min-width:96px}.v2 .vend td+td{min-width:170px}.v2 .pref td{white-space:nowrap}.v2 .shkeys{grid-template-columns:repeat(2,1fr)}.v2 .shtitle,.v2 .shhead{padding-left:14px;padding-right:14px}.v2 .vend,.v2 .pref{display:block;overflow-x:auto}.v2 .ct td:first-child{white-space:normal}}
 @media print{@page{size:letter;margin:.3in}
  #v-chuleta .lecw{padding:0!important;margin:0!important;max-width:none!important}
  .sheet.v2{min-height:0;display:block;max-width:none;width:100%;border-radius:10px;overflow:visible}
@@ -764,3 +764,7 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
  .v2 .vend,.v2 .pref{display:table}
  .v2 .shkeys{grid-template-columns:repeat(4,1fr)}}
 .v2 .cstack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.wkbar{flex-wrap:wrap;gap:8px 12px}
+.wkbar span.wkt{display:block;line-height:1.5;flex:1 1 220px;min-width:0}
+.wkbar span.wkt svg{vertical-align:-3px;margin-right:4px}
+.liga{white-space:nowrap;flex:none}
