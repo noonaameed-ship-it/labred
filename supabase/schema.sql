@@ -656,3 +656,151 @@ begin
   end loop;
   return new;
 end $$;
+
+-- 19. Comunidad: publicaciones y respuestas entre becarios
+--     Preguntas, soluciones, aportes y debates. El nombre del autor lo pone el servidor (no se puede falsear),
+--     hay límite anti-spam y el instructor puede ocultar o borrar cualquier cosa.
+create table if not exists public.community_posts (
+  id bigserial primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  author text not null default 'Becario',
+  kind text not null default 'pregunta' check (kind in ('pregunta','solucion','aporte','debate')),
+  zone integer check (zone between 0 and 9),
+  title text not null check (char_length(title) between 5 and 120),
+  body text not null check (char_length(body) between 10 and 4000),
+  solved boolean not null default false,
+  pinned boolean not null default false,
+  hidden boolean not null default false,
+  replies integer not null default 0,
+  likes integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.community_replies (
+  id bigserial primary key,
+  post_id bigint not null references public.community_posts(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  author text not null default 'Becario',
+  body text not null check (char_length(body) between 2 and 3000),
+  accepted boolean not null default false,
+  hidden boolean not null default false,
+  likes integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.community_likes (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  target text not null check (target ~ '^(p|r)[0-9]+$'),
+  created_at timestamptz not null default now(),
+  primary key (user_id, target)
+);
+create index if not exists community_posts_created on public.community_posts (created_at desc);
+create index if not exists community_replies_post on public.community_replies (post_id, created_at);
+
+alter table public.community_posts enable row level security;
+alter table public.community_replies enable row level security;
+alter table public.community_likes enable row level security;
+
+drop policy if exists "comunidad: leer posts" on public.community_posts;
+create policy "comunidad: leer posts" on public.community_posts for select to authenticated using (not hidden or user_id = auth.uid() or public.is_admin());
+drop policy if exists "comunidad: publicar" on public.community_posts;
+create policy "comunidad: publicar" on public.community_posts for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "comunidad: editar propio o instructor" on public.community_posts;
+create policy "comunidad: editar propio o instructor" on public.community_posts for update to authenticated using (user_id = auth.uid() or public.is_admin()) with check (user_id = auth.uid() or public.is_admin());
+drop policy if exists "comunidad: borrar propio o instructor" on public.community_posts;
+create policy "comunidad: borrar propio o instructor" on public.community_posts for delete to authenticated using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists "comunidad: leer respuestas" on public.community_replies;
+create policy "comunidad: leer respuestas" on public.community_replies for select to authenticated using (not hidden or user_id = auth.uid() or public.is_admin());
+drop policy if exists "comunidad: responder" on public.community_replies;
+create policy "comunidad: responder" on public.community_replies for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "comunidad: editar respuesta propia o instructor" on public.community_replies;
+create policy "comunidad: editar respuesta propia o instructor" on public.community_replies for update to authenticated using (user_id = auth.uid() or public.is_admin()) with check (user_id = auth.uid() or public.is_admin());
+drop policy if exists "comunidad: borrar respuesta propia o instructor" on public.community_replies;
+create policy "comunidad: borrar respuesta propia o instructor" on public.community_replies for delete to authenticated using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists "comunidad: ver mis me sirvió" on public.community_likes;
+create policy "comunidad: ver mis me sirvió" on public.community_likes for select to authenticated using (user_id = auth.uid());
+drop policy if exists "comunidad: dar me sirvió" on public.community_likes;
+create policy "comunidad: dar me sirvió" on public.community_likes for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "comunidad: quitar me sirvió" on public.community_likes;
+create policy "comunidad: quitar me sirvió" on public.community_likes for delete to authenticated using (user_id = auth.uid());
+
+-- Autor real, campos protegidos y límite anti-spam
+create or replace function public.community_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare n int; adm boolean := public.is_admin();
+begin
+  if coalesce(current_setting('pp.sys', true), '') = '1' then return new; end if;
+  if tg_op = 'INSERT' then
+    new.user_id := auth.uid();
+    new.author := case when adm then 'Instructor' else coalesce((select name from public.ranking where user_id = auth.uid()), 'Becario') end;
+    new.hidden := false; new.likes := 0;
+    if tg_table_name = 'community_posts' then
+      new.solved := false; new.pinned := adm and new.pinned; new.replies := 0;
+      select count(*) into n from public.community_posts where user_id = auth.uid() and created_at > now() - interval '1 hour';
+      if n >= 8 and not adm then raise exception 'limite_publicaciones'; end if;
+    else
+      new.accepted := false;
+      select count(*) into n from public.community_replies where user_id = auth.uid() and created_at > now() - interval '10 minutes';
+      if n >= 15 and not adm then raise exception 'limite_respuestas'; end if;
+    end if;
+  else
+    new.user_id := old.user_id; new.author := old.author; new.created_at := old.created_at; new.likes := old.likes;
+    if not adm then new.hidden := old.hidden; end if;
+    if tg_table_name = 'community_posts' then
+      new.replies := old.replies; new.updated_at := now();
+      if not adm then new.pinned := old.pinned; end if;
+    else
+      new.post_id := old.post_id;
+      if not adm then new.accepted := old.accepted; end if;
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists community_posts_guard on public.community_posts;
+create trigger community_posts_guard before insert or update on public.community_posts for each row execute function public.community_guard();
+drop trigger if exists community_replies_guard on public.community_replies;
+create trigger community_replies_guard before insert or update on public.community_replies for each row execute function public.community_guard();
+
+-- Contador de respuestas
+create or replace function public.community_count() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform set_config('pp.sys', '1', true);
+  update public.community_posts set replies = (select count(*) from public.community_replies r where r.post_id = coalesce(new.post_id, old.post_id) and not r.hidden)
+   where id = coalesce(new.post_id, old.post_id);
+  perform set_config('pp.sys', '', true);
+  return null;
+end $$;
+drop trigger if exists community_replies_count on public.community_replies;
+create trigger community_replies_count after insert or update or delete on public.community_replies for each row execute function public.community_count();
+
+-- "Me sirvió": suma o resta en la publicación o respuesta
+create or replace function public.community_like_count() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare t text := coalesce(new.target, old.target); d int := case when tg_op = 'INSERT' then 1 else -1 end; i bigint := substr(t, 2)::bigint;
+begin
+  perform set_config('pp.sys', '1', true);
+  if left(t,1) = 'p' then update public.community_posts set likes = greatest(0, likes + d) where id = i;
+  else update public.community_replies set likes = greatest(0, likes + d) where id = i; end if;
+  perform set_config('pp.sys', '', true);
+  return null;
+end $$;
+drop trigger if exists community_likes_count on public.community_likes;
+create trigger community_likes_count after insert or delete on public.community_likes for each row execute function public.community_like_count();
+
+-- El autor de la pregunta (o el instructor) marca la respuesta que lo resolvió
+create or replace function public.community_accept(p_reply bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare pid bigint; owner uuid;
+begin
+  select r.post_id, p.user_id into pid, owner from public.community_replies r join public.community_posts p on p.id = r.post_id where r.id = p_reply;
+  if pid is null then raise exception 'no_existe'; end if;
+  if owner <> auth.uid() and not public.is_admin() then raise exception 'no_autorizado'; end if;
+  perform set_config('pp.sys', '1', true);
+  update public.community_replies set accepted = (id = p_reply) where post_id = pid;
+  update public.community_posts set solved = true where id = pid;
+  perform set_config('pp.sys', '', true);
+end $$;
+revoke all on function public.community_accept(bigint) from public, anon;
+grant execute on function public.community_accept(bigint) to authenticated;
