@@ -655,3 +655,20 @@ pre.showout{background:#111820;color:#d6e2ea;font:12.5px/1.45 "IBM Plex Mono",mo
 @media (max-width:700px){.lbtop3{grid-template-columns:1fr}.lbbig{font-size:70px}.lbst{gap:18px}}
 .lbleadtag .crown{position:static!important;transform:none!important;width:22px!important;height:15px!important;margin:0!important;display:inline-block}
 .lbsn .you,.c-usr .you{color:#fff;font-size:10px}
+/* Resumen gráfico al certificar una zona */
+.zrec{margin:22px 0;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:var(--paper)}
+.zrk{font:600 12px 'IBM Plex Mono',monospace;color:var(--ok);margin:0 0 4px}.zrec h2{font-size:22px;margin:0 0 14px}
+.zrgrid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:center}
+.zrmap{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--soft)}
+.zrsvg{width:100%;height:auto;display:block}
+.zrl{stroke:var(--mut);stroke-width:2}.zrl.tk{stroke:var(--trunk);stroke-width:4}
+.zrn{fill:var(--paper);stroke:var(--brand);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.zrlab{font:600 11px 'IBM Plex Mono',monospace;fill:var(--ink);text-anchor:middle}.zrt{font:500 10px 'IBM Plex Mono',monospace;fill:var(--mut);text-anchor:middle}
+.zrstats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.zrstats div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.zrstats span{font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}.zrstats b{font:700 22px 'IBM Plex Mono',monospace}
+.zrcols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}.zrcols h3{margin:0 0 6px}
+.zrsk{margin:0;padding-left:18px}.zrsk li{margin:4px 0}
+.zrlabs{list-style:none;margin:0;padding:0}.zrlabs li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.zrbtn{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+@media (max-width:700px){.zrgrid,.zrcols{grid-template-columns:1fr}}
