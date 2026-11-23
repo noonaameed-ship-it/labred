@@ -886,3 +886,78 @@ Esta publicación es solo de lectura. Si tienes una duda, abre una Pregunta nuev
 Tu instructor de PacketPath$b$, true, true);
   perform set_config('pp.sys', '', true);
 end $$;
+
+-- 21. Cuentas: el instructor puede ver, renombrar, bloquear y eliminar cuentas de becarios desde su panel
+--     Nunca sobre sí mismo ni sobre otro instructor. Todo se valida aquí, en el servidor.
+create or replace function public.admin_users()
+returns table (id uuid, email text, name text, created_at timestamptz, last_sign_in_at timestamptz,
+               confirmed boolean, banned boolean, is_admin boolean, xp integer, certs integer, nivel integer)
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'Solo el instructor puede hacer esto'; end if;
+  return query
+  select u.id, u.email::text,
+         coalesce(nullif(r.name,''), nullif(u.raw_user_meta_data->>'name',''), nullif(p.name,''), split_part(u.email::text,'@',1))::text,
+         u.created_at, u.last_sign_in_at, (u.email_confirmed_at is not null),
+         coalesce(u.banned_until > now(), false), exists (select 1 from public.admins a where a.user_id = u.id),
+         coalesce(r.xp,0), coalesce(r.certs,0), coalesce(r.nivel,0)
+    from auth.users u
+    left join public.ranking r on r.user_id = u.id
+    left join public.progress p on p.user_id = u.id
+   order by u.created_at desc;
+end $$;
+
+create or replace function public.admin_user_guard(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Solo el instructor puede hacer esto'; end if;
+  if p_user is null or p_user = auth.uid() then raise exception 'No puedes hacer esto con tu propia cuenta'; end if;
+  if exists (select 1 from public.admins where user_id = p_user) then raise exception 'Esa cuenta es de un instructor'; end if;
+  if not exists (select 1 from auth.users where id = p_user) then raise exception 'La cuenta ya no existe'; end if;
+end $$;
+
+create or replace function public.admin_user_rename(p_user uuid, p_name text) returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare n text := btrim(regexp_replace(coalesce(p_name,''), '\s+', ' ', 'g'));
+begin
+  perform public.admin_user_guard(p_user);
+  if char_length(n) < 2 or char_length(n) > 40 then raise exception 'El nombre debe tener entre 2 y 40 letras'; end if;
+  update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data,'{}'::jsonb) || jsonb_build_object('name', n) where id = p_user;
+  update public.ranking set name = n where user_id = p_user;
+  update public.progress set name = n where user_id = p_user;
+  perform set_config('pp.sys', '1', true);
+  update public.community_posts set author = n where user_id = p_user;
+  update public.community_replies set author = n where user_id = p_user;
+  perform set_config('pp.sys', '', true);
+end $$;
+
+create or replace function public.admin_user_block(p_user uuid, p_block boolean) returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  perform public.admin_user_guard(p_user);
+  update auth.users set banned_until = case when p_block then now() + interval '100 years' else null end where id = p_user;
+  if p_block then
+    begin delete from auth.sessions where user_id = p_user; exception when undefined_table then null; end;
+    delete from public.ranking where user_id = p_user;
+  end if;
+end $$;
+
+create or replace function public.admin_user_delete(p_user uuid) returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare e text;
+begin
+  perform public.admin_user_guard(p_user);
+  select email into e from auth.users where id = p_user;
+  delete from public.pw_requests where lower(email) = lower(e);
+  delete from auth.users where id = p_user;
+end $$;
+
+revoke all on function public.admin_users() from public, anon;
+revoke all on function public.admin_user_guard(uuid) from public, anon, authenticated;
+revoke all on function public.admin_user_rename(uuid, text) from public, anon;
+revoke all on function public.admin_user_block(uuid, boolean) from public, anon;
+revoke all on function public.admin_user_delete(uuid) from public, anon;
+grant execute on function public.admin_users() to authenticated;
+grant execute on function public.admin_user_rename(uuid, text) to authenticated;
+grant execute on function public.admin_user_block(uuid, boolean) to authenticated;
+grant execute on function public.admin_user_delete(uuid) to authenticated;

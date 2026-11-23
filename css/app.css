@@ -871,3 +871,28 @@ details.vocab[open]>summary::after{content:'−'}
  table.tstack td:first-child::before{display:none}
 }
 .q .qn{display:block;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
+
+/* Cuentas (panel de instructor) */
+.accbar{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}
+.accbar input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--paper);color:var(--ink);font:inherit}
+.accbar .rtabs{flex-wrap:wrap}
+.acclist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;align-items:start}
+.acc{border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.acc.ban{opacity:.85;border-style:dashed}
+.acch{display:flex;gap:10px;align-items:center;min-width:0}
+.acc .av.sm{width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:700;flex:none}
+.accn{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;min-width:0}
+.accn b{font-size:15px}.accn .small{flex-basis:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.accm{margin:0;color:var(--mut)}
+.acca{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.acca .btn{justify-content:center;border-radius:9px;min-height:38px;font-size:13px;gap:5px}
+.acca .btn .ic{width:15px;height:15px}
+.acca .accdel{color:var(--bad)}
+.accf{display:flex;gap:6px;flex-wrap:wrap}.accf input{flex:1 1 160px;min-height:38px;border:1px solid var(--line);border-radius:9px;padding:0 10px;background:var(--bg);color:var(--ink);font:inherit}
+.accw{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft)}
+.accw p{margin:0 0 6px}
+.accw.del{border-color:color-mix(in srgb,var(--bad) 45%,var(--line));background:color-mix(in srgb,var(--bad) 7%,var(--paper))}
+.accw.del input{display:block;width:100%;box-sizing:border-box;margin-top:4px;min-height:38px;border:1px solid var(--line);border-radius:9px;padding:0 10px;background:var(--paper);color:var(--ink);font:inherit;letter-spacing:.1em}
+.accdel2{background:var(--bad)!important;border-color:var(--bad)!important;color:#fff!important}
+.accdel2:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:560px){.acclist{grid-template-columns:1fr}}
