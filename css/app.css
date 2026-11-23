@@ -901,3 +901,36 @@ details.vocab[open]>summary::after{content:'−'}
 .arintro p{margin:4px 0 10px}.arbar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}.arbar i{display:block;height:100%;background:linear-gradient(90deg,#33d17f,var(--blue));border-radius:3px}
 .card.ar.lockd{opacity:.72}.card.ar .alk{display:flex;align-items:center;gap:5px;margin-top:auto;color:var(--mut)}.card.ar .alk .ic{width:13px;height:13px}
 .alock p{margin:6px 0 10px}.alneed{line-height:1.9}.alneed a{text-decoration:none;color:var(--ink)}.alneed a b{color:var(--blue)}
+
+/* Barra superior de escritorio: una sola fila */
+.hudp.hx{display:none!important}
+.links .lmore{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:7px;color:var(--mut);font-weight:500;min-height:36px;cursor:pointer}
+.links .lmore:hover,.links .lmore.on{color:var(--ink);background:var(--soft)}
+.links .lmore .ic{width:16px;height:16px}
+.links .lmore:focus-visible{outline:2px solid var(--blue)}
+.links .lmore .tdot,.hbell .tdot{position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bad);color:#fff;font:700 10px/16px 'IBM Plex Sans',sans-serif;text-align:center}
+.hbell{position:relative}.hbell .tdot{top:-5px;right:-6px}
+@media (min-width:721px){
+ nav.top{flex-wrap:nowrap}
+ #hud{flex-wrap:nowrap;min-width:0}
+ .links{flex:1;min-width:0}
+ .chips{flex-wrap:nowrap}
+ #msheet{display:block;position:fixed;inset:0;z-index:30}
+ #msheet[hidden]{display:none}
+ #msheet .mback{position:absolute;inset:0;background:transparent}
+ #msheet .mpanel{position:fixed;width:360px;background:light-dark(#ffffff,#13211f);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.22);opacity:0;transform:translateY(-6px);transition:opacity .15s,transform .15s}
+ #msheet.open .mpanel{opacity:1;transform:none}
+ #msheet .mgrab{display:none}
+ #msheet .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ #msheet .mitem{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:12px;background:light-dark(#eef3f2,#1c2e2b);color:var(--ink);text-decoration:none;font:500 12.5px 'IBM Plex Sans',sans-serif}
+ #msheet .mitem:hover{outline:1px solid var(--blue)}
+ #msheet .mitem .ic{width:20px;height:20px;color:var(--blue)}
+ #msheet .mitem .tdot{position:absolute;top:6px;right:10px;min-width:16px;height:16px;border-radius:8px;background:var(--bad);color:#fff;font:700 10px/16px sans-serif;text-align:center;padding:0 4px}
+ #msheet .mrow{display:flex;gap:8px;margin-top:10px}
+ #msheet .mbtn{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--ink);font:500 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap;padding:0 8px;cursor:pointer}
+ #msheet .mbtn .ic{width:15px;height:15px}
+}
+@media (min-width:721px) and (max-width:1100px){.hudp .lbl{display:none}.hudp.fl span{display:none}.links a,.links .lmore{padding:6px 8px}}
+.links a{white-space:nowrap}
+@media (min-width:721px) and (max-width:900px){.hudp.fl{display:none}}
+.netbox[data-mode="t"]>svg{max-width:460px;margin:0 auto;display:block}
