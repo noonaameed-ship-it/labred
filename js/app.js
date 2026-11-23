@@ -8,8 +8,8 @@ const PASS=8,MINW=20;
 const IC={book:'M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h8M8 11h6',term:'M3 5h18v14H3zM7 10l3 2-3 2M12 15h5',lock:'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3',check:'M5 12l5 5 9-10',star:'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z',flame:'M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1.5 1 2 2 2 3 1-2 1-4 1-6z',trophy:'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8',mail:'M3 6h18v12H3zM3 7l9 6 9-6',table:'M4 5h16v14H4zM4 10h16M10 10v9',layers:'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',multi:'M3 7h7v10H3zM14 7h7v10h-7zM10 12h4',up:'M12 20V5M6 11l6-6 6 6',map:'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14',sound:'M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6',mute:'M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6',wrench:'M15 4a5 5 0 0 0-5 6l-7 7 3 3 7-7a5 5 0 0 0 6-5l-3 1-2-2z',bolt:'M13 3L5 14h6l-1 7 8-11h-6z',user:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',packet:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8',cloud:'M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z',sun:'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',moon:'M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z',auto:'M12 21a9 9 0 1 0 0-18zM12 3a9 9 0 0 1 0 18',bell:'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4',cert:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4',clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',net:'M5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 9v3M5 15l7-3 7 3'};
 const ico=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 const EXPASS=80,LABPASS=90,LABRUNS=3,MAXTRY=2;
-const LABS={lab1:{kind:'l2',z:1,hash:'lab-1'},tsh1:{kind:'topo',topo:'tsh1',z:1,hash:'lab-t1',runs:1},lab2:{kind:'topo',topo:'lab2',z:2,hash:'lab-2'},tsh2:{kind:'topo',topo:'tsh2',z:2,hash:'lab-t2',runs:1}};const RUNS=id=>(LABS[id]&&LABS[id].runs)||LABRUNS;let curLab='lab1';
-const labExp=id=>id==='lab2'?LABEXP2:/^tsh/.test(id)?LABEXPT:LABEXP;
+const LABS={lab1:{kind:'l2',z:1,hash:'lab-1'},tsh1:{kind:'topo',topo:'tsh1',z:1,hash:'lab-t1',runs:1},lab2:{kind:'topo',topo:'lab2',z:2,hash:'lab-2'},tsh2:{kind:'topo',topo:'tsh2',z:2,hash:'lab-t2',runs:1},lab3:{kind:'topo',topo:'lab3',z:3,hash:'lab-3',runs:2},tsh3:{kind:'topo',topo:'tsh3',z:3,hash:'lab-t3',runs:1},lab3b:{kind:'topo',topo:'lab3b',z:3,hash:'lab-3b',runs:1},lab1b:{kind:'topo',topo:'lab1b',z:1,hash:'lab-1b',runs:1},lab2b:{kind:'topo',topo:'lab2b',z:2,hash:'lab-2b',runs:1}};const RUNS=id=>(LABS[id]&&LABS[id].runs)||LABRUNS;let curLab='lab1';
+const labExp=id=>/^lab2/.test(id)?LABEXP2:/^lab3/.test(id)?LABEXP3:id==='lab1b'?LABEXP1B:/^tsh/.test(id)?LABEXPT:LABEXP;
 const labPasses=r=>r?(r.labPasses!==undefined?r.labPasses:((r.labScore||0)>=LABPASS?1:0)):0;
 const starsOf=e=>e>=10?3:e>=9?2:e>=PASS?1:0;
 const starsPct=p=>p>=100?3:p>=95?2:p>=90?1:0;
@@ -846,6 +846,95 @@ const GAMES={
   el.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>{reset(b.dataset.v);inp.focus()}));reset('cisco');
  }
 };
+/* Zona 3: simulador visual de trunk (etiqueta 802.1Q, poda y VLAN nativa) y lectura de show */
+function trunkGame(el,o){const VL=[[10,'VENTAS'],[20,'RRHH'],[30,'CAMARAS']],NATS=[1,10,20,30,999];
+ const S={L:{al:new Set([10,20,30]),nat:1},R:{al:new Set([10,20,30]),nat:1}},M=o.missions.map(()=>false);let log='',hist=[];
+ const nm=v=>(VL.find(x=>x[0]===v)||[0,v===999?'NATIVA':v===1?'DEFAULT':''])[1];
+ const send=v=>{const L=S.L,R=S.R;let out,ok=false,why;
+  if(L.nat===v){out='u'}else if(L.al.has(v)){out='t'}else{out=null}
+  if(!out){why=`<strong style="color:var(--bad)">No sale.</strong> La VLAN ${v} no está en la lista de permitidas de SW1: el trunk la poda ahí mismo.`}
+  else if(out==='u'){const got=R.nat;ok=got===v;why=`SW1 manda la VLAN ${v} <strong>sin etiqueta</strong>, porque es su nativa. SW2 recibe un frame sin etiqueta y lo mete en <strong>su</strong> nativa: la VLAN ${got}. `+(ok?'<strong style="color:var(--ok)">Coinciden: llegó bien.</strong>':`<strong style="color:var(--bad)">Llegó a la VLAN equivocada:</strong> la ${v} se rompe en este enlace y se mezcla con la ${got}.`)}
+  else{if(!R.al.has(v))why=`SW1 la manda <strong>con etiqueta 802.1Q, VID ${v}</strong>. <strong style="color:var(--bad)">SW2 la tira:</strong> la VLAN ${v} no está en su lista de permitidas.`;else{ok=true;why=`SW1 la manda <strong>con etiqueta 802.1Q, VID ${v}</strong>. SW2 lee la etiqueta, la quita y la entrega en la VLAN ${v}. <strong style="color:var(--ok)">Llegó bien.</strong>`}}
+  hist.push({v,ok,out,L:{al:[...L.al],nat:L.nat},R:{al:[...R.al],nat:R.nat}});log=why;sfx(ok?'ok':'bad');
+  o.missions.forEach((m,i)=>{if(!M[i]&&m.done(S,hist)){M[i]=true;toast('Misión cumplida: '+m.t)}});draw({v,out,ok})};
+ const side=(k,lab)=>{const X=S[k];return`<div class="tside"><b>${lab}</b><span class="small">Permitidas en el trunk</span><div class="tchk">${VL.map(([v,n])=>`<label><input type="checkbox" data-al="${k}:${v}" ${X.al.has(v)?'checked':''}> ${v} ${n}</label>`).join('')}</div><label class="small">Nativa <select data-nat="${k}">${NATS.map(n=>`<option ${X.nat===n?'selected':''} value="${n}">${n}${n===1?' (default)':n===999?' NATIVA':''}</option>`).join('')}</select></label></div>`};
+ const draw=f=>{const all=M.every(Boolean);el.innerHTML=`<div class="game tgame"><div class="ghead"><b>Simulador · ${esc(o.title)}</b><span class="small">${M.filter(Boolean).length} de ${M.length} misiones</span></div>
+  <ol class="tmis">${o.missions.map((m,i)=>`<li class="${M[i]?'ok':''}">${M[i]?'✓ ':''}${m.t}</li>`).join('')}</ol>
+  <div class="tbox">${side('L','SW1')}<div class="tmid"><div class="tline"></div>${f?`<span class="tfr ${f.out==='t'?'tg':f.out==='u'?'ut':'no'}">${f.out==='t'?'802.1Q · VID '+f.v:f.out==='u'?'sin etiqueta':'✕ no sale'}</span>`:'<span class="small">trunk</span>'}</div>${side('R','SW2')}</div>
+  <div class="opts row">${VL.map(([v,n])=>`<button data-send="${v}">Enviar VLAN ${v} →</button>`).join('')}</div>
+  <div class="why">${log||'Elige qué VLAN deja pasar cada lado y cuál es su nativa. Luego manda frames de SW1 a SW2.'}</div>${all?`<p><strong style="color:var(--ok)">¡Misiones completas!</strong> ${o.end}</p>`:''}</div>`;
+  el.querySelectorAll('[data-al]').forEach(c=>c.onchange=()=>{const[k,v]=c.dataset.al.split(':');c.checked?S[k].al.add(+v):S[k].al.delete(+v);log='';sfx('xp');draw()});
+  el.querySelectorAll('[data-nat]').forEach(c=>c.onchange=()=>{S[c.dataset.nat].nat=+c.value;log='';sfx('xp');draw()});
+  el.querySelectorAll('[data-send]').forEach(b=>b.onclick=()=>send(+b.dataset.send));
+  if(all&&!draw.won){draw.won=1;miniWin(o.key,o.les)}};
+ draw()}
+const same=(a,b)=>a.length===b.length&&a.every(x=>b.includes(x));
+Object.assign(GAMES,{
+ trunk1(el){trunkGame(el,{key:'trunk1',les:'t3-1',title:'Etiquetas y poda',end:'Así se ve un trunk podado: solo cruza lo que ese piso necesita.',missions:[
+  {t:'Con todo permitido, manda un frame de la VLAN 10, de la 20 y de la 30.',done:(S,h)=>[10,20,30].every(v=>h.some(x=>x.v===v&&x.ok))},
+  {t:'Poda el trunk en los DOS lados: que pasen solo 10 y 20.',done:S=>same([...S.L.al],[10,20])&&same([...S.R.al],[10,20])},
+  {t:'Comprueba: con el trunk podado, manda la 30 (no debe cruzar) y la 10 (sí debe cruzar).',done:(S,h)=>{const k=h.findIndex(x=>same(x.L.al,[10,20])&&same(x.R.al,[10,20]));return k>=0&&h.slice(k).some(x=>x.v===30&&!x.ok)&&h.slice(k).some(x=>x.v===10&&x.ok)}}]})},
+ trunk2(el){trunkGame(el,{key:'trunk2',les:'t3-2',title:'La VLAN nativa',end:'Nativa dedicada e igual en los dos lados: así se deja en producción.',missions:[
+  {t:'Rómpela: pon la nativa 10 SOLO en SW1 y manda un frame de la VLAN 10.',done:(S,h)=>h.some(x=>x.v===10&&x.L.nat===10&&x.R.nat!==10&&!x.ok)},
+  {t:'Mira el otro caso: nativa 10 en los DOS lados y manda la 10. ¿Llega?',done:(S,h)=>h.some(x=>x.v===10&&x.L.nat===10&&x.R.nat===10&&x.ok)},
+  {t:'Déjalo como en producción: nativa 999 en los dos lados y manda la 10, la 20 y la 30.',done:(S,h)=>[10,20,30].every(v=>h.some(x=>x.v===v&&x.ok&&x.L.nat===999&&x.R.nat===999))}]})},
+ showread(el){const P=[
+  {v:'Cisco IOS · ACC2',o:`ACC2# show interfaces trunk
+
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/24      on           802.1q         trunking      999
+
+Port        Vlans allowed on trunk
+Gi0/24      10,20
+
+Port        Vlans allowed and active in management domain
+Gi0/24      10`,q:'Las PCs de la VLAN 20 en ACC2 no ven a nadie. ¿Por qué?',a:'La VLAN 20 no existe en ACC2: está permitida pero no activa',x:['La nativa está mal','El trunk está apagado','La VLAN 20 no está permitida'],why:'Está en "allowed" pero no en "allowed and active": falta crearla en ACC2 (vlan 20, name RRHH).'},
+  {v:'Cisco IOS · CORE',o:`%CDP-4-NATIVE_VLAN_MISMATCH: Native VLAN mismatch discovered on Gi0/23 (30), with ACC2 Gi0/24 (999).
+
+CORE# show interfaces trunk
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/23      on           802.1q         trunking      30
+Gi0/24      on           802.1q         trunking      999`,q:'¿Qué hay que corregir?',a:'La nativa de Gi0/23 en el CORE: debe ser 999, no 30',x:['La nativa de ACC2: debe ser 30','Nada, CDP exagera','Apagar Gi0/24'],why:'La regla de la casa es nativa 999 en ambos extremos. El CORE manda la VLAN 30 sin etiqueta y ACC2 la mete en su 999: las cámaras de ese piso se pierden.'},
+  {v:'Aruba AOS-CX · ACC1',o:`ACC1# show interface brief
+--------------------------------------------------------------------------
+Port      Native  Mode    Type      Enabled Status  Reason
+          VLAN
+--------------------------------------------------------------------------
+1/1/1     10      access  1GbT      yes     up
+1/1/2     20      access  1GbT      yes     up
+1/1/24    10      access  1GbT      yes     up`,q:'1/1/24 es el uplink al CORE. ¿Qué ves?',a:'El uplink está en modo access: solo pasa la VLAN 10, sin etiqueta',x:['Todo está bien','La nativa del uplink es correcta','El puerto 1/1/2 está mal'],why:'Un enlace entre switches con varias VLAN debe ser trunk: vlan trunk native 999 y vlan trunk allowed 10,20.'},
+  {v:'Juniper Junos · ACC2',o:`admin@ACC2> show ethernet-switching interfaces
+Routing Instance Name : default-switch
+
+Logical         Vlan          TAG     MAC     STP         Tagging
+interface       members               limit   state
+ge-0/0/23.0                                               tagged
+                VENTAS        10      294912  Forwarding  tagged
+                NATIVA        999     294912  Forwarding  untagged`,q:'RRHH (VLAN 20) no cruza hacia el CORE. ¿Por qué?',a:'RRHH no está en los members del trunk ge-0/0/23',x:['La nativa está mal','VENTAS debería ser untagged','El trunk está en access'],why:'Solo aparecen VENTAS y NATIVA. Falta: set interfaces ge-0/0/23 unit 0 family ethernet-switching vlan members RRHH, y commit.'},
+  {v:'Cisco IOS · ACC1',o:`ACC1# show interfaces trunk
+
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/24      on           802.1q         trunking      999
+
+Port        Vlans allowed on trunk
+Gi0/24      1-4094`,q:'Todo funciona, pero Seguridad marcó este trunk. ¿Por qué?',a:'No está podado: deja pasar todas las VLAN',x:['La nativa 999 es insegura','Debería ser access','Está apagado'],why:'1-4094 es la lista por defecto de Cisco. Se poda con switchport trunk allowed vlan 10,20.'},
+  {v:'Aruba AOS-CX · CORE',o:`CORE# show vlan
+--------------------------------------------------------------------------------------
+VLAN  Name                              Status  Reason          Type      Interfaces
+--------------------------------------------------------------------------------------
+1     DEFAULT_VLAN_1                    up      ok              default
+10    VENTAS                            up      ok              static    1/1/23-1/1/24
+20    RRHH                              up      ok              static    1/1/23-1/1/24
+150   SERVIDORES                        up      ok              static    1/1/24
+999   NATIVA                            up      ok              static    1/1/23-1/1/24`,q:'1/1/23 y 1/1/24 son los trunks hacia los pisos. ¿Qué está mal?',a:'La VLAN 150 (SERVIDORES) sale por 1/1/24 hacia un piso',x:['La VLAN 999 no debería existir','Falta la VLAN 1','La VLAN 10 debería estar solo en 1/1/23'],why:'La VLAN de servidores no debe salir del core: no vlan trunk allowed 150 en 1/1/24.'}];
+  let k=0,ok=0;const ord=gshuf(P);
+  const show=()=>{const p=ord[k],opts=gshuf([p.a,...p.x]);el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · Diagnostica la salida</b><span class="small">${k+1} de ${ord.length} · ${esc(p.v)}</span></div><pre class="showout">${esc(p.o)}</pre><p class="sq">${esc(p.q)}</p><div class="opts">${opts.map(x=>`<button data-x="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="why" id="gwhy"></div></div>`;
+   let done=false;el.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(done)return;done=true;const r=b.dataset.x===p.a;b.classList.add(r?'right':'wrong');if(r){ok++;sfx('ok')}else sfx('bad');
+    el.querySelector('#gwhy').innerHTML=`${r?'<strong style="color:var(--ok)">Correcto.</strong>':`<strong style="color:var(--bad)">No.</strong> Era: ${esc(p.a)}.`} ${esc(p.why)} <button class="btn" id="gn">${k+1<ord.length?'Siguiente →':'Ver resultado'}</button>`;
+    el.querySelector('#gn').onclick=()=>{k++;k<ord.length?show():end()}})};
+  const end=()=>{el.innerHTML=`<div class="game"><div class="ghead"><b>Minijuego · Diagnostica la salida</b></div><p><strong>${ok} de ${ord.length}</strong> diagnósticos correctos.</p>${ok>=5?'<p>Lees salidas como alguien del NOC.</p>':'<p class="small">Con 5 o más ganas los XP del minijuego. Usa las 3 preguntas: ¿trunk? ¿permitida y activa? ¿nativa igual?</p>'}<button class="btn" id="gre">Otra vez</button></div>`;if(ok>=5)miniWin('showread','t3-3');el.querySelector('#gre').onclick=()=>{k=0;ok=0;show()}};
+  show()}
+});
 
 const FIGS={
  frame(el){el.innerHTML=`<div class="netfig">${netSVG()}<div class="ctrl"><button class="btn pri" id="fsend">Enviar frame de PC-A a PC-C</button></div><div class="status" id="fst">PC-A quiere mandarle algo a PC-C.</div><div id="fbar"></div></div>`;
@@ -1037,7 +1126,7 @@ function showQ(){const q=EX.qs[EX.i],E=EXAMS[EX.id],v=$('#v-examen');
 const LABSC=[{vid:20,name:'CONTABILIDAD',label:'Contabilidad'},{vid:30,name:'CAMARAS',label:'Seguridad (cámaras)'},{vid:40,name:'RRHH',label:'Recursos Humanos'},{vid:50,name:'SOPORTE',label:'Soporte técnico'},{vid:60,name:'COMPRAS',label:'Compras'}];
 function labIntro(){const E=EXAMS[EX.id],lid=E.labId||'lab1',l3=LABS[lid].kind==='l3',sc=LABSC[Math.random()*LABSC.length|0],vs=['cisco','aruba','juniper'],v1=vs[Math.random()*3|0],v2=vs[Math.random()*3|0];
  EX.phase='labintro';const tp=LABS[lid].kind==='topo',seed=(Math.random()*1e9)|0,pv=tp?LAB.preview(LABS[lid].topo,seed):null;EX.sc=tp?{kind:'topo',topo:LABS[lid].topo,seed,cert:TID[EX.id],vid:pv.A.id,name:pv.A.name+' y '+pv.B.name}:{...sc,v1,v2,kind:LABS[lid].kind,cert:TID[EX.id]};curLab=lid;const VN={cisco:'Cisco IOS',aruba:'Aruba AOS-CX',juniper:'Juniper Junos'};
- $('#v-examen').innerHTML=`<header class="band hero"><div class="in"><p class="crumb">${TID[EX.id]} · parte 2 de 2</p><h1>Parte práctica: sin ayuda</h1></div></header><div class="lecw"><div class="card"><p>Terminaste la teoría. Tu resultado se muestra al final, junto con la práctica.</p><h2>Tu ticket</h2>${tp?`<p>Red de tres switches con dos áreas: <strong>VLAN ${pv.A.id} (${pv.A.name})</strong> y <strong>VLAN ${pv.B.id} (${pv.B.name})</strong>. Configura <strong>${pv.blank}</strong>, dale al CORE una IP en cada VLAN (192.168.${pv.A.id}.2 y 192.168.${pv.B.id}.2) y corrige la IP de <strong>${pv.broken}</strong>.</p><p>${pv.sws.map(x=>`${x.name}: <strong>${x.vendor}</strong>`).join(' · ')}</p>`:l3?`<p>El área de <strong>${esc(sc.label)}</strong> ya tiene su VLAN ${sc.vid} (${sc.name}) funcionando en capa 2. Dale a SW1 la IP <strong>192.168.${sc.vid}.2/24</strong> y a SW2 la <strong>192.168.${sc.vid}.3/24</strong> en la SVI, y corrige la IP de PC-B.</p>`:`<p>El área de <strong>${esc(sc.label)}</strong> necesita su propia red: <strong>VLAN ${sc.vid} (${sc.name})</strong>, con PC-A (192.168.${sc.vid}.11) y PC-B (192.168.${sc.vid}.12) en switches distintos.</p>`}${tp?'':`<p>SW1: <strong>${VN[v1]}</strong> · SW2: <strong>${VN[v2]}</strong></p>`}<ul><li>Tienes ${E.labMin} minutos desde que empiezas.</li><li>No hay guía, pistas ni mensajes del tutor. Puedes usar <code>?</code> y <code>Tab</code>.</li><li>Termina cuando ${tp?'los pings de la lista funcionen':l3?`el ping de PC-B a SW1 (192.168.${sc.vid}.2)`:'el ping de PC-A a PC-B'} funcione.</li><li>No cambies de página: si sales, la certificación se cancela.</li></ul><button class="btnl" id="labgo">Comenzar la práctica</button></div></div>`;
+ $('#v-examen').innerHTML=`<header class="band hero"><div class="in"><p class="crumb">${TID[EX.id]} · parte 2 de 2</p><h1>Parte práctica: sin ayuda</h1></div></header><div class="lecw"><div class="card"><p>Terminaste la teoría. Tu resultado se muestra al final, junto con la práctica.</p><h2>Tu ticket</h2>${tp?(pv.id==='lab3'?`<p>Red de tres switches: <strong>VLAN ${pv.A.id} (${pv.A.name})</strong> y <strong>VLAN ${pv.B.id} (${pv.B.name})</strong> en los pisos, y la <strong>VLAN ${pv.C.id} (${pv.C.name})</strong> solo en el CORE. Crea la VLAN 999 NATIVA en los tres switches y configura los 4 extremos de trunk: solo ${pv.A.id} y ${pv.B.id}, nativa 999. Los pings de la lista deben funcionar.</p>`:`<p>Red de tres switches con dos áreas: <strong>VLAN ${pv.A.id} (${pv.A.name})</strong> y <strong>VLAN ${pv.B.id} (${pv.B.name})</strong>. Configura <strong>${pv.blank}</strong>, dale al CORE una IP en cada VLAN (192.168.${pv.A.id}.2 y 192.168.${pv.B.id}.2) y corrige la IP de <strong>${pv.broken}</strong>.</p>`)+`<p>${pv.sws.map(x=>`${x.name}: <strong>${x.vendor}</strong>`).join(' · ')}</p>`:l3?`<p>El área de <strong>${esc(sc.label)}</strong> ya tiene su VLAN ${sc.vid} (${sc.name}) funcionando en capa 2. Dale a SW1 la IP <strong>192.168.${sc.vid}.2/24</strong> y a SW2 la <strong>192.168.${sc.vid}.3/24</strong> en la SVI, y corrige la IP de PC-B.</p>`:`<p>El área de <strong>${esc(sc.label)}</strong> necesita su propia red: <strong>VLAN ${sc.vid} (${sc.name})</strong>, con PC-A (192.168.${sc.vid}.11) y PC-B (192.168.${sc.vid}.12) en switches distintos.</p>`}${tp?'':`<p>SW1: <strong>${VN[v1]}</strong> · SW2: <strong>${VN[v2]}</strong></p>`}<ul><li>Tienes ${E.labMin} minutos desde que empiezas.</li><li>No hay guía, pistas ni mensajes del tutor. Puedes usar <code>?</code> y <code>Tab</code>.</li><li>Termina cuando ${tp?'los pings de la lista funcionen':l3?`el ping de PC-B a SW1 (192.168.${sc.vid}.2)`:'el ping de PC-A a PC-B'} funcione.</li><li>No cambies de página: si sales, la certificación se cancela.</li></ul><button class="btnl" id="labgo">Comenzar la práctica</button></div></div>`;
  $('#labgo').addEventListener('click',()=>{EX.phase='lab';EX.labEnd=Date.now()+E.labMin*60000;LAB.start(EX.sc);$('#labprog').innerHTML='';$('#labres').innerHTML='';location.hash=LABS[lid].hash;
   EX.tmr=setInterval(()=>{if(!EX||EX.phase!=='lab')return;const left=Math.max(0,EX.labEnd-Date.now());if(EX.admin&&!$('#exsol')){$('#labprog').innerHTML=`<details class="guide" id="exsol"><summary>Solución de este escenario (solo instructor)</summary><div class="sol" style="margin-top:8px">${(LAB.solutions()||LAB.vendors().map((v,i)=>({t:'SW'+(i+1),s:LAB.solution(v)}))).map(x=>`<div><h3>${esc(x.t)}</h3><pre>${esc(x.s)}</pre></div>`).join('')}</div></details>`}$('#exbar').innerHTML=`<span>${TID[EX.id]} · parte práctica · sin ayuda</span><span>${ico('clock')} <b>${Math.floor(left/60000)}:${String(Math.floor(left/1000)%60).padStart(2,'0')}</b></span><span>${EX.sc.kind==='topo'?esc(LAB.scenario().desc||''):`VLAN ${EX.sc.vid} (${esc(EX.sc.name)})`}</span>`;if(!left)labTimeout()},500)})}
 function labTimeout(){if(!EX)return;const n=LAB.passed(),t=LAB.total();finishCert(Math.round(60*n/t),{timeout:true,checks:n,total:t,err:(window.LAB_STATS||{}).err||0})}
