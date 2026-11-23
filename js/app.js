@@ -146,10 +146,10 @@ function openMore(anchor){if(anchor&&anchor.dataset)openMore.a=anchor;const s=$(
  s.innerHTML=`<div class="mback" data-close></div><div class="mpanel" role="dialog" aria-modal="true" aria-label="Más opciones"><div class="mgrab"></div>
   <div class="mgrid">${uid&&!isOwner?it('#mensajes','bell','Mensajes',un?`<b class="tdot">${un}</b>`:'').replace('class="mitem"','class="mitem monly"'):''}${uid?'':it('#entrar','user','Entrar')}${it('#acerca','info','Acerca de')}${it('#ayuda','help','Ayuda')}${it('#privacidad','lock','Privacidad').replace('class="mitem"','class="mitem donly"')}${isOwner?it('#instructor','table','Instructor')+it('#creador','wrench','Creador'):''}</div>
   <div class="mrow">${uid?`<button class="mbtn" data-act="fbk">${ico('mail')} Feedback</button>`:''}<button class="mbtn" data-act="thm">${ico(({light:'sun',dark:'moon'})[curTheme()]||'auto')} ${th}</button><button class="mbtn" data-act="snd">${ico(st.mute?'mute':'sound')} ${st.mute?'Sin sonido':'Sonido'}</button></div></div>`;
- s.hidden=false;const an=openMore.a,pn=s.querySelector('.mpanel');if(an&&matchMedia('(min-width:721px)').matches){const r=an.getBoundingClientRect();pn.style.top=(r.bottom+8)+'px';pn.style.left=Math.max(12,Math.min(r.left,innerWidth-372))+'px'}else{pn.style.top='';pn.style.left=''}requestAnimationFrame(()=>s.classList.add('open'));$('#tmore').setAttribute('aria-expanded','true');
+ s.hidden=false;let an=openMore.a;if(an&&!an.isConnected)an=openMore.a=$('#dmore');const pn=s.querySelector('.mpanel');if(an&&matchMedia('(min-width:721px)').matches){const r=an.getBoundingClientRect();pn.style.top=(r.bottom+8)+'px';pn.style.left=Math.max(12,Math.min(r.left,innerWidth-372))+'px'}else{pn.style.top='';pn.style.left=''}requestAnimationFrame(()=>s.classList.add('open'));$('#tmore').setAttribute('aria-expanded','true');
  const close=()=>{s.classList.remove('open');$('#tmore')&&$('#tmore').setAttribute('aria-expanded','false');setTimeout(()=>s.hidden=true,220)};
  s.querySelectorAll('[data-close],.mitem').forEach(e=>e.addEventListener('click',close));
- s.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const k=b.dataset.act;close();const el=$('#'+k);if(el)el.click();if(k!=='fbk')setTimeout(openMore,240)});
+ s.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const k=b.dataset.act;close();const el=$('#'+k);if(el)el.click();if(k!=='fbk')setTimeout(()=>openMore(),240)});
  const esc1=e=>{if(e.key==='Escape'){close();removeEventListener('keydown',esc1)}};addEventListener('keydown',esc1)}
 
 /* ---------- mapa: tu red ---------- */
