@@ -1092,3 +1092,4 @@ input#s3cmd:focus,.s3in input:focus{outline:none!important;box-shadow:none!impor
 .s3help ol{padding-inline-start:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}.s3help h3{margin:0 0 8px;color:#2dd4bf}
 .s3pulse{color:#facc15;font-weight:700}
 @media(max-width:900px){.s3next{top:auto;bottom:64px;font-size:13px}.s3q{bottom:auto;top:96px}}
+.s3win.s3fail{border-color:var(--bad)}.s3win.s3fail>b{color:var(--bad)}
