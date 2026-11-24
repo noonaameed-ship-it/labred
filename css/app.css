@@ -1006,3 +1006,5 @@ table.tmeasure td code,table.tmeasure td kbd{white-space:nowrap!important}
 table.tstack td,table.tstack td code{overflow-wrap:break-word;word-break:normal;white-space:normal}
 .tscroll>table:not(.tstack) td code{white-space:nowrap;word-break:normal}
 table.tnw th,table.tnw td{white-space:nowrap}
+
+@media (max-width:480px){.shtag{font-size:9.5px;letter-spacing:.06em;padding:4px 7px;white-space:nowrap;flex:none}}

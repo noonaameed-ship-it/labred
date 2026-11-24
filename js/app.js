@@ -309,7 +309,7 @@ const NOCSYM=[['Dos PCs de la misma VLAN en distintos switches no se ven; cada u
  ['Aruba: configuraste el puerto de la PC y no levanta.','El puerto está apagado: falta no shutdown',['Falta commit','La MAC está mal','Falta el gateway'],1],
  ['La VLAN 10 de Ventas usa 192.168.10.0/24 y una PC de Ventas tiene 192.168.20.15.','Su IP no es de la subred de su VLAN',['El trunk está apagado','El DNS falla','El switch está lleno'],2],
  ['300 PCs salen a internet con una sola IP pública.','El router hace NAT/PAT',['Es un trunk','Es DHCP','Es una VLAN'],2],
- ['Una PC con máscara /30 no ve a su vecina .12, aunque están en la misma VLAN.','La máscara es incorrecta',['Falta el commit','El cable es de fibra','El DNS falla'],2],
+ ['La VLAN usa 192.168.10.0/24. Una PC tiene 192.168.10.20 con máscara /30 y no ve a su vecina 192.168.10.12.','La máscara de esa PC está mal',['Falta el commit','El cable es de fibra','El DNS falla'],2],
  ['Un enlace de cobre de 150 metros entre switches da errores.','Se pasa de los 100 m del UTP',['Falta la VLAN','El DNS falla','Falta commit'],0]];
 const NOCCMD=[['ver las VLAN','Cisco IOS','show vlan brief',['show vlans','show vlan','display vlan']],['ver las VLAN','Juniper Junos','show vlans',['show vlan brief','show vlan','display vlan']],['ver las VLAN','Aruba AOS-CX','show vlan',['show vlans','show vlan brief','display vlan']],
  ['ver los trunks','Cisco IOS','show interfaces trunk',['show trunk all','show vlans trunk','show interface brief']],['entrar a configurar','Juniper Junos','configure',['configure terminal','enable','set config']],['entrar a configurar','Cisco IOS','configure terminal',['configure','set','commit']],
@@ -468,14 +468,14 @@ function gameCable(el){const box=el||gameShell('cable','Ponchado de cable','Arma
 /* --- Jefes de zona (opcionales: no bloquean nada) --- */
 const BOSS=[{z:0,n:'El apagón del lunes',intro:'Lunes 8:00. Media oficina sin red y Don Ramiro grita en el pasillo. Encuentra qué pasó, paso a paso.',hp:6,qs:[
   ['Lo primero que reporta Don Ramiro: "la lucecita del puerto de mi PC está apagada". ¿Qué capa revisas?',['Capa 1: cable y conector','Capa 3: la IP','Capa 7: el navegador'],0],
-  ['El cable de Don Ramiro mide 140 m hasta el rack. ¿Problema?',['Sí: el UTP llega a 100 m','No, el UTP no tiene límite','Solo si es azul'],0],
+  ['El cable de Don Ramiro mide 140 m hasta el rack. ¿Problema?',['Sí: el UTP llega a 100 m','No, el UTP no tiene límite','Solo si el cable es Cat5e'],0],
   ['Cambiaste el cable. Ahora Lupita dice que su IP es 169.254.3.4. ¿Qué significa?',['No recibió IP del DHCP','Es una IP pública','Es la IP del gateway'],0],
   ['El jefe de sistemas dice "es capa 2". ¿De qué habla?',['De switches y MAC','De cables','De páginas web'],0],
   ['Para conectar la nueva oficina a 3 km, ¿qué pides?',['Fibra monomodo','UTP Cat6','Wi-Fi'],0],
   ['Último golpe: ¿cuál de estas es una MAC?',['00:1a:2b:3c:4d:5e','192.168.1.20','255.255.255.0'],0]]},
  {z:1,n:'La VLAN fantasma',intro:'Ventas dice que su PC del segundo piso "desapareció". Alguien tocó los switches el viernes. Persigue a la VLAN fantasma.',hp:6,qs:[
-  ['PC-VEN1 y PC-VEN2 están en la VLAN 10 en switches distintos y no se ven. Cada una sí ve a su switch. ¿Qué revisas primero?',['El trunk entre switches','El DNS','La pantalla'],0],
-  ['En Cisco, ¿con qué comando ves si el trunk deja pasar la VLAN 10?',['show interfaces trunk','show ip route','show clock'],0],
+  ['PC-VEN1 y PC-VEN2 están en la VLAN 10 en switches distintos y no se ven. Cada una sí ve a su switch. ¿Qué revisas primero?',['El trunk entre switches','El DNS','El gateway de las PCs'],0],
+  ['En Cisco, ¿con qué comando ves si el trunk deja pasar la VLAN 10?',['show interfaces trunk','show ip route','show vlan brief'],0],
   ['El trunk solo permite la VLAN 20. ¿Cómo agregas la 10 sin quitar la 20 en Cisco?',['switchport trunk allowed vlan add 10','switchport trunk allowed vlan 10','vlan 10'],0],
   ['En Juniper configuraste todo y nada cambió. ¿Qué te faltó?',['commit','write memory','no shutdown'],0],
   ['El switch recibe un frame para una MAC que no conoce. ¿Qué hace?',['Flooding por todos los puertos menos el de entrada','Lo descarta','Lo manda al router'],0],
@@ -524,9 +524,9 @@ function renderDiploma(n){const v=$('#v-diploma'),id='x'+n,L=LEVELS[n],r=st.done
  </div></div>`;
  $('#dprint').onclick=()=>printAs(`Certificado PacketPath - Zona ${n} - ${myName||'Becario'}`);diplomaShare(n)}
 /* --- Chuletas por zona --- */
-const CHV='20261123c';
+const CHV='20261124a';
 const CHKEY={0:[['7','capas del modelo OSI'],['100 m','máximo de un UTP'],['48 bits','tiene una MAC'],['32 bits','tiene una IPv4']],
- 1:[['300 s','vive una MAC en la tabla'],['1500','bytes de datos por frame'],['4094','VLAN posibles'],['3','fabricantes, misma lógica']],
+ 1:[['300 s','vive una MAC en la tabla'],['1500','bytes máximos de datos por frame'],['4094','VLAN posibles'],['3','fabricantes, misma lógica']],
  2:[['/24','254 hosts útiles'],['256 − n','calcula el bloque'],['DORA','así llega la IP por DHCP'],['169.254','= no llegó al DHCP']],
  3:[['4 bytes','mide la etiqueta 802.1Q'],['12 bits','para el VLAN ID'],['999','nuestra VLAN nativa'],['2','extremos que deben coincidir']]};
 const CHULETA={0:`<section class="cs"><h2>Quién es quién en la red</h2><table class="ct"><tr><td>Endpoint</td><td>Equipo final que usa la red: PC, laptop, teléfono IP, impresora, cámara.</td></tr><tr><td>Switch</td><td>Conecta los equipos de una misma red local (LAN). Decide a qué puerto mandar cada frame según la MAC.</td></tr><tr><td>Router</td><td>Conecta redes distintas, por ejemplo la oficina con internet. Decide la ruta según la IP.</td></tr><tr><td>Access point</td><td>Conecta dispositivos inalámbricos a la red mediante Wi-Fi (IEEE 802.11).</td></tr><tr><td>Firewall</td><td>Permite o bloquea tráfico según reglas de seguridad.</td></tr><tr><td>Servidor</td><td>Ofrece servicios a la red: DHCP, DNS, archivos, correo, aplicaciones.</td></tr></table></section>
@@ -556,12 +556,12 @@ const CHULETA={0:`<section class="cs"><h2>Quién es quién en la red</h2><table 
 <tr><td>Descripción</td><td>description PC-LUPITA</td><td>description PC-LUPITA</td><td>set interfaces ge-0/0/1 description PC-LUPITA</td></tr>
 <tr><td>Ver VLAN</td><td>show vlan brief</td><td>show vlan</td><td>show vlans</td></tr><tr><td>Ver puertos</td><td>show interfaces status</td><td>show interface brief</td><td>show interfaces terse</td></tr>
 <tr><td>Tabla MAC</td><td>show mac address-table</td><td>show mac-address-table</td><td>show ethernet-switching table</td></tr><tr><td>Ver config</td><td>show running-config</td><td>show running-config</td><td>show configuration · show | compare</td></tr>
-<tr><td>Guardar</td><td>copy running-config startup-config · write memory</td><td>write memory</td><td>commit (rollback 1 para deshacer)</td></tr></table></section>
+<tr><td>Guardar</td><td>copy running-config startup-config · write memory</td><td>write memory</td><td>commit (para deshacer: rollback 1 y commit)</td></tr></table></section>
 <section class="cs"><h2>Atajos que ahorran tiempo</h2><table class="ct"><tr><td>?</td><td>Muestra las opciones posibles en ese punto.</td></tr><tr><td>Tab</td><td>Completa el comando.</td></tr><tr><td>Abreviar</td><td>conf t · sh vl br · int g0/1 (si no es ambiguo).</td></tr><tr><td>↑ / ↓</td><td>Repite comandos anteriores.</td></tr><tr><td>do / run</td><td>Ejecutar un show desde configuración: do en Cisco, run en Junos.</td></tr><tr><td>| include</td><td>Filtra la salida (| match en Junos).</td></tr></table></section>
-<section class="cs"><h2>Configuración activa y guardada</h2><p class="nt"><b>Cisco y Aruba</b>: el cambio aplica al instante en la <b>running-config</b>; si no guardas con write memory, se pierde al reiniciar.</p><p class="nt"><b>Juniper</b>: editas una configuración <b>candidata</b>; nada aplica hasta <b>commit</b>. Revisa antes con show | compare. commit confirmed 5 revierte solo si pierdes acceso.</p></section>
+<section class="cs"><h2>Configuración activa y guardada</h2><p class="nt"><b>Cisco y Aruba</b>: el cambio aplica al instante en la <b>running-config</b>; si no guardas con write memory, se pierde al reiniciar.</p><p class="nt"><b>Juniper</b>: editas una configuración <b>candidata</b>; nada aplica hasta <b>commit</b>. Revisa antes con show | compare. commit confirmed 5 deshace el cambio solo si no lo confirmas con otro commit en 5 minutos.</p></section>
 <section class="cs tip"><h2>Si la PC no tiene red</h2><ol><li>¿Puerto arriba? (status / brief / terse)</li><li>¿VLAN creada en el switch?</li><li>¿Puerto en la VLAN correcta?</li><li>¿Su MAC aparece en la tabla MAC?</li><li>Aruba: ¿no shutdown? Juniper: ¿commit?</li></ol></section>`,
 2:`<section class="cs"><h2>Anatomía de una IP</h2><table class="ct"><tr><td>IP</td><td>192.168.10.37/26</td></tr><tr><td>Máscara</td><td>255.255.255.192 → 26 bits de red, 6 de host</td></tr><tr><td>Red</td><td>192.168.10.0 (primera, no se asigna)</td></tr><tr><td>Hosts útiles</td><td>192.168.10.1 a 192.168.10.62</td></tr><tr><td>Broadcast</td><td>192.168.10.63 (última, no se asigna)</td></tr><tr><td>Gateway</td><td>Normalmente la primera útil: 192.168.10.1</td></tr></table></section>
-<section class="cs"><h2>Subnetting en 3 pasos</h2><ol><li><b>Bloque</b> = 256 − el octeto de la máscara que no es 0 ni 255.</li><li><b>Red</b> = el múltiplo del bloque más cercano por debajo de tu IP.</li><li><b>Broadcast</b> = siguiente red − 1. Hosts: todo lo de en medio.</li></ol><p class="nt">Ej.: 10.1.1.70/27 → bloque 32 → red 10.1.1.64 → broadcast 10.1.1.95.</p><p class="nt">Hosts útiles = 2<sup>(32 − prefijo)</sup> − 2 · Subredes = 2<sup>bits que tomas</sup></p></section>
+<section class="cs"><h2>Subnetting en 3 pasos</h2><ol><li><b>Bloque</b> = 256 − el primer octeto de la máscara que no es 255 (en /26: 256 − 192 = 64).</li><li><b>Red</b> = el múltiplo del bloque más cercano por debajo de tu IP.</li><li><b>Broadcast</b> = siguiente red − 1. Hosts: todo lo de en medio.</li></ol><p class="nt">Ej.: 10.1.1.70/27 → bloque 32 → red 10.1.1.64 → broadcast 10.1.1.95.</p><p class="nt">Hosts útiles = 2<sup>(32 − prefijo)</sup> − 2 · Subredes = 2<sup>bits que tomas</sup></p></section>
 <section class="cs wide"><h2>Tabla de prefijos</h2><table class="ct pref"><thead><tr><th>Prefijo</th><th>Máscara</th><th>Bloque</th><th>Hosts</th><th>Prefijo</th><th>Máscara</th><th>Bloque</th><th>Hosts</th></tr></thead>
 <tr><td>/16</td><td>255.255.0.0</td><td>256 (3.er)</td><td>65 534</td><td>/25</td><td>255.255.255.128</td><td>128</td><td>126</td></tr>
 <tr><td>/20</td><td>255.255.240.0</td><td>16 (3.er)</td><td>4 094</td><td>/26</td><td>255.255.255.192</td><td>64</td><td>62</td></tr>
@@ -571,7 +571,7 @@ const CHULETA={0:`<section class="cs"><h2>Quién es quién en la red</h2><table 
 <tr><td></td><td></td><td></td><td></td><td>/30</td><td>255.255.255.252</td><td>4</td><td>2 (enlaces)</td></tr></table></section>
 <section class="cs"><h2>Direcciones especiales</h2><table class="ct"><tr><td>Privadas</td><td>10.0.0.0/8 · 172.16.0.0/12 · 192.168.0.0/16</td></tr><tr><td>127.0.0.1</td><td>Loopback: el propio equipo</td></tr><tr><td>169.254.x.x</td><td>APIPA: la PC no consiguió IP del DHCP</td></tr><tr><td>0.0.0.0/0</td><td>Ruta por defecto</td></tr><tr><td>255.255.255.255</td><td>Broadcast local</td></tr></table></section>
 <section class="cs"><h2>DHCP y DNS</h2><table class="ct"><tr><td>DORA</td><td>Discover → Offer → Request → Ack. Entrega IP, máscara, gateway y DNS.</td></tr><tr><td>Relay</td><td>ip helper-address (Cisco): reenvía el DHCP cuando el servidor está en otra VLAN.</td></tr><tr><td>DNS</td><td>Traduce nombres a IP. A = IPv4 · AAAA = IPv6 · CNAME = alias · PTR = inverso.</td></tr></table></section>
-<section class="cs"><h2>Diagnóstico desde la PC</h2><table class="ct mono1"><tr><td>ipconfig /all</td><td>IP, máscara, gateway y DNS (Linux/Mac: ip a)</td></tr><tr><td>ipconfig /renew</td><td>Pide la IP otra vez al DHCP</td></tr><tr><td>ping</td><td>En orden: gateway → IP remota → nombre. Si la IP responde y el nombre no: es DNS.</td></tr><tr><td>tracert</td><td>Muestra los saltos hasta el destino</td></tr><tr><td>nslookup</td><td>Prueba la resolución DNS</td></tr><tr><td>arp -a</td><td>Relación IP ↔ MAC que conoce la PC</td></tr></table></section>
+<section class="cs"><h2>Diagnóstico desde la PC</h2><table class="ct mono1"><tr><td>ipconfig /all</td><td>IP, máscara, gateway y DNS (Linux: ip a · Mac: ifconfig)</td></tr><tr><td>ipconfig /renew</td><td>Pide la IP otra vez al DHCP</td></tr><tr><td>ping</td><td>En orden: gateway → IP remota → nombre. Si la IP responde y el nombre no: es DNS.</td></tr><tr><td>tracert</td><td>Muestra los saltos hasta el destino</td></tr><tr><td>nslookup</td><td>Prueba la resolución DNS</td></tr><tr><td>arp -a</td><td>Relación IP ↔ MAC que conoce la PC</td></tr></table></section>
 <section class="cs wide"><h2>IP de gestión del switch (SVI)</h2><table class="ct vend"><thead><tr><th></th><th>Cisco IOS</th><th>Aruba AOS-CX</th><th>Juniper Junos</th></tr></thead>
 <tr><td>IP en la VLAN</td><td>interface vlan 10<br>&nbsp;ip address 192.168.10.2 255.255.255.0<br>&nbsp;no shutdown</td><td>interface vlan 10<br>&nbsp;ip address 192.168.10.2/24</td><td>set interfaces irb unit 10 family inet address 192.168.10.2/24<br>set vlans VENTAS l3-interface irb.10</td></tr>
 <tr><td>Gateway</td><td>ip default-gateway 192.168.10.1</td><td>ip route 0.0.0.0/0 192.168.10.1</td><td>set routing-options static route 0.0.0.0/0 next-hop 192.168.10.1</td></tr>
@@ -587,7 +587,7 @@ const CHULETA={0:`<section class="cs"><h2>Quién es quién en la red</h2><table 
 <tr><td>Permitidas</td><td>switchport trunk allowed vlan 70,80<br><small>reemplaza la lista · add 90 agrega</small></td><td>vlan trunk allowed 70,80<br><small>agrega · no vlan trunk allowed 150 quita</small></td><td>… ethernet-switching vlan members VOZ<br>… ethernet-switching vlan members INVITADOS</td></tr>
 <tr><td>Nativa</td><td>switchport trunk native vlan 999</td><td>vlan trunk native 999</td><td>set interfaces ge-0/0/23 native-vlan-id 999</td></tr>
 <tr><td>Aplicar</td><td>end · write memory</td><td>end · write memory</td><td>commit</td></tr>
-<tr><td>Verificar</td><td>show interfaces trunk</td><td>show interface brief · show vlan</td><td>show ethernet-switching interface</td></tr></table></section>
+<tr><td>Verificar</td><td>show interfaces trunk</td><td>show interface brief · show vlan</td><td>show ethernet-switching interfaces</td></tr></table></section>
 <section class="cs"><h2>Leer show interfaces trunk (Cisco)</h2><table class="ct"><tr><td>Mode / Native</td><td>¿Es trunk? ¿Qué VLAN es la nativa?</td></tr><tr><td>Vlans allowed</td><td>Lo que configuraste en la lista.</td></tr><tr><td>Allowed and active</td><td>Lo que de verdad pasa. Si falta una, no existe en ese switch.</td></tr><tr><td>Forwarding</td><td>Lo que STP deja pasar sin bloquear.</td></tr></table></section>
 <section class="cs wide"><h2>Síntoma → causa → solución</h2><table class="ct trio"><thead><tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr></thead>
 <tr><td>Una VLAN no llega al otro switch</td><td>No está en la lista de permitidas o no existe del otro lado</td><td>Agrégala al trunk y créala en el switch remoto</td></tr>
@@ -1807,11 +1807,11 @@ const FAQ=[
  ['Arena, ranking y perfil',[
   ['¿Qué es la Arena?','Repaso de lo que fallaste, turno NOC, duelos, jefes de zona, minijuegos y revisión entre compañeros. Todo da XP extra.'],
   ['¿Cómo se ordena el ranking?','Primero por certificaciones y después por XP. "Esta semana" se reinicia cada lunes.'],
-  ['¿Cómo cambio mi avatar o cierro sesión?','Toca tu nombre arriba a la derecha para abrir tu perfil. Ahí cambias avatar y frase, y está el botón "Cerrar sesión".']]],
+  ['¿Cómo cambio mi avatar o cierro sesión?','Toca tu avatar (arriba a la derecha, o en tu tarjeta de Mi red) para abrir tu perfil. Ahí cambias avatar y frase, y está el botón "Cerrar sesión".']]],
  ['Cuenta',[
   ['Olvidé mi contraseña','En la pantalla de entrar toca "Olvidé mi contraseña". Tu instructor aprueba la solicitud y la contraseña temporal te aparece en esa misma página. Al entrar te pide poner una nueva.'],
-  ['Algo no funciona','Usa el botón Feedback de arriba y cuéntanos qué pasó y en qué pantalla. Lo leemos todo.']]]];
-function renderAyuda(){const v=$('#v-ayuda');v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="${uid||guest?'#mapa':'#entrar'}">${uid||guest?'Mi red':'Entrar'}</a> / ayuda</p><h1>Ayuda y preguntas frecuentes</h1><p>Cómo funciona PacketPath, en corto. Si tu duda no está aquí, usa el botón Feedback o pregúntale a tu instructor.</p></div></header>
+  ['Algo no funciona','Abre el menú Más y toca Feedback. Cuéntanos qué pasó y en qué pantalla: lo leemos todo.']]]];
+function renderAyuda(){const v=$('#v-ayuda');v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="${uid||guest?'#mapa':'#entrar'}">${uid||guest?'Mi red':'Entrar'}</a> / ayuda</p><h1>Ayuda y preguntas frecuentes</h1><p>Cómo funciona PacketPath, en corto. Si tu duda no está aquí, usa Feedback (en el menú Más) o pregúntale a tu instructor.</p></div></header>
  <div class="lecw faq">${FAQ.map(([t,qs])=>`<h2>${esc(t)}</h2>${qs.map(([q,a])=>`<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}`).join('')}<p class="small" style="margin-top:24px"><a href="#privacidad">Aviso de privacidad</a></p></div>`}
 function renderAcerca(){const v=$('#v-acerca'),P=[['Aprende','Lecciones cortas con historias de oficina, conceptos claros y el vocabulario en inglés del trabajo.','book'],['Practica','Consolas de Cisco, Aruba y Juniper. Cada lab se califica por el resultado: si el ping no pasa, no está listo.','term'],['Certifica','Un examen por zona con lab sin ayuda y un certificado verificable que puedes agregar a LinkedIn.','cert'],['Compite','Ranking, ligas, duelos e incidentes en vivo para practicar todos los días.','trophy']];
  v.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="${uid||guest?'#mapa':'#entrar'}">${uid||guest?'Mi red':'Entrar'}</a> / acerca de</p><h1>Acerca de PacketPath</h1><p>Aprende redes configurando, no memorizando.</p></div></header>
@@ -1947,9 +1947,9 @@ const DATOS=[
  'El MTU estándar de Ethernet es de 1500 bytes de datos por frame. Los "jumbo frames" llegan a unos 9000.',
  'Los rangos 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16 son IP privadas: no se enrutan en Internet.',
  'Una máscara /24 (255.255.255.0) deja 254 direcciones para equipos: la primera es la red y la última el broadcast.',
- 'En una SVI (interface vlan) el switch actúa como router de esa VLAN: es el gateway de las PCs.',
+ 'En un switch capa 3, la SVI (interface vlan) puede ser el gateway de las PCs de esa VLAN. En un switch capa 2 solo sirve para administrarlo.',
  'show ip interface brief en Cisco, show ip interface brief en Aruba y show interfaces terse en Juniper: tres formas de ver lo mismo.',
- 'El estado "up/down" en Cisco significa: la interfaz está encendida pero no detecta nada del otro lado (cable o equipo apagado).',
+ 'En Cisco, "down/down" es que no hay enlace (cable o equipo del otro lado); "up/down", que hay señal pero la capa 2 no levanta; "administratively down", que alguien le puso shutdown.',
  'Un hub repite todo por todos los puertos; un switch decide por dónde mandar cada frame. Por eso los hubs ya casi no existen.',
  'Wi-Fi también usa direcciones MAC, pero sus frames llevan hasta 4 direcciones en lugar de 2.',
  'Los primeros switches Ethernet comerciales salieron en 1990, de una empresa llamada Kalpana, que después compró Cisco.',
