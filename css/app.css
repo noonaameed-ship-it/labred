@@ -1028,3 +1028,13 @@ table.tnw th,table.tnw td{white-space:nowrap}
 .labprog.pro{border-color:var(--trunk)}
 .lclockw{display:inline-flex;gap:4px;align-items:center;margin-right:8px;padding:2px 8px;border-radius:6px;background:var(--soft);font-variant-numeric:tabular-nums}
 #lclock{min-width:3.2em;display:inline-block}
+.bcat{margin:18px 0 0;font-size:15px}
+.badge .btier{display:inline-block;margin-top:4px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;font-style:normal;color:var(--mut)}
+.badge.on.t1 .bi{color:#d08a4e}.badge.on.t2 .bi{color:#c7d1d6}.badge.on.t3 .bi{color:#f5b300}
+.badge.on.t1{border-color:color-mix(in srgb,#b06d33 45%,var(--line))}.badge.on.t2{border-color:color-mix(in srgb,#8aa0aa 55%,var(--line))}.badge.on.t3{border-color:color-mix(in srgb,#e0a100 65%,var(--line))}
+.simc{margin-top:16px;border-color:var(--trunk)}
+.simg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+.simo{display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer;font:inherit;color:inherit;min-height:96px}
+.simo:hover{box-shadow:3px 3px 0 var(--blue)}.simo.ok{border-color:var(--ok)}
+.badge span{display:block}.badge .btier{display:block}
+@media (max-width:600px){.badges{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.badge{grid-template-columns:1fr;padding:10px;gap:6px;align-content:start}.badge .bi{width:36px;height:36px}.badge b{font-size:13px}.badge span{font-size:11.5px}}
