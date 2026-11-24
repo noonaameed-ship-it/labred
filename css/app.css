@@ -861,14 +861,9 @@ details.vocab[open]>summary::after{content:'−'}
  .ltoc{padding:10px 10px}.ltoc button{font-size:14px;padding:7px 6px}
  .lec code{white-space:normal;word-break:break-word}
  .lec .lkv>li{padding:10px 12px}
- table.tstack,table.tstack tbody,table.tstack tr,table.tstack td{display:block;width:auto}
- table.tstack{border:0;background:none}
- table.tstack thead{display:none}
- table.tstack tr{border:1px solid var(--line);border-radius:12px;margin:0 0 8px;padding:8px 12px;background:var(--paper)}
- table.tstack td{border:0;padding:3px 0;background:none}
- table.tstack td::before{content:attr(data-l);display:block;color:var(--mut);font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1px}
- table.tstack td:first-child{font-weight:600;font-size:15px}
- table.tstack td:first-child::before{display:none}
+
+
+
 }
 .q .qn{display:block;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
 
@@ -989,3 +984,24 @@ body.noauth .links,body.noauth #hud .chips .hudp:not([href="#entrar"]){display:n
 #v-instructor table{display:block;max-width:100%;overflow-x:auto}
 #v-instructor img,#v-instructor svg{max-width:100%}
 @media(max-width:560px){.acca{grid-template-columns:1fr 1fr 1fr}.acca .btn{font-size:12px;padding:0 4px}.acca .btn .ic{display:none}}
+
+/* Tablas: se quedan como tabla si caben; solo se apilan si no caben en el celular */
+.tscroll>table{width:100%}
+.lec .tscroll>table td,.lec .tscroll>table th{padding:7px 10px}
+table.tstack,table.tstack tbody,table.tstack tr,table.tstack td{display:block;width:auto}
+table.tstack{border:0;background:none}
+table.tstack thead{display:none}
+table.tstack tr{border:1px solid var(--line);border-radius:12px;margin:0 0 8px;padding:8px 12px;background:var(--paper)}
+table.tstack td{border:0;padding:3px 0;background:none}
+table.tstack td::before{content:attr(data-l);display:block;color:var(--mut);font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1px}
+table.tstack td:first-child{font-weight:600;font-size:15px}
+table.tstack td:first-child::before{display:none}
+.wdot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:-1px;box-sizing:border-box}
+.wdot.w{background:#fff;border:3px solid var(--c)}
+
+table.tmeasure td,table.tmeasure th{word-break:keep-all!important;overflow-wrap:normal!important;hyphens:none!important}
+table.tmeasure td code,table.tmeasure td kbd{white-space:nowrap!important}
+.tscroll>table:not(.tstack) td,.tscroll>table:not(.tstack) th{overflow-wrap:normal;word-break:normal;hyphens:none}
+table.tstack td,table.tstack td code{overflow-wrap:break-word;word-break:normal;white-space:normal}
+.tscroll>table:not(.tstack) td code{white-space:nowrap;word-break:normal}
+table.tnw th,table.tnw td{white-space:nowrap}
