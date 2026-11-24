@@ -33,7 +33,7 @@ const saveGoal=n=>({t:v=>v==='juniper'?'Aplica los cambios con commit':'Guarda l
 const pickCfg=d=>{const o={};['host','vlans','ifs','lags','svi','gw','stp','aecount','l3'].forEach(k=>o[k]=d[k]);return o};
 const code=a=>'<pre class="s3code">'+a.join('\n')+'</pre>';
 const MIS=[
- {id:'z0',z:'Zona 0',t:'Enciende el piso',con:'ACC1',
+ {id:'z0',z:'Zona 0',t:'Conecta los escritorios',con:'ACC1',
   story:'Primer día en NetCorp. El cableado horizontal de los cuatro escritorios ya llega al patch panel (puertos 01 a 04). Lupita: "D-01 y D-02 van a ACC1, D-03 y D-04 a ACC2. Después conecta la laptop a la consola de ACC1 y revisa que los puertos estén arriba."',
   pre:[],req:FULL1.concat(CON('ACC1')),
   cfg:D=>{preCfg(D.ACC1,{host:'ACC1',up:UP4});preCfg(D.ACC2,{host:'ACC2',up:UP4});preCfg(D.CORE,{host:'CORE'})},
@@ -42,7 +42,7 @@ const MIS=[
    v=>v==='cisco'?'En Cisco entras en modo usuario (>). Usa enable y luego el show que lista los puertos con su estado.':v==='aruba'?'En Aruba ya entras con privilegios (#). Usa el show que resume las interfaces.':'En Junos estás en modo operativo (>). Usa el show que lista las interfaces en formato corto.',
    v=>code(v==='cisco'?['enable','show interfaces status']:[SH.ifs[v]])+'Busca que los puertos de los escritorios digan <b>connected</b> / <b>up</b>.'],
   done:'Los cuatro escritorios tienen enlace y lo comprobaste desde la consola: así se verifica la capa física.'},
- {id:'z1',z:'Zona 1',t:'Switch nuevo para VENTAS',con:'ACC1',
+ {id:'z1',z:'Zona 1',t:'Configura un switch nuevo',con:'ACC1',
   story:'ACC1 llegó de fábrica. Lupita: "Ponle nombre ACC1, crea la VLAN 10 VENTAS y la 20 RRHH, deja el escritorio D-01 en VENTAS y D-02 en RRHH, y guarda. Sin IP todavía: entra por consola."',
   pre:FULL1,req:CON('ACC1'),
   cfg:D=>{preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
@@ -54,7 +54,7 @@ const MIS=[
    v=>v==='cisco'?'Comandos: enable, configure terminal, hostname, vlan / name, interface g0/1, switchport mode access, switchport access vlan, write memory.':v==='aruba'?'Comandos: configure terminal, hostname, vlan / name, interface 1/1/1, no shutdown (en Aruba los puertos vienen apagados), vlan access, write memory.':'Comandos: configure, set system host-name, set vlans NOMBRE vlan-id, set interfaces … family ethernet-switching interface-mode access y vlan members, commit.',
    v=>code(v==='cisco'?['enable','configure terminal','hostname ACC1','vlan 10',' name VENTAS','vlan 20',' name RRHH','interface g0/1',' switchport mode access',' switchport access vlan 10','interface g0/2',' switchport mode access',' switchport access vlan 20','end','write memory']:v==='aruba'?['configure terminal','hostname ACC1','vlan 10','  name VENTAS','vlan 20','  name RRHH','interface 1/1/1','  no shutdown','  vlan access 10','interface 1/1/2','  no shutdown','  vlan access 20','end','write memory']:['configure','set system host-name ACC1','set vlans VENTAS vlan-id 10','set vlans RRHH vlan-id 20','set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members VENTAS','set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members RRHH','commit'])],
   done:'ACC1 tiene nombre, VLAN y puertos de acceso, y la configuración quedó guardada.',go:['#lab-1','Seguir practicando en el simulador']},
- {id:'z2',z:'Zona 2',t:'IP de gestión para ACC1',con:'ACC1',
+ {id:'z2',z:'Zona 2',t:'Dale IP de gestión al switch',con:'ACC1',
   story:'Beto no quiere bajar al cuarto cada vez que hay que revisar ACC1. "Dale una IP de gestión en la VLAN 99 (GESTION): 192.168.99.11 con máscara /24, y el gateway 192.168.99.1. Así entramos por SSH desde el NOC."',
   pre:FULL1,req:CON('ACC1'),
   cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
@@ -65,7 +65,7 @@ const MIS=[
    v=>v==='cisco'?'Crea la VLAN 99, entra a interface vlan 99, pon ip address con máscara completa y no shutdown; el gateway va en modo global con ip default-gateway.':v==='aruba'?'Crea la VLAN 99, entra a interface vlan 99 y pon la IP con prefijo (/24); el gateway es una ruta: ip route 0.0.0.0/0.':'Crea la VLAN, pon la IP en irb unit 99, liga la VLAN con l3-interface irb.99 y agrega la ruta estática por defecto.',
    v=>code(v==='cisco'?['enable','configure terminal','vlan 99',' name GESTION','interface vlan 99',' ip address 192.168.99.11 255.255.255.0',' no shutdown','exit','ip default-gateway 192.168.99.1','end','write memory']:v==='aruba'?['configure terminal','vlan 99','  name GESTION','interface vlan 99','  ip address 192.168.99.11/24','exit','ip route 0.0.0.0/0 192.168.99.1','end','write memory']:['configure','set vlans GESTION vlan-id 99','set interfaces irb unit 99 family inet address 192.168.99.11/24','set vlans GESTION l3-interface irb.99','set routing-options static route 0.0.0.0/0 next-hop 192.168.99.1','commit'])],
   done:'ACC1 ya se puede administrar por la red. La consola queda para emergencias.'},
- {id:'z3',z:'Zona 3',t:'Uplink trunk al CORE',con:'ACC1',
+ {id:'z3',z:'Zona 3',t:'Sube el piso al CORE (trunk)',con:'ACC1',
   story:'Los escritorios de VENTAS y RRHH no llegan al resto de la red. Beto: "Pon la fibra de ACC1 Te0/1 al CORE Te0/1 (y la de ACC2 al CORE Te0/2). Luego configura en ACC1 el uplink como trunk: solo VLAN 10 y 20, y nativa 999 (NATIVA), que nadie usa."',
   pre:FULL1,req:FULL2.concat(CON('ACC1')),
   cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
@@ -76,7 +76,7 @@ const MIS=[
    v=>v==='cisco'?'En la interfaz te0/1: switchport mode trunk, switchport trunk allowed vlan y switchport trunk native vlan.':v==='aruba'?'El uplink es 1/1/25. Enciéndelo y usa vlan trunk native y vlan trunk allowed (la VLAN 999 debe existir).':'El uplink es xe-0/1/0: interface-mode trunk, vlan members [ VENTAS RRHH ] y native-vlan-id 999 (a nivel de interfaz).',
    v=>code(v==='cisco'?['enable','configure terminal','vlan 999',' name NATIVA','interface te0/1',' switchport mode trunk',' switchport trunk allowed vlan 10,20',' switchport trunk native vlan 999','end','write memory']:v==='aruba'?['configure terminal','vlan 999','  name NATIVA','interface 1/1/25','  no shutdown','  vlan trunk native 999','  vlan trunk allowed 10,20','end','write memory']:['configure','set vlans NATIVA vlan-id 999','set interfaces xe-0/1/0 unit 0 family ethernet-switching interface-mode trunk','set interfaces xe-0/1/0 unit 0 family ethernet-switching vlan members [ VENTAS RRHH ]','set interfaces xe-0/1/0 native-vlan-id 999','commit'])],
   done:'El uplink lleva solo las VLAN necesarias y la nativa ya no es la 1.',go:['#lab-3','Practicar trunks en el simulador']},
- {id:'z4',z:'Zona 4',t:'El CORE como root bridge',con:'CORE',
+ {id:'z4',z:'Zona 4',t:'Haz al CORE el root bridge',con:'CORE',
   story:'Pusiste un segundo uplink por redundancia y ahora hay bucles físicos: Spanning Tree bloquea un cable. Pero el root bridge quedó en ACC2, el switch más viejo (MAC más baja). Lupita: "Cablea los segundos uplinks y haz al CORE root de las VLAN 10 y 20."',
   pre:FULL1.concat(FULL2),req:FULL4.concat(CON('CORE')),
   cfg:D=>{preCfg(D.ACC1,{...BASE1,trunk:{'Te0/1':[[10,20]],'Te0/2':[[10,20]]},stp:1});preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
@@ -87,7 +87,7 @@ const MIS=[
    v=>v==='cisco'?'spanning-tree mode rapid-pvst y spanning-tree vlan 10,20 priority 4096 (múltiplos de 4096).':v==='aruba'?'Activa spanning-tree y usa spanning-tree priority 1 (en Aruba se multiplica por 4096).':'set protocols rstp bridge-priority 4k y commit.',
    v=>code(v==='cisco'?['enable','configure terminal','spanning-tree mode rapid-pvst','spanning-tree vlan 10,20 priority 4096','end','show spanning-tree','write memory']:v==='aruba'?['configure terminal','spanning-tree','spanning-tree priority 1','end','show spanning-tree','write memory']:['configure','set protocols rstp bridge-priority 4k','commit','run show spanning-tree bridge'])],
   done:'El CORE es el root: el tráfico sigue el camino corto y el cable bloqueado queda donde tú decidiste.',go:['#lab-4','Practicar Spanning Tree en el simulador']},
- {id:'z5',z:'Zona 5',t:'LAG de ACC1 al CORE',con:'ACC1',
+ {id:'z5',z:'Zona 5',t:'Junta dos cables en un LAG',con:'ACC1',
   story:'Con STP, uno de los dos uplinks de ACC1 está bloqueado sin hacer nada. Beto: "El CORE ya tiene su lado listo con LACP activo. Junta en ACC1 los dos uplinks (Te0/1 y Te0/2, hoy de fábrica) en un LAG con LACP y pásale las VLAN 10 y 20."',
   pre:FULL1.concat(FULL2,FULL4),req:CON('ACC1'),
   cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
@@ -127,6 +127,8 @@ export function mount(view,start){
  <div class="s3w"><div class="s3main"><div class="s3stage" id="s3stage"><canvas id="s3c" aria-label="Cuarto de telecomunicaciones en 3D"></canvas><div class="s3lbl" id="s3lbl"></div>
   <div class="s3bar s3top"><div class="s3seg" role="group" aria-label="Tipo de cable">${Object.entries(CABLE).map(([k,t])=>`<button data-cab="${k}" class="${k==='utp'?'on':''}"><i style="background:#${COL[k].toString(16).padStart(6,'0')}"></i>${t}</button>`).join('')}</div>
   <div class="s3seg" role="group" aria-label="Vista"><button data-cam="all">Cuarto</button><button data-cam="mdf">MDF</button><button data-cam="idf">IDF</button><button data-cam="desk">Escritorios</button></div></div>
+  <div class="s3next" id="s3next"></div><button class="s3q" id="s3q" aria-label="Cómo se juega">?</button>
+  <div class="s3help" id="s3help" hidden><div><h3>Cómo se juega</h3><ol><li><b>Lee la misión</b> (a la derecha o abajo): te dice qué cables poner y qué configurar.</li><li><b>Elige el tipo de cable</b> arriba: UTP (cobre), Fibra o Consola.</li><li><b>Toca el puerto de origen</b> (el que <span class="s3pulse">parpadea</span>) y luego el de destino. También puedes arrastrar.</li><li><b>Conecta la consola</b>: cable de consola del USB de la laptop al puerto CON azul del switch. Se abre la terminal.</li><li><b>Configura</b> con comandos reales. Si te atoras, abre 💡 Pistas.</li></ol><p class="small">Gira con un dedo o el mouse, acerca con dos dedos o la rueda. Los botones Cuarto, MDF, IDF y Escritorios te llevan a cada lugar.</p><button class="btn" id="s3hok">¡Entendido!</button></div></div>
   <div class="s3bar s3bot"><p id="s3msg">Elige el tipo de cable y toca un puerto para tomar el cable. Luego toca (o arrastra hasta) el otro puerto.</p><button class="btnl" id="s3del" hidden>Quitar cable</button><button class="btnl" id="s3cancel" hidden>Soltar cable</button><button class="btn" id="s3open" hidden>Abrir consola</button></div>
   <div class="s3con" id="s3con" hidden><div class="s3ch"><span id="s3ct">PuTTY</span><button id="s3tk" class="btnl">Tareas</button><button id="s3hb" class="btnl">💡 Pistas</button><button id="s3x" class="btnl">Volver al cuarto</button></div><div class="s3cb"><div class="s3term"><div class="s3out" id="s3out"></div><label class="s3in"><span id="s3pr"></span><input id="s3cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></label></div><div class="s3hp" id="s3hp" hidden></div><div class="s3hp" id="s3tp" hidden></div></div></div></div></div>
  <aside class="s3side"><div class="card"><p class="tid">Fabricante de los switches</p><div class="s3seg s3ven">${Object.entries(VN).map(([k,t])=>`<button data-ven="${k}" class="${k===getV()?'on':''}">${t.split(' ')[0]}</button>`).join('')}</div><p class="tid" style="margin-top:12px">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${done[m.id]?'★'.repeat(done[m.id])+'☆'.repeat(3-done[m.id]):''}</em></button>`).join('')}</div></div>
@@ -137,7 +139,7 @@ export function mount(view,start){
  const dark=matchMedia('(prefers-color-scheme: dark)').matches&&document.documentElement.dataset.theme!=='light'||document.documentElement.dataset.theme==='dark';
  const scene=new THREE.Scene();scene.background=new THREE.Color(dark?0x0b1312:0xdfe7e5);
  const cam=new THREE.PerspectiveCamera(45,1,0.05,60);
- const ctl=new OrbitControls(cam,canvas);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*0.49;ctl.minDistance=0.35;ctl.maxDistance=9;ctl.target.set(0.4,1.3,0);
+ const ctl=new OrbitControls(cam,canvas);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*0.47;ctl.minPolarAngle=Math.PI*0.12;ctl.minAzimuthAngle=-1.15;ctl.maxAzimuthAngle=1.15;ctl.minDistance=0.35;ctl.maxDistance=6.5;ctl.screenSpacePanning=true;ctl.target.set(0.4,1.3,0);
  scene.add(new THREE.HemisphereLight(0xffffff,dark?0x1a2624:0x8a9a96,dark?1.6:1.9));
  const dl=new THREE.DirectionalLight(0xffffff,dark?1.9:1.7);dl.position.set(2,4,5);scene.add(dl);const fl2=new THREE.PointLight(0xbfeee6,dark?6:4,6,1.5);fl2.position.set(0,2.3,1.6);scene.add(fl2);
  S={alive:true,renderer,scene,cam,ctl,ports:{},cables:[],cab:'utp',carry:null,sel:null,mis:null,hint:0,anim:null,labels:[]};
@@ -282,6 +284,21 @@ export function mount(view,start){
  function rHints(){const m=S.mis;hp.innerHTML='<p class="tid">💡 Pistas</p>'+m.hints.map((h,i)=>`<div class="s3hl"><b>Pista ${i+1}</b>${i<S.hint?`<div>${h(S.V)}</div>`:i===S.hint?`<button class="btnl" data-h="${i}">Ver pista ${i+1}</button>`:'<div class="small">Se abre después de la anterior.</div>'}</div>`).join('')+'<p class="small">Cada pista después de la primera quita una estrella.</p>';
   hp.querySelectorAll('[data-h]').forEach(b=>b.addEventListener('click',()=>{S.hint++;rHints();check(true)}))}
  function rTasks(){tp.innerHTML='<p class="tid">Tareas</p>'+task.querySelector('.s3tl').outerHTML;const t=task.querySelectorAll('.s3tl li'),ok=task.querySelectorAll('.s3tl li.ok').length;view.querySelector('#s3tk').textContent=`Tareas ${ok}/${t.length}`}
+ S.rings=[];
+ function ring(P){const g=new THREE.TorusGeometry(P.kind==='sfp'?.04:.03,.006,8,24),m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0xfacc15,transparent:true,depthTest:false}));m.renderOrder=9;m.position.copy(P.mesh.position);m.position.z+=.012;P.mesh.parent.add(m);S.rings.push(m)}
+ function clearRings(){S.rings.forEach(r=>{r.parent.remove(r);r.geometry.dispose()});S.rings=[]}
+ const nextEl=view.querySelector('#s3next'),help=view.querySelector('#s3help');
+ const showHelp=()=>{help.hidden=false};view.querySelector('#s3q').addEventListener('click',showHelp);view.querySelector('#s3hok').addEventListener('click',()=>{help.hidden=true;try{localStorage.setItem('pp3dh','1')}catch(e){}});
+ try{if(!localStorage.getItem('pp3dh'))showHelp()}catch(e){}
+ function nextStep(m,have,goalsOk){clearRings();let t='';
+  const miss=m.req.find(([a,b,ty])=>{const c=have.get(key(a,b));return!(c&&c.type===ty)});
+  if(miss){const[a,b,ty]=miss,A=S.ports[a],B=S.ports[b];
+   if(m.pre!=='ticket'){const busy=[A,B].find(P=>P.cable&&key(P.cable.a,P.cable.b)!==key(a,b));
+    t=busy?`👉 ${pname(busy)} tiene un cable que no va ahí: tócalo y pulsa "Quitar cable".`:`👉 Siguiente: cable <b>${CABLE[ty]}</b> de <b>${pname(A)}</b> a <b>${pname(B)}</b>. Los dos puertos parpadean en amarillo.`;
+    if(S.cab!==ty&&!busy)t+=` Primero elige <b>${CABLE[ty]}</b> arriba.`;ring(A);ring(B)}
+   else t='👉 Compara los cables con la lista de tareas: quita los que sobran y pon los que faltan.'}
+  else{const g=(m.goals||[]).find(g=>!g.ok(S.D));if(g)t=con.hidden?`👉 Cables listos. Abre la consola de <b>${m.con}</b> y configura: ${esc(g.t(S.V))}.`:`👉 En la consola: ${esc(g.t(S.V))}.`}
+  nextEl.innerHTML=t;nextEl.hidden=!t}
  function load(i){const m=MIS[i];S.mis=m;S.hint=0;drop();selCable(null);closeCon();cout.innerHTML='';for(const c of S.cables.slice())rmCable(c);
   S.D={CORE:mkDev('CORE',S.V),ACC1:mkDev('ACC1',S.V),ACC2:mkDev('ACC2',S.V)};m.cfg&&m.cfg(S.D);
   (m.pre==='ticket'?ticketPre():m.pre).forEach(([a,b,t])=>addCable(a,b,t));
@@ -295,6 +312,7 @@ export function mount(view,start){
   const grows=(m.goals||[]).map(g=>({ok:cabOk&&g.ok(S.D),txt:'⌨️ '+esc(g.t(S.V))}));
   const extra=S.cables.filter(c=>!need.has(key(c.a,c.b)));
   const win=cabOk&&grows.every(r=>r.ok)&&!extra.length;
+  if(win){clearRings();nextEl.innerHTML='✅ ¡Misión cumplida! Elige la siguiente misión.';nextEl.hidden=false}else nextStep(m,have);
   openB.hidden=!conDev()||!con.hidden;if(conDev())openB.textContent='Abrir consola de '+conDev();
   task.innerHTML=`<p class="tid">${m.z} · misión · ${VN[S.V]}</p><h3>${m.t}</h3><p>${m.story}</p><ul class="s3tl">${rows.concat(grows).map(r=>`<li class="${r.ok?'ok':''}">${r.ok?'✓':'○'} ${r.txt}</li>`).join('')}${extra.map(c=>`<li class="bad">✗ Sobra o está mal: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}</li>`).join('')}</ul>
   <div class="s3h">${m.hints.map((h,i)=>i<S.hint?`<div><b>Pista ${i+1}:</b> ${h(S.V)}</div>`:'').join('')}${S.hint<3&&!win?`<button class="btnl" id="s3hint">Ver pista ${S.hint+1} de 3</button>`:''}</div>
@@ -314,7 +332,10 @@ export function mount(view,start){
  const v3=new THREE.Vector3();
  function loop(){if(!S||!S.alive)return;S.raf=requestAnimationFrame(loop);if(!view.classList.contains('on')){unmount();return}
   if(S.anim){const k=Math.min(1,(performance.now()-S.anim.t0)/650),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cam.position.lerpVectors(S.anim.p0,S.anim.p1,e);ctl.target.lerpVectors(S.anim.t0v,S.anim.t1,e);if(k>=1)S.anim=null}
-  ctl.update();renderer.render(scene,cam);
+  {const t=ctl.target;t.x=Math.max(-1.8,Math.min(3.6,t.x));t.y=Math.max(.3,Math.min(2.4,t.y));t.z=Math.max(-.5,Math.min(2.2,t.z))}
+  ctl.update();if(cam.position.z<-.6)cam.position.z=-.6;
+  if(S.rings&&S.rings.length){const k=.5+.5*Math.sin(performance.now()/220);S.rings.forEach(r=>{r.material.opacity=.35+.6*k;r.scale.setScalar(1+.35*k)})}
+  renderer.render(scene,cam);
   const w=stage.clientWidth,h=stage.clientHeight,d=cam.position.distanceTo(ctl.target);
   for(const L of S.labels){if(L.obj){L.obj.getWorldPosition(v3);if(L.off)v3.add(L.off)}else v3.copy(L.p);const dist=cam.position.distanceTo(v3);v3.project(cam);
    const vis=v3.z<1&&Math.abs(v3.x)<1.05&&Math.abs(v3.y)<1.05&&!(L.el.classList.contains('dc')&&d>4);L.el.style.display=vis?'':'none';if(vis)L.el.style.transform=`translate(${(v3.x+1)/2*w}px,${(1-v3.y)/2*h}px) translate(-50%,-50%)`;L.el.style.opacity=dist>7?.6:1}}
