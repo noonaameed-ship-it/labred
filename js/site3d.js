@@ -2,6 +2,7 @@
 import * as THREE from './vendor/three.module.min.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {VN,pn,mkDev,IF,run,prompt,banner,prioOf,G} from './site3d-cli.js';
+import {initRPG} from './site3d-rpg.js';
 
 const COL={utp:0x2f7bf2,fibra:0xf59e0b,consola:0x7dd3fc,horiz:0x6b7280};
 const CABLE={utp:'UTP (cobre)',fibra:'Fibra',consola:'Consola'};
@@ -167,6 +168,92 @@ const MIS=[
   hints:[()=>'Compara cada cable con la documentación de la lista de tareas. Toca un cable para ver sus extremos y quitarlo.',()=>'Revisa el patch panel: un patch cord quedó en el switch equivocado y otro en un puerto que no es el suyo.',()=>'En la fibra: a ACC2 le falta un uplink y dos uplinks quedaron cruzados en los puertos del CORE (Te0/1 es de ACC1, Te0/2 de ACC2).'],
   done:'Ticket cerrado. Así se diagnostica la capa 1: lo documentado contra lo que hay de verdad.'}
 ];
+/* ---------- casos de cliente (modo libre) ---------- */
+const CASES=[
+ {id:'c1',site:'Clínica Dental Sonrisa',t:'Wi-Fi para pacientes sin riesgo',sum:'La clínica quiere Wi-Fi para la sala de espera sin que los pacientes vean los expedientes.',
+  client:{name:'Dra. Rocío',short:'la doctora',shirt:0xf8fafc,pants:0x1e3a8a,hair:0x5b3a1e,where:'junto a los escritorios'},
+  brief:['Nos llamó la Clínica Dental Sonrisa. Quieren Wi-Fi para sus pacientes.','Su switch es el ACC1 del rack. Ve, escucha bien qué necesitan y propón algo concreto. No prometas nada sin entenderlo.'],
+  intro:['¡Hola! Qué bueno que vino.','Queremos Wi-Fi para los pacientes en la sala de espera, pero me da muchísimo miedo que alguien vea los expedientes de la clínica.'],
+  q:[{t:'¿Dónde está la computadora de recepción y a qué se conecta?',k:'good',note:'recepción en D-01 → patch panel 01',a:'La de recepción es el escritorio D-01. El técnico anterior me dijo que llega al patch panel, puerto 01.'},
+   {t:'¿Dónde quieren poner el access point?',k:'good',note:'el AP va en D-03 → patch panel 03',a:'En la sala de espera, donde está la toma D-03. Ya compramos el access point, solo falta conectarlo.'},
+   {t:'¿Los pacientes deben poder llegar a algo de la clínica?',k:'good',note:'separación total: solo internet',a:'¡A nada! Solo internet. Ni la impresora, ni los expedientes, nada.'},
+   {t:'¿Qué marca de computadoras usan?',k:'meh',a:'Eh… unas Dell, creo. ¿Importa?'},
+   {t:'¿Y si mejor cambiamos todo el cableado a fibra?',k:'bad',a:'¿Todo? No, no, solo quiero el Wi-Fi de pacientes. Eso suena carísimo.'}],
+  p:[{t:'Una VLAN aparte para invitados (VLAN 30) en el puerto del access point; recepción queda en la VLAN 10. El uplink al CORE lleva las dos.',ok:1,a:'O sea que aunque estén en el mismo switch, ¿son redes separadas? ¡Eso es justo lo que quiero!'},
+   {t:'Ponerle una contraseña larga al Wi-Fi y dejarlo en la misma red que recepción.',a:'Pero la contraseña se la damos a todos los pacientes… entonces estarían en nuestra red, ¿no? No me convence.'},
+   {t:'Conectar el access point a la misma toma de recepción con un switch chiquito.',a:'¿Y eso no los deja en la misma red que mi computadora? Eso es lo que quiero evitar.'}],
+  m:[{t:'Dos patch cords UTP (recepción y access point) y 30 minutos con el switch.',ok:1,a:'Perfecto, eso es poco. Los cables los tiene usted, ¿verdad? Muy bien.'},
+   {t:'Un switch nuevo, un firewall y un rack nuevo.',a:'¿Todo eso? Mi presupuesto no da. ¿No se puede con lo que ya tenemos?'},
+   {t:'Nada: lo hago por Wi-Fi desde mi casa.',a:'¿Desde su casa? El access point ni siquiera está conectado todavía…'}],
+  w:[{t:'Ahorita mismo, en 10 minutos.',a:'¡No! Tengo pacientes en el sillón. Si se cae la red no puedo cobrar.'},
+   {t:'El sábado a las 14:00, cuando cierran. Tardo 30 minutos y dejo todo probado.',ok:1,when:'Sábado 14:00',a:'Perfecto, el sábado a las dos ya no hay nadie. Le dejo dicho al de vigilancia que lo deje pasar.'},
+   {t:'El lunes a las 9:00, que es cuando abren.',a:'¿A la hora de abrir? Ese es el peor momento: llegan todos los pacientes.'}],
+  impl:{t:'Clínica: VLAN de invitados',con:'ACC1',noRing:true,
+   story:'Ventana del sábado. El switch de la clínica es ACC1. Recepción (patch panel 01) va en la VLAN 10 RECEPCION; el access point (patch panel 03) en una VLAN nueva, 30 INVITADOS. El uplink Te0/1 al CORE ya existe como trunk con la VLAN 10: agrégale la 30.',
+   pre:[['ACC1:Te0/1','CORE:Te0/1','fibra']],req:[['PP:01','ACC1:Gi0/1','utp'],['PP:03','ACC1:Gi0/3','utp'],['LAP:USB','ACC1:CON','consola']],
+   cfg:D=>{preCfg(D.ACC1,{host:'SONRISA-SW1',vlans:{10:'RECEPCION'},trunk:{'Te0/1':[[10]]}});preCfg(D.CORE,{host:'CORE',vlans:{10:'RECEPCION',30:'INVITADOS'},trunk:{'Te0/1':[[10,30]]}})},
+   goals:[{t:()=>'VLAN 30 con nombre INVITADOS',ok:D=>G.vlan(D.ACC1,30,'INVITADOS')},
+    {t:v=>pn(v,'Gi0/1')+' (recepción) en la VLAN 10',ok:D=>G.access(D.ACC1,'Gi0/1',10)},
+    {t:v=>pn(v,'Gi0/3')+' (access point) en la VLAN 30',ok:D=>G.access(D.ACC1,'Gi0/3',30)},
+    {t:v=>'El uplink '+pn(v,'Te0/1')+' lleva las VLAN 10 y 30',ok:D=>G.trunk(D.ACC1,'Te0/1',[10,30])},saveGoal('ACC1')],
+   hints:[()=>'Primero los cables (patch panel 01 → puerto 1, patch panel 03 → puerto 3 de ACC1) y la consola. Luego: crear la VLAN, asignar los dos puertos y agregar la VLAN al trunk.',
+    v=>v==='cisco'?'Ojo: en el trunk usa switchport trunk allowed vlan add 30 para no borrar la 10.':v==='aruba'?'En Aruba, vlan trunk allowed 30 se agrega a las que ya están.':'En Junos, vlan members INVITADOS se agrega a los miembros existentes.',
+    v=>code(v==='cisco'?['enable','configure terminal','vlan 30',' name INVITADOS','interface g0/1',' switchport mode access',' switchport access vlan 10','interface g0/3',' switchport mode access',' switchport access vlan 30','interface te0/1',' switchport trunk allowed vlan add 30','end','write memory']:v==='aruba'?['configure terminal','vlan 30','  name INVITADOS','interface 1/1/1','  no shutdown','  vlan access 10','interface 1/1/3','  no shutdown','  vlan access 30','interface 1/1/25','  vlan trunk allowed 30','end','write memory']:['configure','set vlans INVITADOS vlan-id 30','set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members RECEPCION','set interfaces ge-0/0/2 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/2 unit 0 family ethernet-switching vlan members INVITADOS','set interfaces xe-0/1/0 unit 0 family ethernet-switching vlan members INVITADOS','commit'])],
+   done:'Recepción y pacientes quedan en VLAN separadas.'},
+  s:{q:'¿Ya quedó? ¿Y cómo sé que mis pacientes no pueden ver mi red?',o:[{t:'Confíe en mí, quedó perfecto.',a:'Mmm… prefiero entenderlo. ¿Me lo explica?'},{t:'El access point está en la VLAN 30 y recepción en la 10: son redes separadas. Para pasar de una a otra haría falta un router o firewall que lo permita, y no lo configuramos así.',ok:1,a:'¡Ahora sí lo entiendo! Muchas gracias, le voy a recomendar.'},{t:'Le cambié la contraseña al Wi-Fi.',a:'Pero eso no fue lo que platicamos…'}]}},
+ {id:'c2',site:'Contadores Ramírez',t:'"Alguien pateó un cable y nos quedamos sin sistema"',sum:'Un despacho contable perdió toda una tarde porque se desconectó el uplink de su switch.',
+  client:{name:'Lic. Ramírez',short:'el licenciado',shirt:0x334155,pants:0x111827,hair:0x9ca3af,skin:0xc68642},
+  brief:['El despacho Contadores Ramírez está furioso: ayer se quedaron toda la tarde sin sistema.','Su switch es el ACC1 y sube al CORE. Averigua qué pasó y que no vuelva a pasar.'],
+  intro:['Mire, ayer alguien de limpieza pateó un cable y nos quedamos sin sistema TODA la tarde. En plena temporada de declaraciones.','No quiero que vuelva a pasar. ¿Qué hacemos?'],
+  q:[{t:'¿Qué cable fue exactamente? ¿A dónde va?',k:'good',note:'era el único uplink de ACC1 al CORE (Te0/1)',a:'El técnico dijo que era "el uplink": el único cable que une nuestro switch con el principal.'},
+   {t:'¿Cuántas personas dependen de ese enlace?',k:'good',note:'12 personas y el sistema contable',a:'Todos: somos doce y el sistema contable está en el servidor del otro rack.'},
+   {t:'¿Hay otro puerto de fibra libre entre su switch y el principal?',k:'good',note:'hay Te0/2 libre en ACC1 y Te0/3 en el CORE',a:'Según el inventario, sí: el puerto Te0/2 del nuestro y el Te0/3 del principal están libres.'},
+   {t:'¿Por qué no se pasan todos a Wi-Fi?',k:'bad',a:'¿Wi-Fi para el sistema contable? No, gracias.'},
+   {t:'¿De qué color era el cable?',k:'meh',a:'¿Naranja? No sé, ¿importa?'}],
+  p:[{t:'Un segundo uplink de fibra y juntar los dos en un LAG con LACP: si se cae uno, el otro sigue y nadie se queda sin sistema.',ok:1,a:'¿O sea que tendríamos dos caminos y se reparten el trabajo? Me gusta.'},
+   {t:'Poner el segundo cable y no configurar nada más.',a:'¿Y eso funciona? Mi sobrino dice que dos cables sin configurar hacen un "bucle"…'},
+   {t:'Esconder el cable dentro de una canaleta para que nadie lo patee.',a:'Ayuda, pero si el cable falla por otra cosa volvemos a lo mismo. Quiero algo más seguro.'}],
+  m:[{t:'Un jumper de fibra y un transceptor SFP, y 40 minutos de ventana.',ok:1,a:'Eso lo autorizo ya. Compras lo tiene en una hora.'},
+   {t:'Dos switches nuevos y un servidor de respaldo.',a:'No me alcanza el presupuesto para eso este mes.'},
+   {t:'Nada, lo hago remoto.',a:'¿Remoto? Si hay que poner un cable nuevo…'}],
+  w:[{t:'Mañana a las 10:00.',a:'¡Mañana es el cierre del mes! Ni de broma.'},{t:'El viernes a las 20:00, cuando ya se fueron todos.',ok:1,when:'Viernes 20:00',a:'El viernes a las ocho está perfecto. El guardia le abre.'},{t:'Hoy en la hora de comida, rapidito.',a:'Siempre se queda alguien a comer en su escritorio trabajando. No.'}],
+  impl:{t:'Despacho: segundo uplink en LAG',con:'ACC1',noRing:true,
+   story:'Ventana del viernes. Pon el segundo uplink de fibra: ACC1 Te0/2 → CORE Te0/3. Luego en ACC1 junta Te0/1 y Te0/2 en un LAG con LACP activo y trunk con las VLAN 10 y 20. El CORE ya tiene su lado listo.',
+   pre:[['ACC1:Te0/1','CORE:Te0/1','fibra']],req:[['ACC1:Te0/2','CORE:Te0/3','fibra'],['LAP:USB','ACC1:CON','consola']],
+   cfg:D=>{preCfg(D.ACC1,{host:'RAMIREZ-SW1',vlans:VV});preCfg(D.CORE,BASEC)},
+   goals:[{t:v=>pn(v,'Te0/1')+' y '+pn(v,'Te0/2')+' en el mismo LAG con LACP',ok:D=>G.lag(D.ACC1,['Te0/1','Te0/2'])!=null},
+    {t:()=>'El LAG en trunk con VLAN 10 y 20',ok:D=>G.lagTrunk(D.ACC1,['Te0/1','Te0/2'],[10,20])},saveGoal('ACC1')],
+   hints:[()=>'Primero la fibra (ACC1 Te0/2 → CORE Te0/3) y la consola. Luego el LAG con los dos uplinks.',v=>MIS.find(m=>m.id==='d5a').hints[1](v),v=>MIS.find(m=>m.id==='d5a').hints[2](v)],
+   done:'Dos uplinks en LAG: si se corta uno, nadie se queda sin sistema.'},
+  s:{q:'¿Y si vuelven a patear un cable?',o:[{t:'No va a pasar, se lo garantizo.',a:'Eso dijeron la vez pasada…'},{t:'El LAG sigue con el otro cable: perdemos la mitad de capacidad, pero nadie se queda sin sistema. Y le recomiendo una canaleta.',ok:1,a:'¡Eso es lo que quería oír! Excelente trabajo.'},{t:'Se reinicia solo y ya.',a:'¿Se reinicia? ¿Entonces sí se cae?'}]}},
+ {id:'c3',site:'Tienda La Esquina',t:'Cámaras que el proveedor vea sin tocar la caja',sum:'Una tienda instaló cámaras IP y quiere que el proveedor las revise sin acceso a la caja registradora.',
+  client:{name:'Don Chuy',short:'Don Chuy',shirt:0xb91c1c,pants:0x1f2937,hair:0x6b7280,skin:0xc68642},
+  brief:['Tienda La Esquina compró dos cámaras IP. Quieren que el proveedor de cámaras las pueda revisar.','Su switch es el ACC1. Ojo: la caja registradora cobra con tarjeta.'],
+  intro:['¡Buenas! Ya tengo mis dos camaritas, pero el proveedor dice que necesita "entrar a la red" para configurarlas.','Y la verdad no quiero que se meta a la computadora de la caja.'],
+  q:[{t:'¿A qué tomas están conectadas las cámaras?',k:'good',note:'cámaras en patch panel 05 y 06',a:'Las instalaron en las tomas que dicen 05 y 06, las del techo.'},
+   {t:'¿La caja cobra con tarjeta?',k:'good',note:'la caja procesa tarjetas: hay que aislarla',a:'Sí, con terminal y todo. El banco nos pidió "tener la red segura", pero no sé qué es eso.'},
+   {t:'¿El proveedor necesita ver algo más aparte de las cámaras?',k:'good',note:'el proveedor solo debe ver cámaras',a:'No, solo las cámaras. ¡Nada más!'},
+   {t:'¿Las ponemos en la misma red que la caja y ya?',k:'bad',a:'¿No es justo eso lo que le dije que no quiero?'},
+   {t:'¿Cuántas cámaras quiere comprar el próximo año?',k:'meh',a:'Quién sabe, depende de cómo me vaya.'}],
+  p:[{t:'Una VLAN 40 solo para cámaras en los puertos 5 y 6, y que el uplink la lleve. El proveedor solo tendrá acceso a esa VLAN.',ok:1,a:'O sea, ¿las cámaras en su propia "red"? ¡Eso me deja tranquilo!'},
+   {t:'Le damos al proveedor la contraseña de la computadora de la caja.',a:'¡No! Eso es justo lo que no quiero.'},
+   {t:'Desconectamos la caja cuando venga el proveedor.',a:'¿Y si viene en horario de venta? No puedo dejar de cobrar.'}],
+  m:[{t:'Dos patch cords UTP para las cámaras y 30 minutos.',ok:1,a:'Va, eso está fácil.'},{t:'Un DVR nuevo y diez cámaras más.',a:'No, ya compré mis cámaras.'},{t:'Una línea de internet nueva para las cámaras.',a:'¿Otra línea? Eso sale caro cada mes…'}],
+  w:[{t:'El domingo a las 21:00, cuando cierran.',ok:1,when:'Domingo 21:00',a:'El domingo cierro a las nueve, ahí lo espero.'},{t:'El sábado a mediodía.',a:'¡El sábado a mediodía es cuando más vendo!'},{t:'Cuando usted quiera, de día.',a:'De día siempre hay clientes en la caja…'}],
+  impl:{t:'Tienda: VLAN de cámaras',con:'ACC1',noRing:true,
+   story:'Ventana del domingo. Las cámaras llegan al patch panel 05 y 06: conéctalas a ACC1 Gi0/5 y Gi0/6. Crea la VLAN 40 CAMARAS, pon los dos puertos en ella y agrega la VLAN 40 al uplink Te0/1 (que hoy lleva la 10 y la 20).',
+   pre:[['ACC1:Te0/1','CORE:Te0/1','fibra'],['PP:01','ACC1:Gi0/1','utp']],req:[['PP:05','ACC1:Gi0/5','utp'],['PP:06','ACC1:Gi0/6','utp'],['LAP:USB','ACC1:CON','consola']],
+   cfg:D=>{preCfg(D.ACC1,{host:'ESQUINA-SW1',vlans:VV,access:{'Gi0/1':10},trunk:{'Te0/1':[[10,20]]}});preCfg(D.CORE,BASEC)},
+   goals:[{t:()=>'VLAN 40 con nombre CAMARAS',ok:D=>G.vlan(D.ACC1,40,'CAMARAS')},
+    {t:v=>pn(v,'Gi0/5')+' y '+pn(v,'Gi0/6')+' en la VLAN 40',ok:D=>G.access(D.ACC1,'Gi0/5',40)&&G.access(D.ACC1,'Gi0/6',40)},
+    {t:v=>'El uplink '+pn(v,'Te0/1')+' lleva las VLAN 10, 20 y 40',ok:D=>G.trunk(D.ACC1,'Te0/1',[10,20,40])},saveGoal('ACC1')],
+   hints:[()=>'Cables: patch panel 05 → puerto 5 y 06 → puerto 6 de ACC1, y la consola. Luego VLAN, puertos y trunk.',
+    v=>v==='cisco'?'Usa interface range g0/5 - 6 y en el trunk switchport trunk allowed vlan add 40.':v==='aruba'?'Usa interface 1/1/5-1/1/6 y en 1/1/25 vlan trunk allowed 40.':'Configura ge-0/0/4 y ge-0/0/5, y agrega CAMARAS a vlan members de xe-0/1/0.',
+    v=>code(v==='cisco'?['enable','configure terminal','vlan 40',' name CAMARAS','interface range g0/5 - 6',' switchport mode access',' switchport access vlan 40','interface te0/1',' switchport trunk allowed vlan add 40','end','write memory']:v==='aruba'?['configure terminal','vlan 40','  name CAMARAS','interface 1/1/5-1/1/6','  no shutdown','  vlan access 40','interface 1/1/25','  vlan trunk allowed 40','end','write memory']:['configure','set vlans CAMARAS vlan-id 40','set interfaces ge-0/0/4 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/4 unit 0 family ethernet-switching vlan members CAMARAS','set interfaces ge-0/0/5 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/5 unit 0 family ethernet-switching vlan members CAMARAS','set interfaces xe-0/1/0 unit 0 family ethernet-switching vlan members CAMARAS','commit'])],
+   done:'Las cámaras quedaron en su propia VLAN.'},
+  s:{q:'Entonces, ¿el proveedor ya no puede ver mi caja?',o:[{t:'Exacto: las cámaras están en la VLAN 40 y la caja en la 10. Al proveedor solo se le da acceso a la VLAN de cámaras, y entre VLAN no hay paso si no se configura un router.',ok:1,a:'¡Qué alivio! Le traigo unos refrescos, pásele.'},{t:'Puede verla, pero no creo que lo haga.',a:'¡Eso no fue lo que acordamos!'},{t:'Le puse antivirus a la caja.',a:'Eso está bien, pero yo pregunté otra cosa…'}]}}
+];
+
 MIS.sort((a,b)=>(a.id==='t1')-(b.id==='t1')||a.id.localeCompare(b.id));
 function ticketPre(){const r=FULL1.concat(FULL2,FULL4).map(x=>x.slice());
  r[1]=['PP:02','ACC1:Gi0/12','utp'];r[2]=['PP:03','ACC1:Gi0/3','utp'];
@@ -183,7 +270,7 @@ let S=null;
 const PASS3=70;const scoreStars=sc=>sc>=90?3:sc>=80?2:sc>=70?1:0;
 function badge(id,v){if(!v)return'';if(/^d/.test(id)){const st=scoreStars(v);return st?'★'.repeat(st)+'☆'.repeat(3-st)+' '+v:'✗ '+v}return'★'.repeat(v)+'☆'.repeat(3-v)}
 const getV=()=>{try{return localStorage.getItem('pp3dv')||'cisco'}catch(e){return'cisco'}};
-export function unmount(){if(!S)return;S.alive=false;cancelAnimationFrame(S.raf);S.ro&&S.ro.disconnect();S.renderer&&S.renderer.dispose();S=null}
+export function unmount(){if(!S)return;(S.cleanup||[]).forEach(f=>{try{f()}catch(e){}});S.alive=false;cancelAnimationFrame(S.raf);S.ro&&S.ro.disconnect();S.renderer&&S.renderer.dispose();S=null}
 
 export function mount(view,start){
  unmount();
@@ -197,7 +284,7 @@ export function mount(view,start){
   <div class="s3bar s3bot"><p id="s3msg">Elige el tipo de cable y toca un puerto para tomar el cable. Luego toca (o arrastra hasta) el otro puerto.</p><button class="btnl" id="s3del" hidden>Quitar cable</button><button class="btnl" id="s3cancel" hidden>Soltar cable</button><button class="btn" id="s3open" hidden>Abrir consola</button></div>
   <div class="s3con" id="s3con" hidden><div class="s3ch"><span id="s3ct">PuTTY</span><button id="s3tk" class="btnl">Tareas</button><button id="s3hb" class="btnl">💡 Pistas</button><button id="s3x" class="btnl">Volver al cuarto</button></div><div class="s3cb"><div class="s3term"><div class="s3out" id="s3out"></div><label class="s3in"><span id="s3pr"></span><input id="s3cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></label></div><div class="s3hp" id="s3hp" hidden></div><div class="s3hp" id="s3tp" hidden></div></div></div></div></div>
  <aside class="s3side"><div class="card"><p class="tid">Fabricante de los switches</p><div class="s3seg s3ven">${Object.entries(VN).map(([k,t])=>`<button data-ven="${k}" class="${k===getV()?'on':''}">${t.split(' ')[0]}</button>`).join('')}</div><p class="tid" style="margin-top:12px">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${badge(m.id,done[m.id])}</em></button>`).join('')}</div></div>
- <div class="card" id="s3task"></div></aside></div>`;
+ <div class="card"><p class="tid">Casos de cliente · modo libre</p><div class="s3mis">${CASES.map((c,i)=>`<button data-case="${i}"><span>${c.site}</span>${c.t}<em>${done[c.id]?(done[c.id]>=70?'✓ ':'✗ ')+done[c.id]:''}</em></button>`).join('')}</div></div><div class="card" id="s3task"></div></aside></div>`;
  const stage=view.querySelector('#s3stage'),canvas=view.querySelector('#s3c'),msg=view.querySelector('#s3msg');
  let renderer;try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false})}catch(e){stage.innerHTML='<p style="padding:20px">Tu navegador no tiene WebGL activado, así que no puede mostrar el sitio 3D. Prueba con Chrome, Edge o Safari actualizados.</p>';return}
  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -205,7 +292,7 @@ export function mount(view,start){
  const scene=new THREE.Scene();scene.background=new THREE.Color(dark?0x0b1312:0xdfe7e5);
  const cam=new THREE.PerspectiveCamera(45,1,0.05,60);
  const ctl=new OrbitControls(cam,canvas);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*0.47;ctl.minPolarAngle=Math.PI*0.12;ctl.minAzimuthAngle=-1.15;ctl.maxAzimuthAngle=1.15;ctl.minDistance=0.35;ctl.maxDistance=6.5;ctl.screenSpacePanning=true;ctl.target.set(0.4,1.3,0);
- scene.add(new THREE.HemisphereLight(0xffffff,dark?0x1a2624:0x8a9a96,dark?1.6:1.9));
+ const hemi=new THREE.HemisphereLight(0xffffff,dark?0x1a2624:0x8a9a96,dark?1.6:1.9);scene.add(hemi);
  const dl=new THREE.DirectionalLight(0xffffff,dark?1.9:1.7);dl.position.set(2,4,5);scene.add(dl);const fl2=new THREE.PointLight(0xbfeee6,dark?6:4,6,1.5);fl2.position.set(0,2.3,1.6);scene.add(fl2);
  S={alive:true,renderer,scene,cam,ctl,ports:{},cables:[],cab:'utp',carry:null,sel:null,mis:null,hint:0,anim:null,labels:[]};
  const mat=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:.7,metalness:.15,...o});
@@ -313,13 +400,13 @@ export function mount(view,start){
  function selCable(c){S.sel=c;S.cables.forEach(x=>x.mesh.material.emissiveIntensity=x===c?.9:.08);view.querySelector('#s3del').hidden=!c;if(c)say(`Cable ${CABLE[c.type]}: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}.`)}
  view.querySelector('#s3del').addEventListener('click',()=>{if(!S.sel)return;if(S.sel.type==='consola')closeCon();rmCable(S.sel);say('Cable quitado.');selCable(null);check()});
  view.querySelector('#s3cancel').addEventListener('click',()=>{drop();say('Soltaste el cable.')});
- canvas.addEventListener('pointerdown',e=>{const o=hit(e);down={x:e.clientX,y:e.clientY,o,t:performance.now()};if(o&&o.userData.port&&!S.carry){ctl.enabled=false;grab(o.userData.port);if(S.carry)S.carry.drag=true}},{capture:true});
- canvas.addEventListener('pointermove',e=>{if(!S.carry){if(e.pointerType==='mouse'){const o=hit(e);canvas.style.cursor=o&&(o.userData.port||o.userData.cable||o.userData.dev)?'pointer':'grab';if(o&&o.userData.port&&!down){const P=o.userData.port;say(`${pname(P)} · ${P.label!==P.name?P.label+' · ':''}${KIND[P.kind]}${P.cable?' · conectado':''}`)}}return}
+ canvas.addEventListener('pointerdown',e=>{if(S.mode==='walk'){down=null;return}const o=hit(e);down={x:e.clientX,y:e.clientY,o,t:performance.now()};if(o&&o.userData.port&&!S.carry){ctl.enabled=false;grab(o.userData.port);if(S.carry)S.carry.drag=true}},{capture:true});
+ canvas.addEventListener('pointermove',e=>{if(S.mode==='walk')return;if(!S.carry){if(e.pointerType==='mouse'){const o=hit(e);canvas.style.cursor=o&&(o.userData.port||o.userData.cable||o.userData.dev)?'pointer':'grab';if(o&&o.userData.port&&!down){const P=o.userData.port;say(`${pname(P)} · ${P.label!==P.name?P.label+' · ':''}${KIND[P.kind]}${P.cable?' · conectado':''}`)}}return}
   const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);
   const o=hit(e);let tp;if(o&&o.userData.port)tp=pw(o.userData.port).add(out(o.userData.port).multiplyScalar(.05));else{const A=pw(S.carry.P),pl=new THREE.Plane(new THREE.Vector3(0,0,1),-(A.z+.25));tp=new THREE.Vector3();if(!ray.ray.intersectPlane(pl,tp))return}
   const A=S.carry.P,c=new THREE.CatmullRomCurve3([pw(A),pw(A).addScaledVector(out(A),.12),tp]);
   if(S.carry.mesh){scene.remove(S.carry.mesh);S.carry.mesh.geometry.dispose()}S.carry.mesh=tube(c,S.cab);scene.add(S.carry.mesh)});
- canvas.addEventListener('pointerup',e=>{const d=down;down=null;ctl.enabled=true;if(!d)return;const moved=Math.hypot(e.clientX-d.x,e.clientY-d.y)>8;const o=hit(e);
+ canvas.addEventListener('pointerup',e=>{const d=down;down=null;ctl.enabled=true;if(!d||S.mode==='walk')return;const moved=Math.hypot(e.clientX-d.x,e.clientY-d.y)>8;const o=hit(e);
   if(S.carry&&S.carry.drag){S.carry.drag=false;if(o&&o.userData.port&&o.userData.port!==S.carry.P){finish(o.userData.port);return}return}
   if(moved)return;
   if(S.carry){if(o&&o.userData.port){if(o.userData.port===S.carry.P){drop();say('Soltaste el cable.');return}finish(o.userData.port)}else{drop();say('Soltaste el cable.')}return}
@@ -358,13 +445,14 @@ export function mount(view,start){
  function nextStep(m,have,goalsOk){clearRings();let t='';
   const miss=m.req.find(([a,b,ty])=>{const c=have.get(key(a,b));return!(c&&c.type===ty)});
   if(miss){const[a,b,ty]=miss,A=S.ports[a],B=S.ports[b];
-   if(m.pre!=='ticket'){const busy=[A,B].find(P=>P.cable&&key(P.cable.a,P.cable.b)!==key(a,b));
+   if(m.pre!=='ticket'&&!m.noRing){const busy=[A,B].find(P=>P.cable&&key(P.cable.a,P.cable.b)!==key(a,b));
     t=busy?`👉 ${pname(busy)} tiene un cable que no va ahí: tócalo y pulsa "Quitar cable".`:`👉 Siguiente: cable <b>${CABLE[ty]}</b> de <b>${pname(A)}</b> a <b>${pname(B)}</b>. Los dos puertos parpadean en amarillo.`;
     if(S.cab!==ty&&!busy)t+=` Primero elige <b>${CABLE[ty]}</b> arriba.`;ring(A);ring(B)}
    else t='👉 Compara los cables con la lista de tareas: quita los que sobran y pon los que faltan.'}
   else{const g=(m.goals||[]).find(g=>!g.ok(S.D));if(g)t=con.hidden?`👉 Cables listos. Abre la consola de <b>${m.con}</b> y configura: ${esc(g.t(S.V))}.`:`👉 En la consola: ${esc(g.t(S.V))}.`}
   nextEl.innerHTML=t;nextEl.hidden=!t}
- function load(i){const m=MIS[i];S.mis=m;S.hint=0;S.wrong=0;drop();selCable(null);closeCon();cout.innerHTML='';for(const c of S.cables.slice())rmCable(c);
+ function load(i){if(S.rpg&&S.rpg.on)S.rpg.stop();loadM(MIS[i])}
+ function loadM(m){const i=MIS.indexOf(m);S.mis=m;S.hint=0;S.wrong=0;drop();selCable(null);closeCon();cout.innerHTML='';for(const c of S.cables.slice())rmCable(c);
   S.D={CORE:mkDev('CORE',S.V),ACC1:mkDev('ACC1',S.V),ACC2:mkDev('ACC2',S.V)};m.cfg&&m.cfg(S.D);
   (m.pre==='ticket'?ticketPre():m.pre).forEach(([a,b,t])=>addCable(a,b,t));
   view.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));S.won=false;
@@ -377,29 +465,35 @@ export function mount(view,start){
   const grows=(m.goals||[]).map(g=>({ok:cabOk&&g.ok(S.D),txt:'⌨️ '+esc(g.t(S.V))}));
   const extra=S.cables.filter(c=>!need.has(key(c.a,c.b)));
   const win=cabOk&&grows.every(r=>r.ok)&&!extra.length;
-  const score=Math.max(0,100-(S.hint>=2?15:0)-(S.hint>=3?25:0)-Math.min(20,5*(S.wrong||0))),pass=score>=PASS3,isD=/^d/.test(m.id);
+  const score=Math.max(0,100-(S.hint>=2?15:0)-(S.hint>=3?25:0)-Math.min(20,5*(S.wrong||0))),pass=score>=PASS3,isD=/^[dc]/.test(m.id);
   if(win){clearRings();nextEl.innerHTML='✅ ¡Misión cumplida! Elige la siguiente misión.';nextEl.hidden=false}else nextStep(m,have);
   openB.hidden=!conDev()||!con.hidden;if(conDev())openB.textContent='Abrir consola de '+conDev();
   task.innerHTML=`<p class="tid">${m.z} · misión · ${VN[S.V]}</p><h3>${m.t}</h3><p>${m.story}</p><ul class="s3tl">${rows.concat(grows).map(r=>`<li class="${r.ok?'ok':''}">${r.ok?'✓':'○'} ${r.txt}</li>`).join('')}${extra.map(c=>`<li class="bad">✗ Sobra o está mal: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}</li>`).join('')}</ul>
   <div class="s3h">${m.hints.map((h,i)=>i<S.hint?`<div><b>Pista ${i+1}:</b> ${h(S.V)}</div>`:'').join('')}${S.hint<3&&!win?`<button class="btnl" id="s3hint">Ver pista ${S.hint+1} de 3</button>`:''}</div>
-  ${win?`<div class="s3win${isD&&!pass?' s3fail':''}">${isD?`<b>${pass?'¡Lab aprobado!':'Lab terminado, pero no alcanza el mínimo'}</b><span>Calificación: <b>${score}/100</b> · mínimo para aprobar: ${PASS3} ${pass?'★'.repeat(scoreStars(score)):''}</span><span class="small">Pistas usadas: ${S.hint} · cables equivocados: ${S.wrong||0}</span>${pass?'':`<button class="btn" id="s3retry">Reintentar</button>`}`:`<b>¡Misión cumplida!</b> ${'★'.repeat(3-Math.min(S.hint,2))}${'☆'.repeat(Math.min(S.hint,2))}`}<p>${m.done}</p>${m.go?`<a class="btn" href="${m.go[0]}">${m.go[1]}</a>`:''}${MIS.indexOf(m)<MIS.length-1?`<button class="btnl" id="s3next">Siguiente misión</button>`:''}</div>`:''}`;
+  ${win?`<div class="s3win${isD&&!pass?' s3fail':''}">${isD?`<b>${pass?'¡Lab aprobado!':'Lab terminado, pero no alcanza el mínimo'}</b><span>Calificación: <b>${score}/100</b> · mínimo para aprobar: ${PASS3} ${pass?'★'.repeat(scoreStars(score)):''}</span><span class="small">Pistas usadas: ${S.hint} · cables equivocados: ${S.wrong||0}</span>${pass?'':`<button class="btn" id="s3retry">Reintentar</button>`}`:`<b>¡Misión cumplida!</b> ${'★'.repeat(3-Math.min(S.hint,2))}${'☆'.repeat(Math.min(S.hint,2))}`}<p>${m.done}</p>${m.go?`<a class="btn" href="${m.go[0]}">${m.go[1]}</a>`:''}${MIS.indexOf(m)>=0&&MIS.indexOf(m)<MIS.length-1?`<button class="btnl" id="s3next">Siguiente misión</button>`:''}${m.caseBtn?`<button class="btn" id="s3back">${m.caseBtn}</button>`:''}</div>`:''}`;
   const hb=task.querySelector('#s3hint');if(hb)hb.addEventListener('click',()=>{S.hint++;check(true);if(!hp.hidden)rHints()});
-  const rb=task.querySelector('#s3retry');if(rb)rb.addEventListener('click',()=>load(MIS.indexOf(m)));
+  const rb=task.querySelector('#s3retry');if(rb)rb.addEventListener('click',()=>loadM(m));
   const nb=task.querySelector('#s3next');if(nb)nb.addEventListener('click',()=>load(MIS.indexOf(m)+1));
+  const bb=task.querySelector('#s3back');if(bb)bb.addEventListener('click',()=>S.rpg&&S.rpg.backFromRack());
   if(!con.hidden)rTasks();
-  if(win&&!S.won&&!silent){S.won=true;const stars=3-Math.min(S.hint,2);prog.set(m.id,isD?score:stars);sfx(isD&&!pass?'bad':'win');say(isD?(pass?`¡Lab aprobado con ${score}/100! `+m.done:`Terminaste con ${score}/100; necesitas ${PASS3}. Reintenta con menos pistas.`):'¡Misión cumplida! '+m.done,isD&&!pass?'bad':'ok');
+  if(win&&!S.won&&!silent){S.won=true;const stars=3-Math.min(S.hint,2);if(!/^c/.test(m.id))prog.set(m.id,isD?score:stars);if(S.onWin)S.onWin(m,score,pass);sfx(isD&&!pass?'bad':'win');say(isD?(pass?`¡Lab aprobado con ${score}/100! `+m.done:`Terminaste con ${score}/100; necesitas ${PASS3}. Reintenta con menos pistas.`):'¡Misión cumplida! '+m.done,isD&&!pass?'bad':'ok');
    if(!con.hidden)print([{t:isD?`[tutor] ✔ Lab terminado: ${score}/100 (mínimo ${PASS3}). `+(pass?m.done:'Reintenta con menos pistas.'):'[tutor] ✔ ¡Misión cumplida! '+m.done,c:isD&&!pass?'err':'win'}]);
    const b=view.querySelector(`[data-m="${MIS.indexOf(m)}"] em`);if(b)b.textContent=badge(m.id,prog.get()[m.id])}}
  view.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>load(+b.dataset.m)));
  view.querySelectorAll('[data-ven]').forEach(b=>b.addEventListener('click',()=>{S.V=b.dataset.ven;try{localStorage.setItem('pp3dv',S.V)}catch(e){}view.querySelectorAll('[data-ven]').forEach(x=>x.classList.toggle('on',x===b));load(MIS.indexOf(S.mis))}));
- if(/^z\d$/.test(start||''))start='d'+start[1]+'a';const si=MIS.findIndex(m=>m.id===start),first=MIS.findIndex(m=>/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]);load(si>=0?si:first<0?0:first);if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
+ [hemi,dl,fl2].forEach(l=>l.userData.base=l.intensity);S.cleanup=[];
+ S.rpg=initRPG({THREE,scene,cam,ctl,canvas,stage,view,S,lbl,say,loadM,fly,VIEWS,sfx,dark,lights:[hemi,dl,fl2],task,prog:(id,sc)=>{prog.set(id,sc);const b=view.querySelector(`[data-case="${CASES.findIndex(c=>c.id===id)}"] em`);if(b)b.textContent=(sc>=70?'✓ ':'✗ ')+sc},onUnmount:f=>S.cleanup.push(f),loadFirst:()=>load(0)});
+ view.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>{view.querySelectorAll('[data-m],[data-case]').forEach(x=>x.classList.toggle('on',x===b));drop();selCable(null);closeCon();S.rpg.start(CASES[+b.dataset.case]);stage.scrollIntoView({block:'start',behavior:'smooth'})}));
+ if(/^z\d$/.test(start||''))start='d'+start[1]+'a';const ci=CASES.findIndex(c=>c.id===start);if(ci>=0){load(0);S.rpg.start(CASES[ci]);setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300)}const si=ci>=0?-2:MIS.findIndex(m=>m.id===start),first=MIS.findIndex(m=>/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]);if(si!==-2)load(si>=0?si:first<0?0:first);if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
  // ---------- ciclo ----------
  const fit=()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
  S.ro=new ResizeObserver(fit);S.ro.observe(stage);fit();
  const v3=new THREE.Vector3();
- function loop(){if(!S||!S.alive)return;S.raf=requestAnimationFrame(loop);if(!view.classList.contains('on')){unmount();return}
+ let lt=performance.now();
+ function loop(){if(!S||!S.alive)return;S.raf=requestAnimationFrame(loop);const now=performance.now(),dt=Math.min(.05,(now-lt)/1000);lt=now;if(!view.classList.contains('on')){unmount();return}
   if(S.anim){const k=Math.min(1,(performance.now()-S.anim.t0)/650),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cam.position.lerpVectors(S.anim.p0,S.anim.p1,e);ctl.target.lerpVectors(S.anim.t0v,S.anim.t1,e);if(k>=1)S.anim=null}
-  {const t=ctl.target;t.x=Math.max(-1.8,Math.min(3.6,t.x));t.y=Math.max(.3,Math.min(2.4,t.y));t.z=Math.max(-.5,Math.min(2.2,t.z))}
+  if(S.rpg)S.rpg.tick(dt);
+  if(S.mode!=='walk'){const t=ctl.target;t.x=Math.max(-1.8,Math.min(3.6,t.x));t.y=Math.max(.3,Math.min(2.4,t.y));t.z=Math.max(-.5,Math.min(2.2,t.z))}
   ctl.update();if(cam.position.z<-.6)cam.position.z=-.6;
   if(S.rings&&S.rings.length){const k=.5+.5*Math.sin(performance.now()/220);S.rings.forEach(r=>{r.material.opacity=.35+.6*k;r.scale.setScalar(1+.35*k)})}
   renderer.render(scene,cam);
@@ -407,5 +501,5 @@ export function mount(view,start){
   for(const L of S.labels){if(L.obj){L.obj.getWorldPosition(v3);if(L.off)v3.add(L.off)}else v3.copy(L.p);const dist=cam.position.distanceTo(v3);v3.project(cam);
    const vis=v3.z<1&&Math.abs(v3.x)<1.05&&Math.abs(v3.y)<1.05&&!(L.el.classList.contains('dc')&&d>4);L.el.style.display=vis?'':'none';if(vis)L.el.style.transform=`translate(${(v3.x+1)/2*w}px,${(1-v3.y)/2*h}px) translate(-50%,-50%)`;L.el.style.opacity=dist>7?.6:1}}
  loop();
- window.__s3={xy(id){const P=S.ports[id];const v=pw(P);v.project(cam);const r=canvas.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]},focus:focusDev,cables:()=>S.cables.map(c=>[c.a,c.b,c.type]),cmd(l){cin.value=l;cin.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))},load,tasks:()=>task.innerText,hint3:i=>MIS[i].hints[2](S.V),req:i=>MIS[i].req,open:openCon,out:()=>cout.innerText};
+ window.__s3={xy(id){const P=S.ports[id];const v=pw(P);v.project(cam);const r=canvas.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]},focus:focusDev,cables:()=>S.cables.map(c=>[c.a,c.b,c.type]),cmd(l){cin.value=l;cin.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))},load,rpg:()=>S.rpg,tp:(x,z)=>S.rpg.tp(x,z),curReq:()=>S.mis.req.filter(r=>!S.cables.some(c=>key(c.a,c.b)===key(r[0],r[1]))),curHint:()=>S.mis.hints[2](S.V),tasks:()=>task.innerText,hint3:i=>MIS[i].hints[2](S.V),req:i=>MIS[i].req,open:openCon,out:()=>cout.innerText};
 }
