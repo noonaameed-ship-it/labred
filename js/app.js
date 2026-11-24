@@ -138,7 +138,7 @@ const TABS=[['mapa','Mi red','map',h=>h==='mapa'||h.startsWith('leccion-')||h.st
 function renderTabs(h){let t=$('#tabbar');if(!t){t=document.createElement('nav');t.id='tabbar';t.className='noprint';t.setAttribute('aria-label','Navegación principal');document.body.appendChild(t);
   const s=document.createElement('div');s.id='msheet';s.className='noprint';s.hidden=true;document.body.appendChild(s);
   addEventListener('focusin',e=>{if(e.target.matches('input,textarea,select,[contenteditable]'))document.body.classList.add('kb')});addEventListener('focusout',()=>setTimeout(()=>{if(!document.activeElement||!document.activeElement.matches('input,textarea,select,[contenteditable]'))document.body.classList.remove('kb')},80))}
- if(sb&&!uid){t.innerHTML='';document.body.classList.remove('hastabs');return}document.body.classList.add('hastabs');
+ if(sb&&!uid&&!guest){t.innerHTML='';document.body.classList.remove('hastabs');document.body.classList.add('noauth');return}document.body.classList.remove('noauth');document.body.classList.add('hastabs');
  const ar=revDue().length+duelPend(),un=uid&&!isOwner?unreadN():0,cur=TABS.findIndex(x=>x[3](h)),more=cur<0;
  t.innerHTML=TABS.map(([k,l,i],n)=>`<a href="#${k}" class="${n===cur?'on':''}"${n===cur?' aria-current="page"':''}><span class="tpk"></span>${ico(i)}<span>${l}</span>${k==='arena'&&ar?`<b class="tdot">${ar}</b>`:''}</a>`).join('')+`<button id="tmore" class="${more?'on':''}" aria-haspopup="dialog" aria-expanded="false"><span class="tpk"></span>${ico('dots')}<span>Más</span>${un?`<b class="tdot">${un}</b>`:''}</button>`;
  $('#tmore').onclick=()=>{openMore.a=null;openMore()}}

@@ -978,3 +978,8 @@ details.vocab[open]>summary::after{content:'−'}
 @media(max-width:760px){.acmv{grid-template-columns:1fr}.acstep{grid-template-columns:1fr 1fr}}
 @media(min-width:721px){#msheet .mitem.monly{display:none}}
 @media(max-width:720px){#msheet .mitem.donly{display:none}}
+
+/* Sin sesión: barra limpia */
+#tabbar:empty{display:none!important}
+body.noauth .links,body.noauth #hud .chips .hudp:not([href="#entrar"]){display:none!important}
+@media(max-width:720px){body.noauth nav.top{flex-wrap:nowrap;align-items:center}body.noauth #hud{width:auto;flex:1;justify-content:flex-end}}
