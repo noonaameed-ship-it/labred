@@ -10,8 +10,9 @@
  --term:#0b0f12;--card:var(--paper);--band:var(--ink);--soft:light-dark(#eef3f2,#16231f)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-html{scroll-padding-top:72px}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;overflow-x:clip;
+@font-face{font-family:"Plex Fallback";src:local("Arial"),local("ArialMT"),local("Helvetica"),local("Liberation Sans"),local("Roboto");size-adjust:100.4%;ascent-override:102%;descent-override:27.4%;line-gap-override:0%}
+html{scroll-padding-top:72px;scrollbar-gutter:stable}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans","Plex Fallback",system-ui,sans-serif;overflow-x:clip;
  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
 a{color:var(--blue)}
 h1,h2,h3{line-height:1.15;text-wrap:balance}

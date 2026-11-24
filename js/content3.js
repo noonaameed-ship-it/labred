@@ -30,7 +30,7 @@ Object.assign(LES,{
   model:'Cada frame del trunk lleva una etiqueta 802.1Q con su VLAN ID; el switch que recibe la lee, la quita y lo entrega en esa VLAN. El trunk solo lleva las VLAN permitidas (Cisco: todas por defecto). Podar = dejar solo las necesarias: menos broadcast y más seguridad.'}},
 't32':{id:'t3-2',lv:3,t:'VLAN nativa: la que viaja sin etiqueta',
  story:'El log del core amaneció lleno de <code>%CDP-4-NATIVE_VLAN_MISMATCH</code> y las cámaras del piso 2 no se ven. Pepe Toño jura que "solo cambió un parámetro" en el trunk. Lupita: "Explícale a Pepe Toño qué es la nativa antes de que toque otro switch."',
- body:['En todo trunk 802.1Q hay una VLAN especial: la <strong>VLAN nativa</strong>. Sus frames son los únicos que viajan <strong>sin etiqueta</strong>. Si al switch le llega un frame sin etiqueta por un trunk, lo mete en su VLAN nativa. Si no cambias nada, la nativa es la <strong>VLAN 1</strong> en Cisco, Aruba y Juniper.',
+ body:['En todo trunk 802.1Q hay una VLAN especial: la <strong>VLAN nativa</strong>. Sus frames son los únicos que viajan <strong>sin etiqueta</strong>. Si al switch le llega un frame sin etiqueta por un trunk, lo mete en su VLAN nativa. Si no cambias nada, en Cisco y Aruba la nativa es la <strong>VLAN 1</strong>. En Juniper el trunk no tiene nativa hasta que la configuras con <code>native-vlan-id</code>: mientras tanto, lo que llega sin etiqueta se descarta.',
   '<h3>La regla: la misma nativa en los dos extremos</h3>Imagina que SW1 tiene nativa 10 y SW2 tiene nativa 1. SW1 manda los frames de la VLAN 10 <em>sin</em> etiqueta. SW2 los recibe sin etiqueta y los mete en <em>su</em> nativa: la VLAN 1. Resultado: <strong>la VLAN 10 se rompe en ese enlace</strong>, y además su tráfico se mezcla con otra VLAN, que es un problema de seguridad.',
   '<h3>La buena práctica: una nativa dedicada que nadie usa</h3><ul class="pasos"><li><strong>Crea una VLAN solo para ser nativa</strong>, sin PCs: por ejemplo la <strong>999 NATIVA</strong>.</li><li><strong>Ponla como nativa en los dos extremos</strong> de cada trunk.</li><li><strong>No uses la VLAN 1</strong> para usuarios ni como nativa: es la que tienen todos los puertos por defecto y la que usan ataques como el <em>VLAN hopping</em> por doble etiqueta.</li></ul>',
   '<h3>Cómo se configura y cómo te enteras</h3><ul class="pasos"><li><strong>Cisco:</strong> <code>switchport trunk native vlan 999</code>. Si el vecino también es Cisco, CDP te avisa con <code>%CDP-4-NATIVE_VLAN_MISMATCH</code>.</li><li><strong>Aruba:</strong> <code>vlan trunk native 999</code>. No hay aviso: lo ves en <code>show interface brief</code>, columna Native VLAN.</li><li><strong>Juniper:</strong> <code>set interfaces ge-0/0/23 native-vlan-id 999</code>. Lo ves en <code>show ethernet-switching interfaces</code>: la nativa sale como <em>untagged</em>.</li></ul>Con vendors mezclados nadie te avisa: tienes que comparar los dos extremos tú.',
@@ -48,10 +48,10 @@ Object.assign(LES,{
   {q:'¿Por qué no se recomienda usar la VLAN 1 como nativa?',o:['Porque todos los puertos están ahí por defecto y la aprovechan ataques como el VLAN hopping','Porque es lenta','Porque no existe en Aruba','Porque es la de voz'],a:0,why:'La VLAN 1 es el blanco más común.'},
   {q:'¿La VLAN nativa dedicada (999) necesita PCs conectadas?',o:['No, existe solo para ser la nativa','Sí, al menos una','Sí, el servidor DHCP','Solo en Cisco'],a:0,why:'Se deja vacía a propósito.'}],
  exp:{q:'Con tus palabras: ¿qué es la VLAN nativa, qué pasa si no coincide en los dos extremos y cuál es la buena práctica?',
-  ideas:['La nativa es la VLAN que viaja sin etiqueta por el trunk (por defecto la 1)','Lo que llega sin etiqueta, el switch lo mete en su propia nativa','Si no coincide, esa VLAN se rompe o se mezcla con otra en ese enlace','Buena práctica: una VLAN dedicada sin uso (como la 999), igual en ambos extremos, y no la VLAN 1'],
+  ideas:['La nativa es la VLAN que viaja sin etiqueta por el trunk (en Cisco y Aruba, por defecto la 1)','Lo que llega sin etiqueta, el switch lo mete en su propia nativa','Si no coincide, esa VLAN se rompe o se mezcla con otra en ese enlace','Buena práctica: una VLAN dedicada sin uso (como la 999), igual en ambos extremos, y no la VLAN 1'],
   short:['qué es la nativa','qué hace el que recibe','si no coincide','la buena práctica'],
   kw:[['sin etiqueta','sin tag','untagged','nativa'],['recibe','mete','su nativa','llega'],['no coincid','mismatch','rompe','mezcla','distinta'],['999','dedicada','vlan 1','sin uso','igual']],
-  fix:['La VLAN nativa es la única que viaja sin etiqueta por el trunk; por defecto es la VLAN 1.','Lo que llega sin etiqueta, el switch lo mete en su propia VLAN nativa.','Si la nativa no coincide, esa VLAN se rompe en el enlace o su tráfico se mezcla con otra.','La buena práctica es una VLAN dedicada sin puertos, como la 999, igual en los dos extremos, y no usar la 1.'],
+  fix:['La VLAN nativa es la única que viaja sin etiqueta por el trunk; en Cisco y Aruba, por defecto es la VLAN 1.','Lo que llega sin etiqueta, el switch lo mete en su propia VLAN nativa.','Si la nativa no coincide, esa VLAN se rompe en el enlace o su tráfico se mezcla con otra.','La buena práctica es una VLAN dedicada sin puertos, como la 999, igual en los dos extremos, y no usar la 1.'],
   mine:'En un trunk todas las VLAN viajan con etiqueta menos una: la nativa, que por defecto es la VLAN 1. Cuando a un switch le llega un frame sin etiqueta por el trunk, lo mete en su nativa. Si de un lado la nativa es la 10 y del otro la 1, los frames de la 10 salen sin etiqueta y del otro lado caen en la VLAN 1: la 10 deja de funcionar en ese enlace y además se mezcla con otra VLAN. Por eso se crea una VLAN que nadie usa, como la 999 NATIVA, y se pone igual en los dos extremos de cada trunk, y no se usa la VLAN 1.',
   model:'La nativa viaja sin etiqueta (por defecto VLAN 1); lo que llega sin etiqueta va a la nativa del que recibe. Si no coincide, esa VLAN se rompe o se mezcla. Buena práctica: nativa dedicada sin uso (ej. 999), igual en ambos extremos, nunca la VLAN 1.'}},
 't33':{id:'t3-3',lv:3,t:'Lee el show: diagnóstico de trunks',
@@ -254,6 +254,39 @@ Object.assign(VOCAB,{
   why:'El router arma un frame nuevo: pone su MAC como origen y la del siguiente equipo como destino (la consigue con ARP). Las IP de origen y destino viajan igual de punta a punta, salvo que haya NAT.'};
  var fix=function(arr){(arr||[]).forEach(function(q,k){if(q&&q.q===OLD){var t=q.topic;arr[k]=Object.assign({},NQ);if(t)arr[k].topic=t}})};
  fix(L.quiz);
+ Object.keys(EXAMS).forEach(function(k){var E=EXAMS[k];fix(E.pool);fix(E.qs);fix(E.questions)});
+ if(typeof PLACE!=='undefined')fix(PLACE);
+})();
+
+/* Revisión de claridad de preguntas (nov 2026) */
+(function(){
+ if(typeof LES==='undefined'||typeof EXAMS==='undefined')return;
+ var P={
+  '¿Para qué sirve hacer subnetting?':{o:['Para separar áreas, contener broadcasts y aprovechar mejor las direcciones','Para aumentar la velocidad de los enlaces de la red','Para cambiar las direcciones MAC de los equipos','Para dejar de usar switches en la red local'],a:0,
+   why:'Cada subred es un área aparte: los broadcasts no salen de ella y repartes solo las direcciones que necesitas.'},
+  'Para diagnosticar, ¿qué haces ping primero?':{q:'Para diagnosticar una falla de red, ¿a qué equipo le haces ping primero?',
+   o:['A google.com','A tu gateway','A un servidor en otro país','Al DNS público 8.8.8.8'],a:1,
+   why:'Se prueba de lo más cercano a lo más lejano. Si no llegas a tu gateway, el problema está en tu red; si llegas, buscas más adelante.'},
+  '¿Cuántas veces puede aparecer :: en una dirección?':{why:'Si hubiera dos, no sabrías cuántos ceros van en cada una.'},
+  'En NetCorp la VLAN 10 usa 192.168.10.0/24. Una PC conectada en la VLAN 10 tiene la IP 192.168.20.15. ¿Qué pasa?':{
+   o:['Funciona normal porque el switch la corrige','No se comunica con los equipos de su VLAN ni puede usar su gateway','Se cambia sola a la VLAN 20','Solo pierde la salida a internet'],a:1,
+   why:'Su IP no es de la subred que el plan le dio a la VLAN 10 (192.168.10.0/24): no comparte red con nadie de su VLAN y su gateway queda fuera de su red. El problema no es el número 20, es que no sigue el plan.'},
+  'Si no configuras nada, ¿cuál es la VLAN nativa?':{q:'En Cisco IOS y Aruba AOS-CX, si no configuras nada, ¿cuál es la VLAN nativa de un trunk?',
+   why:'Es la VLAN 1. Juniper es distinto: el trunk no tiene nativa hasta que configuras native-vlan-id, y lo que llega sin etiqueta se descarta.'},
+  'Si no cambias nada, ¿cuál es la VLAN nativa de un trunk 802.1Q?':{q:'Cisco IOS o Aruba AOS-CX: si no cambias nada, ¿cuál es la VLAN nativa de un trunk?'},
+  '¿Qué VLAN es la nativa si no configuras nada?':{q:'En Cisco IOS y Aruba AOS-CX, ¿qué VLAN es la nativa de un trunk si no configuras nada?'},
+  'Cisco show interfaces trunk en ACC1 dice Native vlan 999 y en CORE dice 30. ¿Qué VLAN se rompe en ese enlace?':{
+   q:'Cisco show interfaces trunk en ACC1 dice Native vlan 999 y en CORE dice 30. ¿Qué VLAN con usuarios se rompe en ese enlace?',
+   why:'El CORE manda la 30 sin etiqueta y ACC1 la mete en su nativa, la 999. La 999 también se mezcla, pero no tiene equipos: los que lo notan son los usuarios de la 30.'},
+  'Ordena de abajo hacia arriba: ¿cuál es la capa 4 del modelo OSI?':{q:'Contando desde abajo (la capa 1 es la física), ¿cuál es la capa 4 del modelo OSI?'},
+  'Un cable UTP de 150 metros entre dos switches da errores. ¿Por qué?':{
+   o:['Pasa de los 100 metros que soporta el UTP','Entre switches se necesita cable cruzado','Falta configurar el enlace como trunk','La VLAN nativa no coincide en los dos switches'],a:0},
+  'Cisco IOS: estás en (config-if)#. ¿Qué comando te regresa directo a SW1#?':{o:['end','exit','commit','top'],a:0},
+  '¿Qué contiene el encabezado de una trama Ethernet?':{o:['La MAC destino, la MAC origen y el EtherType','La IP destino y la IP origen','Los puertos TCP de origen y destino','El nombre del equipo que envía'],a:0},
+  'Una PC conectada a un access port, ¿sabe en qué VLAN está?':{o:['Sí, ella misma pone el tag en cada frame','No, envía y recibe frames sin tag','Sí, el DHCP le informa la VLAN','Sí, el switch se lo avisa al conectarse'],a:1}
+ };
+ var fix=function(arr){(arr||[]).forEach(function(q,k){if(q&&P[q.q])arr[k]=Object.assign({},q,P[q.q])})};
+ Object.keys(LES).forEach(function(k){fix(LES[k].quiz)});
  Object.keys(EXAMS).forEach(function(k){var E=EXAMS[k];fix(E.pool);fix(E.qs);fix(E.questions)});
  if(typeof PLACE!=='undefined')fix(PLACE);
 })();
