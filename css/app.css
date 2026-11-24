@@ -1008,3 +1008,23 @@ table.tstack td,table.tstack td code{overflow-wrap:break-word;word-break:normal;
 table.tnw th,table.tnw td{white-space:nowrap}
 
 @media (max-width:480px){.shtag{font-size:9.5px;letter-spacing:.06em;padding:4px 7px;white-space:nowrap;flex:none}}
+/* Juega y aprende, ejemplos resueltos, labs pro */
+.ejr{margin:18px 0;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:10px;background:var(--soft)}
+.ejr p:last-child,.ejr ul:last-child,.ejr ol:last-child{margin-bottom:0}
+.ejh{margin:0 0 6px;font:600 11.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
+.ejcli{margin:8px 0;padding:10px 12px;border-radius:8px;background:var(--term);color:#d7f5e3;font:13px/1.5 'IBM Plex Mono',monospace;white-space:pre;overflow-x:auto}
+.juega{margin:18px 0;padding:14px 16px;border:1px dashed var(--line);border-radius:10px}
+.juegal{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.juegal .btn{display:inline-flex;align-items:center;gap:6px}.juegal .ic{width:15px;height:15px}
+.errout{border-radius:10px;background:var(--term);padding:8px;overflow-x:auto}
+.errc{color:#7fe0a8;font-size:13px;padding:4px 6px 8px}
+.errl{display:block;width:100%;text-align:left;font:13px/1.45 'IBM Plex Mono',monospace;white-space:pre;color:#e3ebe8;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px 6px;cursor:pointer;min-height:30px}
+.errl:hover{background:#ffffff14;border-color:#ffffff30}
+.errl.right{background:#33d17f2e;border-color:#33d17f}.errl.wrong{background:#ef44442e;border-color:#ef4444}
+.ordout{margin:10px 0;padding-left:26px;min-height:40px}.ordout li{margin:4px 0}
+.ordl{width:100%;text-align:left;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer;font:inherit;font-size:14px}
+.ordl.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}.ordl.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.ordout.mono .ordl,.pieces .pc.mono{font-family:'IBM Plex Mono',monospace}
+.card.ar.pro{border-top:3px solid var(--trunk)}
+.labprog.pro{border-color:var(--trunk)}
+.lclockw{display:inline-flex;gap:4px;align-items:center;margin-right:8px;padding:2px 8px;border-radius:6px;background:var(--soft);font-variant-numeric:tabular-nums}
+#lclock{min-width:3.2em;display:inline-block}

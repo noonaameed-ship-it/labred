@@ -497,8 +497,8 @@ const rng=seed=>{let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>
 const swByName=n=>T.sws.find(s=>s.name===n),pcByName=n=>T.pcs.find(p=>p.name===n);
 const tnet=v=>'192.168.'+v.id+'.';
 /* Definición: posiciones, enlaces, intención (cómo debe quedar), qué viene hecho y qué se rompe */
-const Z3=id=>/^(lab3|lab3b|tsh3)$/.test(id);
-const TKN={tsh1:[1,1050],lab1b:[1,1043],lab2:[2,2001],lab2b:[2,2002],tsh2:[2,2050],lab3:[3,3001],lab3b:[3,3002],tsh3:[3,3050]};const BLIND={lab1b:1,lab2b:1,lab3b:1};
+const Z3=id=>/^(lab3|lab3b|tsh3|pro2|pro3)$/.test(id);const PRO=id=>/^pro\d$/.test(id);
+const TKN={tsh1:[1,1050],lab1b:[1,1043],lab2:[2,2001],lab2b:[2,2002],tsh2:[2,2050],lab3:[3,3001],lab3b:[3,3002],tsh3:[3,3050],pro1:[2,9101],pro2:[3,9201],pro3:[3,9301]};const BLIND={lab1b:1,lab2b:1,lab3b:1,pro1:1,pro2:1,pro3:1};
 function topoDef(id,seed,forceV){const R=rng(seed),pick=a=>a[Math.floor(R()*a.length)],VS=['cisco','aruba','juniper'];
  const P=pick(VPAIRS),A={id:P[0],name:P[1]},B={id:P[2],name:P[3]},three=id!=='tsh1'&&id!=='lab1b';
  const sws=three?[{name:'CORE',x:300,y:70,lab:'top'},{name:'ACC1',x:160,y:192,lab:'left'},{name:'ACC2',x:440,y:192,lab:'right'}]:[{name:'SW1',x:170,y:78,lab:'top'},{name:'SW2',x:430,y:78,lab:'top'}];
@@ -518,6 +518,15 @@ function topoDef(id,seed,forceV){const R=rng(seed),pick=a=>a[Math.floor(R()*a.le
  if(id==='lab1b'){for(const s of sws)d.pre[s.name]={};return d}
  if(id==='lab3'||id==='lab3b'){for(const s of sws)d.pre[s.name]=s.name==='CORE'?{vl:true,svi:true}:{vl:true,acc:true};
   d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`});return d}
+ const coreGoals=()=>d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`});
+ if(id==='pro3'){for(const s of sws)d.pre[s.name]={};coreGoals();return d}
+ if(id==='pro1'||id==='pro2'){for(const s of sws)d.pre[s.name]={l2:true,svi:true};coreGoals();
+  const L3F=/^(pcip|pcmask|sviwrong|svishut)$/;
+  for(let tries=0;tries<80;tries++){const base=id==='pro2'?['nativemis','trunkleak']:[],pool=id==='pro2'?['trunkprune','uplinkaccess','vlanmiss','portdown','pcip','svishut','accwrong']:['vlanmiss','accwrong','trunkprune','portdown','pcip','pcmask','sviwrong','svishut','uplinkaccess'];
+   const ks=base.concat(pool.map(x=>[R(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1])),used=new Set(),ch=[];
+   for(const k of ks){if(ch.length>=4)break;const f=mkFault(k,d,R);if(!f||used.has(f.tgt))continue;if(id==='pro2'&&ch.length<2&&f.k!==k)continue;used.add(f.tgt);ch.push(f)}
+   if(ch.length===4&&(id==='pro2'||(ch.some(f=>L3F.test(f.k))&&ch.some(f=>!L3F.test(f.k))))&&(id!=='pro2'||(ch[0].k==='nativemis'&&ch[1].k==='trunkleak'))){d.faults=ch;break}}
+  return d}
  if(id==='tsh3'){for(const s of sws)d.pre[s.name]={l2:true,svi:true};
   d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`});
   for(let tries=0;tries<40;tries++){const used=new Set(),ch=[];for(const k of['nativemis','trunkleak',pick(['trunkprune','uplinkaccess','vlanmiss','portdown','pcip'])]){const f=mkFault(k,d,R);if(!f||used.has(f.tgt))break;used.add(f.tgt);ch.push(f)}if(ch.length===3){d.faults=ch;break}}
@@ -578,7 +587,7 @@ function buildT(def){const t={...def,sws:[],pcs:[],att:{},pinged:{}};
   else if(f.k==='sviwrong'){CF.svi(swByName('CORE'),f.v,f.bad,true)}
   else if(f.k==='svishut'){CF.svi(swByName('CORE'),f.v,tnet(f.v)+'2',false)}
   if(sw)CF.sync(sw)}
- if(def.id==='lab1b'){for(const sw of t.sws)tut(sw,'Switch en blanco. Solo tienes el objetivo y los pings.')}
+ if(def.id==='lab1b'||def.id==='pro3'){for(const sw of t.sws)tut(sw,'Switch en blanco. Solo tienes el objetivo y los pings.')}
  else if(def.id==='lab2'||def.id==='lab2b'){const core=swByName('CORE');tut(core,`Este switch ya tiene la capa 2 lista (VLAN ${def.A.id} y ${def.B.id}, trunks). Te falta su IP en cada VLAN.`);const ok=t.sws.find(s=>s.name!==def.blank&&s.name!=='CORE');if(ok)tut(ok,'Este switch ya está configurado. Úsalo de referencia con show running-config.');tut(swByName(def.blank),'Este switch está en blanco: aquí va tu configuración de capa 2.')}
  else if(def.id==='lab3'||def.id==='lab3b'){for(const sw of t.sws)tut(sw,sw.name==='CORE'?`Ya tiene las VLAN ${def.A.id}, ${def.B.id} y ${def.C.id} (${def.C.name}) y sus IP. Faltan los trunks.`:`Ya tiene las VLAN ${def.A.id} y ${def.B.id} y los puertos de las PCs. Falta el trunk hacia el CORE.`)}
  else for(const sw of t.sws)tut(sw,'Este switch ya estaba configurado… pero algo se movió. Investiga con comandos show.');
@@ -684,7 +693,9 @@ function drawTopo(){if(TP())return drawTopoT();$('#topo').setAttribute('viewBox'
   ${t(133,40,a.pcS,'end')}${t(237,40,a.upS,'start')}${t(323,178,b.upS,'end')}${t(427,178,b.pcS,'start')}
   ${pc(PCA,45)}${sw(S1,185,a)}${sw(S2,375,b)}${pc(PCB,515)}</g>`;
 }
-function drawScore(){const e=$('#lscore');if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: ver un comando en las pistas (−10) y cada ping fallido al objetivo (−5). Abrir la pista y leer la pregunta guía es gratis. Equivocarte de comando no resta: ${LS.err?`llevas ${LS.err} y está bien, así se aprende.`:'así se aprende.'}`}
+const mmss=ms=>{const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+setInterval(()=>{if(TP()&&T&&PRO(T.id)&&!done&&!SC.exam){const e=$('#lclock');if(e)e.textContent=mmss(Date.now()-LS.t0)}},1000);
+function drawScore(){const e=$('#lscore');if(e&&TP()&&T&&PRO(T.id)&&!SC.exam){e.innerHTML=`<span class="lclockw">${'⏱'} <b id="lclock" class="mono">${mmss(Date.now()-LS.t0)}</b></span> Puntaje: <strong>${labScore()}/100</strong> · necesitas 90. Cada ping fallido a la lista resta 5. Equivocarte de comando no resta.`;return}if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: ver un comando en las pistas (−10) y cada ping fallido al objetivo (−5). Abrir la pista y leer la pregunta guía es gratis. Equivocarte de comando no resta: ${LS.err?`llevas ${LS.err} y está bien, así se aprende.`:'así se aprende.'}`}
 const SOC={vlan:'¿Ya existe esa VLAN en este switch? Revísalo con show vlan (en Juniper: show vlans). La VLAN se crea en cada switch: no viaja sola.',pc:'¿En qué VLAN está el puerto que va hacia la PC? ¿Está en modo access y encendido? El diagrama te dice qué puerto es.',up:'¿El puerto entre switches es trunk? ¿Deja pasar todas las VLAN que necesitas? Si solo lleva una, la otra no cruza.',svi:'¿Este switch ya tiene una interfaz vlan con una IP de esa red? En Cisco nace apagada; en Juniper hay que ligarla a la VLAN.',pcip:'Compara la IP de la PC (ipconfig) con la red de su VLAN: ¿coincide el tercer número? ¿Y la máscara y el gateway?',nat:'La nativa es la VLAN que viaja SIN etiqueta por el trunk. Debe ser la misma en los dos extremos; si no, la VLAN que un lado manda sin etiqueta llega al otro como si fuera de otra VLAN.',fault:'Haz los pings de la lista: ¿cuál falla? Eso te dice qué VLAN y qué tramo revisar. Luego ve de abajo hacia arriba: puerto, VLAN, trunk, IP.'};
 function drawChecks(){
   const cs=checks();
@@ -730,7 +741,7 @@ function texts(cfg){const V=SC.vid,N=SC.name,lab=cfg&&cfg.label||'Ventas',l3=L3(
  if(!l3)return{p:`"Necesitamos que el área de ${lab} tenga su propia red: la VLAN ${V} (${N}), con una PC en cada piso." Configura SW1 y SW2 para que PC-A (${NET()}11) y PC-B (${NET()}12) se vean${SC.exam?'. Sin pistas ni guía: como en el trabajo.':' a través del enlace entre switches.'}`,goal:`PC-A (${NET()}11) hace ping a PC-B (${NET()}12) en la VLAN ${V} (${N}).`};
  return{p:`"Queremos administrar los switches de ${lab} desde la red, y la PC del segundo piso dice que no ve a nadie." La capa 2 ya está lista (VLAN ${V}, ${N}). Dale a SW1 la IP ${NET()}2/24 y a SW2 la ${NET()}3/24 en la SVI de la VLAN ${V}, y arregla la IP de PC-B.${SC.exam?' Sin pistas ni guía.':' El ticket se cierra cuando PC-B hace ping a SW1 y explicas lo que hiciste.'}`,goal:`PC-B (${NET()}12) hace ping a SW1 (${NET()}2) en la VLAN ${V} (${N}).`}}
 const subV=(h,lab)=>SC.vid===10?h:h.replace(/192\.168\.10\./g,NET()).replace(/(VLAN |vlan |vlan-id |access |allowed )10\b/g,'$1'+SC.vid).replace(/VENTAS/g,SC.name).replace(/Gerencia de Ventas|Ventas/g,lab||SC.name);
-function setKind(cfg,tkLabel){document.body.classList.toggle('labtopo',TP());if(!TP())document.body.classList.remove('labblind');if(TP()){const X=topoTexts();document.querySelector('.ticket p').innerHTML=X.p;document.querySelector('.goal').innerHTML=X.goal;document.querySelector('#v-lab1 header h1').textContent=X.h;document.querySelector('.ticket .tk').textContent=tkLabel||X.tk;$('#labcrumb').innerHTML=`<a href="#mapa">Mi red</a> / Zona ${T.zone} / TK-${T.tk}`;document.body.classList.toggle('labblind',!!T.blind&&!SC.exam);$('#labguide').innerHTML=X.guide;$('#labguide').open=!SC.exam;$('#labtbl').innerHTML=TBT;$('#lableg').innerHTML=LG0;return}const l3=L3(),TX=texts(cfg);document.querySelector('.ticket p').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?TK0:TX.p;document.querySelector('.goal').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?GOAL0:TX.goal;
+function setKind(cfg,tkLabel){document.body.classList.toggle('labtopo',TP());if(!TP())document.body.classList.remove('labblind');if(TP()){const X=topoTexts();document.querySelector('.ticket p').innerHTML=X.p;document.querySelector('.goal').innerHTML=X.goal;document.querySelector('#v-lab1 header h1').textContent=X.h;document.querySelector('.ticket .tk').textContent=tkLabel||X.tk;$('#labcrumb').innerHTML=PRO(T.id)?`<a href="#arena">Arena</a> / labs pro / PRO-${T.id.slice(3)}`:`<a href="#mapa">Mi red</a> / Zona ${T.zone} / TK-${T.tk}`;document.body.classList.toggle('labblind',!!T.blind&&!SC.exam);$('#labguide').innerHTML=X.guide;$('#labguide').open=!SC.exam;$('#labtbl').innerHTML=TBT;$('#lableg').innerHTML=LG0;return}const l3=L3(),TX=texts(cfg);document.querySelector('.ticket p').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?TK0:TX.p;document.querySelector('.goal').innerHTML=(!l3&&!SC.exam&&SC.vid===10)?GOAL0:TX.goal;
  document.querySelector('#v-lab1 header h1').textContent=SC.exam?'Certificación: parte práctica':l3?'IP de administración en los switches':H0;
  document.querySelector('.ticket .tk').textContent=tkLabel||(l3?'Ticket #2001 · prioridad media · de: '+(cfg&&cfg.label||'Ventas'):subV(TKH0,cfg&&cfg.label));
  $('#labcrumb').innerHTML=l3?'<a href="#mapa">Mi red</a> / Zona 2 / TK-2001':CR0;$('#labguide').innerHTML=l3?GU3():subV(GU0,cfg&&cfg.label);$('#labtbl').innerHTML=l3?TB3:subV(TB0,cfg&&cfg.label);
@@ -761,6 +772,16 @@ const TBT=`<thead><tr><th>Concepto</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><t
  <tr><td>Encender un puerto</td><td><code>no shutdown</code></td><td><code>no shutdown</code></td><td><code>delete interfaces ge-0/0/1 disable</code></td></tr></tbody>`;
 function topoTexts(){const A=T.A,B=T.B,vs=T.sws.map(s=>`${s.name}: ${VEND[s.vendor].label}`).join(' · '),g=T.goals.map(x=>`<li><code>${x.from}</code> → <code>${x.to}</code></li>`).join('');
  const BLG=n=>`<summary>Modo a ciegas: qué cuenta</summary><p>Aquí no hay pasos, ni checklist, ni pistas: solo el objetivo y los pings. Es la prueba real de que sabes configurar sin copiar. Si te atoras, regresa a ${n} y vuelve.</p><p>Los comandos con error no restan.</p>`;
+ const PROG=`<summary>Lab pro: qué cuenta</summary><p>Sin pasos, sin checklist y sin pistas: solo el ticket, los pings y el reloj. El tiempo no te quita puntos, pero queda como tu récord. Cada ping fallido a la lista resta 5.</p><p>Al terminar verás qué estaba mal y la solución de cada switch.</p>`;
+ if(T.id==='pro1')return{h:'Incidente P1: la red completa',tk:`Incidente #${T.tk} · prioridad CRÍTICA · de: Dirección`,
+  p:`"Lunes 8:05. Nadie de ${A.name} ni de ${B.name} trabaja: no se ven entre pisos y no llegan al core." El fin de semana tocaron la red y nadie documentó nada. Hay <strong>4 fallas</strong> repartidas entre capa 1, capa 2 y capa 3 (puertos, VLAN, trunks, IP de las PCs y del CORE). Encuéntralas solo con <code>show</code>, <code>ipconfig</code> y <code>ping</code>.`,
+  goal:`Las 4 fallas corregidas y los pings de la lista funcionan. Vendors: ${vs}.`,guide:PROG};
+ if(T.id==='pro2')return{h:'Incidente P1: auditoría de trunks',tk:`Incidente #${T.tk} · prioridad CRÍTICA · de: Seguridad informática`,
+  p:`"Auditoría externa mañana a las 9:00." La regla de la casa: trunks con <strong>solo</strong> las VLAN ${A.id} y ${B.id}, nativa <strong>999</strong> en los dos extremos, y la VLAN ${T.C.id} (${T.C.name}) <strong>nunca</strong> sale del CORE. Hoy hay <strong>4 fallas</strong>: unas rompen pings y otras solo se ven leyendo la configuración. Encuéntralas todas.`,
+  goal:`Las 4 fallas corregidas y los pings de la lista funcionan. Vendors: ${vs}.`,guide:PROG};
+ if(T.id==='pro3')return{h:'Piso nuevo desde cero',tk:`Proyecto #${T.tk} · entrega hoy · de: Gerencia de TI`,
+  p:`"Llegaron tres switches nuevos para el piso de ${A.name} (VLAN ${A.id}) y ${B.name} (VLAN ${B.id})." Los tres vienen <strong>en blanco</strong>. Déjalos listos con las reglas de la casa: las VLAN con su nombre, cada PC en su VLAN, trunks con <strong>solo</strong> ${A.id} y ${B.id}, nativa <strong>999 (NATIVA)</strong> en los dos extremos, la VLAN ${T.C.id} (${T.C.name}) creada en el CORE pero sin salir de él, y el CORE con IP en cada VLAN (${tnet(A)}2 y ${tnet(B)}2).`,
+  goal:`Todo configurado según las reglas y los pings de la lista funcionan. Vendors: ${vs}.`,guide:PROG};
  if(T.id==='lab1b')return{h:'A ciegas: dos VLAN, dos switches',tk:`Ticket #${T.tk} · prioridad media · de: Gerencia`,
   p:`"Llegaron ${A.name} (VLAN ${A.id}) y ${B.name} (VLAN ${B.id}): una PC de cada área en cada piso." Los dos switches están <strong>en blanco</strong>. Crea las dos VLAN con su nombre, pon cada PC en su VLAN y deja el enlace entre switches como trunk con las dos. Sin guía ni pistas: como en el trabajo.`,
   goal:`Los pings de la lista funcionan. Vendors: ${vs}.`,guide:BLG('TK-1042 y TK-1050')};
@@ -835,7 +856,7 @@ $('#sol').addEventListener('click',async e=>{const b=e.target.closest('[data-cop
 
 /* ---------- 3D ---------- */
 let G=null;
-function win(){if(done)return;done=true;clearLab();drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
+function win(){if(done)return;done=true;clearLab();drawSol();if(SC.exam){dispatchEvent(new CustomEvent('lab-done',{detail:{kind:SC.kind,exam:true,score:labScore(),err:LS.err,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor}}));render();return}dispatchEvent(new CustomEvent('lab-done',{detail:{pro:TP()&&PRO(T.id),topo:TP()?T.id:null,kind:SC.kind,mixed:TP()?new Set(T.sws.map(x=>x.vendor)).size>1:S1.vendor!==S2.vendor,score:labScore(),err:LS.err,hints:LS.hints.size,fails:LS.fails,ms:Date.now()-LS.t0,paste:LS.paste}}));render();$('#done').classList.add('show');build3D();setTimeout(()=>$('#done').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}),300)}
 function textTex(lines,w,h,bg,fg,size){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`500 ${size}px IBM Plex Mono, monospace`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,10,8+i*(size+6)));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
 
 function build3DT(){
