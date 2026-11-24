@@ -983,3 +983,9 @@ details.vocab[open]>summary::after{content:'−'}
 #tabbar:empty{display:none!important}
 body.noauth .links,body.noauth #hud .chips .hudp:not([href="#entrar"]){display:none!important}
 @media(max-width:720px){body.noauth nav.top{flex-wrap:nowrap;align-items:center}body.noauth #hud{width:auto;flex:1;justify-content:flex-end}}
+/* Panel de instructor en celular: nada se sale de la pantalla */
+#v-instructor{overflow-wrap:anywhere;max-width:100vw;overflow-x:clip}
+#v-instructor code,#v-instructor pre{white-space:pre-wrap;word-break:break-all}
+#v-instructor table{display:block;max-width:100%;overflow-x:auto}
+#v-instructor img,#v-instructor svg{max-width:100%}
+@media(max-width:560px){.acca{grid-template-columns:1fr 1fr 1fr}.acca .btn{font-size:12px;padding:0 4px}.acca .btn .ic{display:none}}
