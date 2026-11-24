@@ -203,10 +203,11 @@ function cdpMis(sw){if(!TP())return[];const o=[];for(const[n,a]of Object.entries
 function cShowTrunk(sw){const t=ports('cisco').filter(n=>sw.ifs[n].mode==='trunk'&&linkUp(sw,n));if(!t.length)return cdpMis(sw);
   const al=i=>i.allowed==='all'?'1-4094':(rangeStr(i.allowed)||'none');const act=i=>rangeStr(Object.keys(sw.vlans).map(Number).filter(x=>x<1002&&allows(i,x)))||'none';
   return[...cdpMis(sw),'','Port        Mode             Encapsulation  Status        Native vlan',...t.map(n=>shortIf(n).padEnd(12)+'on'.padEnd(17)+'802.1q'.padEnd(15)+'trunking'.padEnd(14)+sw.ifs[n].native),'','Port        Vlans allowed on trunk',...t.map(n=>shortIf(n).padEnd(12)+al(sw.ifs[n])),'','Port        Vlans allowed and active in management domain',...t.map(n=>shortIf(n).padEnd(12)+act(sw.ifs[n]))]}
-function cShowStatus(sw){return['','Port      Name               Status       Vlan       Duplex  Speed Type',...ports('cisco').map(n=>{const i=sw.ifs[n],c=linkUp(sw,n);return shortIf(n).padEnd(10)+i.desc.slice(0,18).padEnd(19)+(!i.up?'disabled':c?'connected':'notconnect').padEnd(13)+(i.mode==='trunk'?'trunk':''+i.access).padEnd(11)+(c?'a-full':'auto').padEnd(8)+(c?'a-1000':'auto').padEnd(6)+'10/100/1000BaseTX'})]}
+function cShowStatus(sw){return['','Port      Name               Status       Vlan       Duplex  Speed Type',...ports('cisco').map(n=>{const i=sw.ifs[n],c=linkUp(sw,n);return shortIf(n).padEnd(10)+i.desc.slice(0,18).padEnd(19)+(!i.up?'disabled':(typeof stpErr==='function'&&TP()&&stpErr(sw,n))?'err-disabled':c?'connected':'notconnect').padEnd(13)+(i.mode==='trunk'?'trunk':''+i.access).padEnd(11)+(c?'a-full':'auto').padEnd(8)+(c?'a-1000':'auto').padEnd(6)+'10/100/1000BaseTX'})]}
 function cRun(sw){const r=['Building configuration...','','Current configuration : 1873 bytes','!','version 15.2','!','hostname '+sw.host,'!'];
   for(const id of Object.keys(sw.vlans).map(Number).sort((a,b)=>a-b))if(id!==1){r.push('vlan '+id);if(sw.vlans[id]!=='VLAN'+String(id).padStart(4,'0'))r.push(' name '+sw.vlans[id]);r.push('!')}
-  for(const n of ports('cisco')){const i=sw.ifs[n];r.push('interface '+n);if(i.desc)r.push(' description '+i.desc);if(i.native!==1)r.push(' switchport trunk native vlan '+i.native);if(i.allowed!=='all')r.push(' switchport trunk allowed vlan '+(rangeStr(i.allowed)||'none'));if(i.access!==1)r.push(' switchport access vlan '+i.access);if(i.mode!=='dynamic')r.push(' switchport mode '+i.mode);if(!i.up)r.push(' shutdown');r.push('!')}
+  if(typeof stpOn==='function'&&stpOn())r.push(...cStpRun(sw));
+  for(const n of ports('cisco')){const i=sw.ifs[n];r.push('interface '+n);if(i.desc)r.push(' description '+i.desc);if(typeof stpOn==='function'&&stpOn())r.push(...cStpIf(sw,n));if(i.native!==1)r.push(' switchport trunk native vlan '+i.native);if(i.allowed!=='all')r.push(' switchport trunk allowed vlan '+(rangeStr(i.allowed)||'none'));if(i.access!==1)r.push(' switchport access vlan '+i.access);if(i.mode!=='dynamic')r.push(' switchport mode '+i.mode);if(!i.up)r.push(' shutdown');r.push('!')}
   for(const i of Object.values(sw.ifs).filter(i=>i.svi)){r.push('interface Vlan'+i.vid);if(i.ip)r.push(' ip address '+i.ip+' '+len2mask(i.len));else r.push(' no ip address');if(!i.up)r.push(' shutdown');r.push('!')}
   return r.concat(['line con 0','!','end'])}
 /* ---------- show outputs: Aruba ---------- */
@@ -219,7 +220,8 @@ function aShowBrief(sw){const d='-'.repeat(92);return['',d,'Port      Native  Mo
   ...ports('aruba').map(n=>{const i=sw.ifs[n],c=linkUp(sw,n);return n.padEnd(10)+String(i.mode==='trunk'?i.native:i.access).padEnd(8)+i.mode.padEnd(8)+'1GbT'.padEnd(10)+(i.up?'yes':'no').padEnd(8)+(c?'up':'down').padEnd(8)+(!i.up?'Administratively down':c?'':'Waiting for link').padEnd(24)+(c?'1000':'--')})]}
 function aRun(sw){const r=['Current configuration:','!','!Version ArubaOS-CX (simulado)','hostname '+sw.host,'!'];
   for(const id of Object.keys(sw.vlans).map(Number).sort((a,b)=>a-b)){r.push('vlan '+id);if(id!==1&&sw.vlans[id]!=='VLAN'+id)r.push('    name '+sw.vlans[id])}
-  for(const n of ports('aruba')){const i=sw.ifs[n];r.push('interface '+n);if(i.desc)r.push('    description '+i.desc);r.push(i.up?'    no shutdown':'    shutdown');
+  if(typeof stpOn==='function'&&stpOn())r.push(...aStpRun(sw));
+  for(const n of ports('aruba')){const i=sw.ifs[n];r.push('interface '+n);if(i.desc)r.push('    description '+i.desc);r.push(i.up?'    no shutdown':'    shutdown');if(typeof stpOn==='function'&&stpOn())r.push(...aStpIf(sw,n));
     if(i.mode==='access')r.push('    vlan access '+i.access);else{r.push('    vlan trunk native '+i.native);r.push('    vlan trunk allowed '+(i.allowed==='all'?'all':rangeStr(i.allowed)))}}
   for(const i of Object.values(sw.ifs).filter(i=>i.svi)){r.push('interface vlan '+i.vid);if(i.ip)r.push('    ip address '+i.ip+'/'+i.len);if(!i.up)r.push('    shutdown')}
   return r}
@@ -228,7 +230,7 @@ function aRun(sw){const r=['Current configuration:','!','!Version ArubaOS-CX (si
 const jPrompt=sw=>'admin@'+sw.host+(sw.mode==='op'?'> ':'# ');
 function kw(t,opts){if(t===undefined)return undefined;t=t.toLowerCase();if(opts.includes(t))return t;const m=opts.filter(o=>o.startsWith(t));return m.length===1?m[0]:null}
 function jPath(toks){
-  const a=kw(toks[0],['vlans','interfaces']);if(a===undefined)return{inc:1};if(!a)return{err:0};
+  const a=kw(toks[0],['vlans','interfaces','protocols']);if(a===undefined)return{inc:1};if(!a)return{err:0};if(a==='protocols')return jRstpPath(toks);
   if(a==='vlans'){const name=toks[1];if(!name)return{inc:1};if(toks.length===2)return{vlan:name};
     const b=kw(toks[2],['vlan-id','description','l3-interface']);if(!b)return{err:2};
     if(b==='description')return{vlan:name,desc:toks.slice(3).join(' ')};
@@ -261,12 +263,13 @@ function jErr(sw,line,toks,r){const out=[];let pos=jPrompt(sw).length+line.index
 function jSetLines(cfg){const o=[];for(const[n,v]of Object.entries(cfg.vlans)){if(v.id)o.push(`set vlans ${n} vlan-id ${v.id}`);else o.push(`set vlans ${n}`);if(v.l3)o.push(`set vlans ${n} l3-interface ${v.l3}`)}
   for(const[u,c]of Object.entries(cfg.irb||{}))o.push(`set interfaces irb unit ${u}`+(c.addr?` family inet address ${c.addr}`:''));
   for(const n of ports('juniper')){const c=cfg.ifs[n];if(!c)continue;const b=`set interfaces ${n} unit 0 family ethernet-switching`;if(c.disable)o.push(`set interfaces ${n} disable`);if(c.desc)o.push(`set interfaces ${n} description "${c.desc}"`);if(c.native)o.push(`set interfaces ${n} native-vlan-id ${c.native}`);
-    if(c.es&&!c.mode&&!(c.members||[]).length)o.push(b);if(c.mode)o.push(b+' interface-mode '+c.mode);(c.members||[]).forEach(m=>o.push(b+' vlan members '+m))}return o}
+    if(c.es&&!c.mode&&!(c.members||[]).length)o.push(b);if(c.mode)o.push(b+' interface-mode '+c.mode);(c.members||[]).forEach(m=>o.push(b+' vlan members '+m))}return o.concat(typeof jRstpLines==='function'?jRstpLines(cfg):[])}
 function jTree(cfg,part){const o=[],I=n=>' '.repeat(n*4);
   if(part!=='vlans'){const ifl=ports('juniper').filter(n=>cfg.ifs[n]);if(ifl.length||Object.keys(cfg.irb||{}).length){o.push('interfaces {');for(const n of ifl){const c=cfg.ifs[n];o.push(I(1)+n+' {');if(c.desc)o.push(I(2)+`description "${c.desc}";`);if(c.disable)o.push(I(2)+'disable;');if(c.native)o.push(I(2)+'native-vlan-id '+c.native+';');
     if(c.es){o.push(I(2)+'unit 0 {',I(3)+'family ethernet-switching {');if(c.mode)o.push(I(4)+'interface-mode '+c.mode+';');const m=c.members||[];if(m.length){o.push(I(4)+'vlan {',I(5)+'members '+(m.length>1?'[ '+m.join(' ')+' ]':m[0])+';',I(4)+'}')}o.push(I(3)+'}',I(2)+'}')}o.push(I(1)+'}')}
     const ir=Object.entries(cfg.irb||{});if(ir.length){o.push(I(1)+'irb {');for(const[u,c]of ir){o.push(I(2)+'unit '+u+' {');if(c.addr)o.push(I(3)+'family inet {',I(4)+'address '+c.addr+';',I(3)+'}');o.push(I(2)+'}')}o.push(I(1)+'}')}o.push('}')}}
   if(part!=='interfaces'){o.push('vlans {');for(const[n,v]of Object.entries(cfg.vlans)){o.push(I(1)+n+' {');if(v.id)o.push(I(2)+'vlan-id '+v.id+';');if(v.l3)o.push(I(2)+'l3-interface '+v.l3+';');o.push(I(1)+'}')}o.push('}')}
+  if(!part&&typeof jRstpTree==='function')o.push(...jRstpTree(cfg));
   return o}
 function jCheck(cfg){const e=[];for(const n of ports('juniper')){const c=cfg.ifs[n];if(!c||!c.es)continue;const m=c.members||[];
     for(const x of m)if(x!=='all'&&!/^\d+$/.test(x)&&!cfg.vlans[x])e.push(`[edit interfaces ${n} unit 0 family ethernet-switching vlan members]`,`  'members ${x}'`,`    VLAN ${x} is not defined`);
@@ -297,7 +300,7 @@ function jOp(sw,line,echo){const toks=line.split(/\s+/);let best=null;
 function jExec(sw,line){
   if(sw.mode==='op')return jOp(sw,line);
   let toks=line.split(/\s+/);const v=kw(toks[0],['set','delete','commit','show','run','exit','quit','rollback','top','edit','up']);const E=sw.jedit||[];const ed=['','[edit'+(E.length?' '+E.join(' '):'')+']'];
-  if(v==='edit'){const r=jPath(E.concat(toks.slice(1)));if(r.inc&&!toks[1])return ed;if(r.err!==undefined)return jErr(sw,line,toks,{err:r.err-E.length,msg:r.msg,tut:r.tut}).concat(ed);sw.jedit=E.concat(toks.slice(1).map((t,i)=>i===0&&!E.length?(kw(t,['vlans','interfaces'])||t):t));return['','[edit '+sw.jedit.join(' ')+']']}
+  if(v==='edit'){const r=jPath(E.concat(toks.slice(1)));if(r.inc&&!toks[1])return ed;if(r.err!==undefined)return jErr(sw,line,toks,{err:r.err-E.length,msg:r.msg,tut:r.tut}).concat(ed);sw.jedit=E.concat(toks.slice(1).map((t,i)=>i===0&&!E.length?(kw(t,['vlans','interfaces','protocols'])||t):t));return['','[edit '+sw.jedit.join(' ')+']']}
   if(v==='top'){sw.jedit=[];return['','[edit]']}
   if(v==='up'){sw.jedit=E.length>2?E.slice(0,-2):E.length?E.slice(0,-1).length===1?[]:E.slice(0,-1):[];return['','[edit'+(sw.jedit.length?' '+sw.jedit.join(' '):'')+']']}
   if((v==='exit'||v==='quit')&&E.length&&!/configuration-mode/.test(line)){sw.jedit=[];return['','[edit]']}
@@ -322,6 +325,7 @@ function jExec(sw,line){
   if(r.inc)return[{t:'missing argument.',c:'err'}].concat(ed);
   if(r.err!==undefined)return jErr(sw,line,toks,r).concat(ed);
   const C=sw.cand;
+  if(r.rstp){const x=jRstpApply(C,r,v==='set');return(x||[]).concat(ed)}
   if(v==='set'){
     if(r.irb!==undefined){if(r.irb===null)return ed;C.irb=C.irb||{};C.irb[r.irb]=C.irb[r.irb]||{};if(r.addr)C.irb[r.irb].addr=r.addr}
     else if(r.vlan){C.vlans[r.vlan]=C.vlans[r.vlan]||{};if(r.vid)C.vlans[r.vlan].id=r.vid;if(r.l3)C.vlans[r.vlan].l3=r.l3}
@@ -498,8 +502,8 @@ const swByName=n=>T.sws.find(s=>s.name===n),pcByName=n=>T.pcs.find(p=>p.name===n
 const tnet=v=>'192.168.'+v.id+'.';
 /* Definición: posiciones, enlaces, intención (cómo debe quedar), qué viene hecho y qué se rompe */
 const Z3=id=>/^(lab3|lab3b|tsh3|pro2|pro3|lab3c|tsh3b)$/.test(id);const L2T=id=>/^(lab1c|tsh1b)$/.test(id);const PRO=id=>/^pro\d$/.test(id),CLK=id=>PRO(id)||id==='plab';
-const TKN={tsh1:[1,1050],lab1b:[1,1043],lab2:[2,2001],lab2b:[2,2002],tsh2:[2,2050],lab3:[3,3001],lab3b:[3,3002],tsh3:[3,3050],plab:[0,1000],lab1c:[1,1060],tsh1b:[1,1070],lab3c:[3,3060],tsh3b:[3,3070],pro1:[2,9101],pro2:[3,9201],pro3:[3,9301]};const BLIND={plab:1,lab1b:1,lab2b:1,lab3b:1,pro1:1,pro2:1,pro3:1};
-const SIMB={sim1:'lab1b',sim2:'lab2',sim3:'lab3'};
+const TKN={tsh1:[1,1050],lab1b:[1,1043],lab2:[2,2001],lab2b:[2,2002],tsh2:[2,2050],lab3:[3,3001],lab3b:[3,3002],tsh3:[3,3050],plab:[0,1000],lab4:[4,4001],lab4b:[4,4002],tsh4:[4,4050],tsh4b:[4,4060],lab4c:[4,4003],lab1c:[1,1060],tsh1b:[1,1070],lab3c:[3,3060],tsh3b:[3,3070],pro1:[2,9101],pro2:[3,9201],pro3:[3,9301]};const BLIND={lab4c:1,plab:1,lab1b:1,lab2b:1,lab3b:1,pro1:1,pro2:1,pro3:1};
+const SIMB={sim1:'lab1b',sim2:'lab2',sim3:'lab3',sim4:'lab4c'};
 function topoDef(id,seed,forceV){if(SIMB[id]){const d=topoDef(SIMB[id],seed,forceV);d.sim=id;d.blind=false;return d}const R=rng(seed),pick=a=>a[Math.floor(R()*a.length)],VS=['cisco','aruba','juniper'];
  const P=pick(VPAIRS),A={id:P[0],name:P[1]},B={id:P[2],name:P[3]},three=!/^(tsh1|lab1b|plab)$/.test(id);
  const sws=three?[{name:'CORE',x:300,y:70,lab:'top'},{name:'ACC1',x:160,y:192,lab:'left'},{name:'ACC2',x:440,y:192,lab:'right'}]:[{name:'SW1',x:170,y:78,lab:'top'},{name:'SW2',x:430,y:78,lab:'top'}];
@@ -507,6 +511,7 @@ function topoDef(id,seed,forceV){if(SIMB[id]){const d=topoDef(SIMB[id],seed,forc
  const acc=three?['ACC1','ACC2']:['SW1','SW2'],pcs=[];
  acc.forEach((s,i)=>{const sx=sws.find(x=>x.name===s);[[A,'p1'],[B,'p2']].forEach(([v,slot],j)=>pcs.push({name:'PC-'+v.name.slice(0,3)+(i+1),sw:s,slot,vlan:v,ip:tnet(v)+(11+i),x:sx.x+(j?58:-58),y:sx.y+(three?118:138)}))});
  const links=three?[{a:'CORE',as:'u1',b:'ACC1',bs:'u1'},{a:'CORE',as:'u2',b:'ACC2',bs:'u1'}]:[{a:'SW1',as:'u1',b:'SW2',bs:'u1'}];
+ if(/^(lab4|lab4b|lab4c|tsh4|tsh4b)$/.test(id))links.push({a:'ACC1',as:'u2',b:'ACC2',bs:'u2'});
  const intent={};for(const s of sws)intent[s.name]={vlans:[A,B],access:{},trunk:{},svi:{}};
  for(const p of pcs)intent[p.sw].access[p.slot]=p.vlan;
  for(const l of links){intent[l.a].trunk[l.as]=[A,B];intent[l.b].trunk[l.bs]=[A,B]}
@@ -521,6 +526,14 @@ function topoDef(id,seed,forceV){if(SIMB[id]){const d=topoDef(SIMB[id],seed,forc
   d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`});return d}
  const coreGoals=()=>d.goals.push({from:pa[1].name,to:tnet(A)+'2',label:`${pa[1].name} → CORE (${tnet(A)}2)`},{from:pb[0].name,to:tnet(B)+'2',label:`${pb[0].name} → CORE (${tnet(B)}2)`});
  if(id==='pro3'){for(const s of sws)d.pre[s.name]={};coreGoals();return d}
+ if(/^(lab4|lab4b|lab4c|tsh4|tsh4b)$/.test(id)){const low=pick(['ACC1','ACC2']);d.bmac={CORE:0x33,ACC1:low==='ACC1'?0x11:0x22,ACC2:low==='ACC2'?0x11:0x22};coreGoals();
+  for(const s of sws)d.pre[s.name]={l2:true,svi:true,stp:/^(lab4b|tsh4|tsh4b)$/.test(id)?'good':'def'};
+  d.stpGoal=id==='lab4'?{root:1,backup:1}:id==='lab4b'?{edge:1,rg:1}:id==='lab4c'?{root:1,backup:1,edge:1,rg:1}:null;
+  if(id==='tsh4'||id==='tsh4b'){const coreC=sws.find(x=>x.name==='CORE').vendor==='cisco';
+   for(let tries=0;tries<80;tries++){const base=id==='tsh4b'?['bgup','rootacc']:[],pool=(id==='tsh4b'?['trunkprune','portdown']:['rootacc','backupbad','trunkprune','portdown'].concat(coreC?['vprio']:[])).map(x=>[R(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),used=new Set(),ch=[];
+    for(const k of base.concat(pool)){if(ch.length>=3)break;const f=mkFault(k,d,R);if(!f||used.has(f.tgt))continue;used.add(f.tgt);ch.push(f)}
+    if(ch.length===3&&ch.filter(f=>/^(rootacc|backupbad|vprio|bgup)$/.test(f.k)).length>=2){d.faults=ch;break}}}
+  return d}
  if(id==='lab1c'){for(const s of sws)d.pre[s.name]={};return d}
  if(id==='tsh1b'){for(const s of sws)d.pre[s.name]={l2:true};
   for(let tries=0;tries<60;tries++){const ks=['vlanmiss','accwrong','trunkprune','portdown','uplinkaccess'].map(x=>[R(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),used=new Set(),ch=[];
@@ -568,6 +581,10 @@ function mkFault(k,d,R){const pick=a=>a[Math.floor(R()*a.length)],acc=d.three?['
  if(k==='trunkleak'){const l=pick(d.links),slot=l.as;return{k,tgt:'CORE:'+slot,sw:'CORE',slot,v:d.C,hint:`Revisa qué VLAN deja pasar cada trunk del CORE. ¿Alguno lleva la VLAN ${d.C.id} (${d.C.name}) hacia acceso?`,fixed:`CORE: el trunk hacia ${l.b} dejaba pasar la VLAN ${d.C.id} (${d.C.name})`}}
  if(k==='uplinkaccess'){const l=pick(d.links),side=pick(['a','b']),s=l[side],slot=l[side+'s'],v=pick([d.A,d.B]);return{k,tgt:s+':'+slot,sw:s,slot,v,hint:`Revisa el modo del puerto de ${s} que va hacia el otro switch (show interfaces status / show interface brief / show ethernet-switching interfaces).`,fixed:`${s}: el puerto entre switches estaba en modo access, no trunk`}}
  if(k==='svishut'){const v=pick([d.A,d.B]);return{k,tgt:'CORE:svi'+v.id,v,hint:'Revisa que las interfaces vlan del CORE estén arriba (show ip interface brief / show interfaces terse).',fixed:`CORE: la SVI de la VLAN ${v.id} estaba ${''}apagada o sin ligar`}}
+ if(k==='rootacc'){const s=pick(['ACC1','ACC2']);return{k,tgt:'stp:'+s,sw:s,hint:'Revisa quién es el root bridge (show spanning-tree / show spanning-tree bridge) y la prioridad de cada switch.',fixed:`${s}: tenía prioridad 0 y se robó el root`}}
+ if(k==='backupbad')return{k,tgt:'stp:ACC1',sw:'ACC1',hint:'El root de respaldo debe ser ACC1. Compara la prioridad de ACC1 y ACC2.',fixed:'ACC1: tenía la prioridad más alta (61440) y ya no era el respaldo'};
+ if(k==='vprio')return{k,tgt:'stp:CORE:vB',sw:'CORE',v:d.B,hint:`Cisco usa un árbol por VLAN. Revisa quién es el root de la VLAN ${d.B.id} (show spanning-tree vlan ${d.B.id}).`,fixed:`CORE: no tenía prioridad en la VLAN ${d.B.id} y no era su root`};
+ if(k==='bgup'){const s=pick(['ACC1','ACC2']);return{k,tgt:s+':u1',sw:s,slot:'u1',hint:`Revisa el estado del uplink de ${s} hacia el CORE (show interfaces status / show interface brief / show interfaces terse) y su configuración de Spanning Tree.`,fixed:`${s}: el uplink tenía BPDU guard de puerto de usuario y quedó apagado`}}
  return null}
 /* API de configuración por vendor (para dejar cosas hechas y para romperlas) */
 const CF={
@@ -584,7 +601,9 @@ function buildT(def){const t={...def,sws:[],pcs:[],att:{},pinged:{}};
  T=t;
  for(const l of def.links){const a=swByName(l.a),b=swByName(l.b);t.att[l.a][PN(a,l.as)]={sw:l.b,port:PN(b,l.bs)};t.att[l.b][PN(b,l.bs)]={sw:l.a,port:PN(a,l.as)}}
  for(const p of def.pcs){const sw=swByName(p.sw),pc=mkPC(p.name,p.ip,'');pc.len=24;pc.gw=tnet(p.vlan)+'1';pc.vlan=p.vlan;pc.want=p.ip;pc.sw=p.sw;pc.slot=p.slot;pc.tx=p.x;pc.ty=p.y;t.pcs.push(pc);t.att[p.sw][PN(sw,p.slot)]={pc:p.name}}
+ if(def.bmac)for(const sw of t.sws)sw.bmac=def.bmac[sw.name];
  for(const sw of t.sws){const I=def.intent[sw.name],pre=def.pre[sw.name]||{};
+  if(pre.stp){if(sw.vendor==='aruba')(sw.stp=sw.stp||{}).on=true;if(pre.stp==='good'){const vs=[def.A.id,def.B.id];if(sw.name==='CORE')stpSetPrio(sw,vs,4096);if(sw.name==='ACC1')stpSetPrio(sw,vs,8192)}}
   if(pre.l2){I.vlans.forEach(v=>CF.vlan(sw,v,true));for(const[s,v]of Object.entries(I.access))CF.access(sw,s,v);for(const[s,vs]of Object.entries(I.trunk))CF.trunk(sw,s,vs,I.native)}
   else{if(pre.vl)I.vlans.filter(v=>!v.user).forEach(v=>CF.vlan(sw,v,true));if(pre.acc)for(const[s,v]of Object.entries(I.access))CF.access(sw,s,v)}
   if(pre.svi)for(const[vid,ip]of Object.entries(I.svi))CF.svi(sw,vid==def.A.id?def.A:def.B,ip,true);CF.sync(sw)}
@@ -601,6 +620,10 @@ function buildT(def){const t={...def,sws:[],pcs:[],att:{},pinged:{}};
   else if(f.k==='pcmask'){pc.len=f.len}
   else if(f.k==='sviwrong'){CF.svi(swByName('CORE'),f.v,f.bad,true)}
   else if(f.k==='svishut'){CF.svi(swByName('CORE'),f.v,tnet(f.v)+'2',false)}
+  else if(f.k==='rootacc'){stpSetPrio(sw,[def.A.id,def.B.id],0)}
+  else if(f.k==='backupbad'){stpSetPrio(sw,[def.A.id,def.B.id],61440)}
+  else if(f.k==='vprio'){stpSetPrio(sw,[f.v.id],null)}
+  else if(f.k==='bgup'){const n=PN(sw,f.slot);stpSetPort(sw,n,'edge',true);stpSetPort(sw,n,'bg',true)}
   if(sw)CF.sync(sw)}
  if(def.id==='plab'){for(const sw of t.sws)tut(sw,'Switch en blanco. Es tu lab de ubicación: sin pistas, solo el objetivo y los pings.')}
  else if(def.id==='lab3c'){for(const sw of t.sws)tut(sw,'Red en producción: funciona, pero no cumple las reglas de Seguridad. Cambia sin tumbar a nadie.')}
@@ -609,12 +632,12 @@ function buildT(def){const t={...def,sws:[],pcs:[],att:{},pinged:{}};
  else if(def.id==='lab3'||def.id==='lab3b'){for(const sw of t.sws)tut(sw,sw.name==='CORE'?`Ya tiene las VLAN ${def.A.id}, ${def.B.id} y ${def.C.id} (${def.C.name}) y sus IP. Faltan los trunks.`:`Ya tiene las VLAN ${def.A.id} y ${def.B.id} y los puertos de las PCs. Falta el trunk hacia el CORE.`)}
  else for(const sw of t.sws)tut(sw,'Este switch ya estaba configurado… pero algo se movió. Investiga con comandos show.');
  return t}
-function tLinkUp(sw,n){const e=eff(sw).ifs[n];if(!e||!e.up)return false;const a=T.att[sw.name][n];if(!a)return false;if(a.pc)return true;const o=swByName(a.sw);return !!(eff(o).ifs[a.port]&&eff(o).ifs[a.port].up)}
+function tLinkUp(sw,n){const e=eff(sw).ifs[n];if(!e||!e.up)return false;if(typeof stpErr==='function'&&stpErr(sw,n))return false;const a=T.att[sw.name][n];if(!a)return false;if(a.pc)return true;const o=swByName(a.sw);return !!(eff(o).ifs[a.port]&&eff(o).ifs[a.port].up)}
 /* Cómo sale la VLAN V por el puerto n: 'T' con tag 802.1Q, 'U' sin tag (access o nativa del trunk), null si no sale.
    Un enlace lleva la VLAN solo si los dos lados la mandan igual: si un lado la manda sin tag (nativa) y el otro con tag, se rompe. */
 const carry=(sw,n,V)=>{const e=eff(sw),i=e.ifs[n];if(!i||!e.vlans[V])return null;if(i.mode==='trunk'){const nat=i.native||1;if(nat===V)return(allows(i,V)||sw.vendor!=='cisco')?'U':null;return allows(i,V)?'T':null}return(i.access===V)?'U':null};
 function comps(V){const par={};const f=x=>par[x]===undefined||par[x]===x?(par[x]=x):(par[x]=f(par[x]));for(const s of T.sws)par[s.name]=s.name;
- for(const s of T.sws)for(const[n,a]of Object.entries(T.att[s.name])){if(!a.sw||!tLinkUp(s,n))continue;const o=swByName(a.sw),c1=carry(s,n,V),c2=carry(o,a.port,V);if(c1&&c1===c2)par[f(s.name)]=f(o.name)}
+ for(const s of T.sws)for(const[n,a]of Object.entries(T.att[s.name])){if(!a.sw||!tLinkUp(s,n))continue;const o=swByName(a.sw),c1=carry(s,n,V),c2=carry(o,a.port,V);if(c1&&c1===c2&&!(typeof stpBlocked==='function'&&(stpBlocked(s,n,V)||stpBlocked(o,a.port,V))))par[f(s.name)]=f(o.name)}
  return f}
 function tEndpoints(){const o=[],F={};const cf=V=>F[V]||(F[V]=comps(V));
  for(const p of T.pcs){const sw=swByName(p.sw),n=PN(sw,p.slot),e=eff(sw).ifs[n];let V=null;if(tLinkUp(sw,n)&&e.mode!=='trunk'&&eff(sw).vlans[e.access])V=e.access;o.push({dev:p,ip:p.ip,len:p.len,V,comp:V?cf(V)(sw.name):null})}
@@ -630,6 +653,10 @@ function tHint(sw,k,a){const V=a.v,c=sw.vendor;
  if(k==='access'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n switchport mode access\n switchport access vlan ${V.id}`:c==='aruba'?`configure terminal\ninterface ${n}\n no shutdown\n vlan access ${V.id}`:`configure\ndelete interfaces ${n} unit 0 family ethernet-switching vlan members\nset interfaces ${n} unit 0 family ethernet-switching interface-mode access\nset interfaces ${n} unit 0 family ethernet-switching vlan members ${V.name}\ncommit`}
  if(k==='trunk'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n switchport mode trunk\n switchport trunk allowed vlan ${vlist(a.vs)}`:c==='aruba'?`configure terminal\ninterface ${n}\n no shutdown\n vlan trunk allowed ${vlist(a.vs)}`:`configure\nset interfaces ${n} unit 0 family ethernet-switching interface-mode trunk\n${a.vs.map(v=>`set interfaces ${n} unit 0 family ethernet-switching vlan members ${v.name}`).join('\n')}\ncommit`}
  if(k==='native'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n switchport trunk native vlan ${V.id}`:c==='aruba'?`configure terminal\ninterface ${n}\n vlan trunk native ${V.id}`:`configure\nset interfaces ${n} native-vlan-id ${V.id}\ncommit`}
+ if(k==='stproot'||k==='stpbackup'||k==='stpdef'){const p=k==='stproot'?4096:k==='stpbackup'?8192:null,vs=(a.vs||[]).map(v=>v.id).join(',');return p===null?(c==='cisco'?`configure terminal\nno spanning-tree vlan ${vs} priority`:c==='aruba'?`configure terminal\nno spanning-tree priority`:`configure\ndelete protocols rstp bridge-priority\ncommit`):(c==='cisco'?`configure terminal\nspanning-tree vlan ${vs} priority ${p}`:c==='aruba'?`configure terminal\nspanning-tree priority ${p/4096}`:`configure\nset protocols rstp bridge-priority ${p/1024}k\ncommit`)}
+ if(k==='edge'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n spanning-tree portfast\n spanning-tree bpduguard enable`:c==='aruba'?`configure terminal\ninterface ${n}\n spanning-tree port-type admin-edge\n spanning-tree bpdu-guard`:`configure\nset protocols rstp interface ${n} edge\nset protocols rstp bpdu-block-on-edge\ncommit`}
+ if(k==='edgeoff'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n no spanning-tree bpduguard enable\n no spanning-tree portfast\n shutdown\n no shutdown`:c==='aruba'?`configure terminal\ninterface ${n}\n no spanning-tree bpdu-guard\n no spanning-tree port-type`:`configure\ndelete protocols rstp interface ${n} edge\ncommit`}
+ if(k==='rg'){const n=PN(sw,a.slot);return c==='cisco'?`configure terminal\ninterface ${PSh(sw,a.slot)}\n spanning-tree guard root`:c==='aruba'?`configure terminal\ninterface ${n}\n spanning-tree root-guard`:`configure\nset protocols rstp interface ${n} no-root-port\ncommit`}
  if(k==='svi')return c==='cisco'?`configure terminal\ninterface vlan ${V.id}\n ip address ${a.ip} 255.255.255.0\n no shutdown`:c==='aruba'?`configure terminal\ninterface vlan ${V.id}\n ip address ${a.ip}/24\n no shutdown`:`configure\nset interfaces irb unit ${V.id} family inet address ${a.ip}/24\nset vlans ${V.name} l3-interface irb.${V.id}\ncommit`}
 const pcHint=p=>`netsh interface ip set address "Ethernet0" static ${p.want} 255.255.255.0 ${tnet(p.vlan)}1`;
 function tChecks(){const r=[];
@@ -640,8 +667,14 @@ function tChecks(){const r=[];
    for(const[s,vs]of Object.entries(I.trunk)){const n=PN(sw,s),i=e.ifs[n],o=T.att[sw.name][n].sw,dn=I.deny||[];r.push({who:sw,k:'up',t:dn.length?`${PSh(sw,s)} hacia ${o}: trunk solo con las VLAN ${vlist(vs)} (la ${dn.map(v=>v.id).join(',')} no pasa)`:`${PSh(sw,s)} hacia ${o}: trunk con las VLAN ${vlist(vs)}`,ok:i.up&&i.mode==='trunk'&&vs.every(v=>allows(i,v.id)&&!!e.vlans[v.id])&&!dn.some(v=>allows(i,v.id)),hint:tHint(sw,'trunk',{slot:s,vs})});
     if(I.native)r.push({who:sw,k:'nat',t:`${PSh(sw,s)} hacia ${o}: VLAN nativa ${I.native.id}`,ok:i.mode==='trunk'&&(i.native||1)===I.native.id,hint:tHint(sw,'native',{slot:s,v:I.native})})}}
   if(!pre.svi)for(const[vid,ip]of Object.entries(I.svi)){const v=+vid===T.A.id?T.A:T.B;r.push({who:sw,k:'svi',t:`Interfaz VLAN ${v.id} (SVI) con IP ${ip}/24, encendida`,ok:svis(sw).some(x=>x.vid===v.id&&x.up&&x.ip===ip&&x.len===24),hint:tHint(sw,'svi',{v,ip})})}}
+ if(T.stpGoal&&typeof stpTree==='function'){const G=T.stpGoal,core=swByName('CORE'),a1=swByName('ACC1'),a2=swByName('ACC2'),VS=[T.A,T.B];
+  if(G.root)for(const v of (core.vendor==='cisco'?VS:[T.A])){const t=stpTree(v.id);r.push({who:core,k:'stproot',t:`CORE es el root bridge${core.vendor==='cisco'?` de la VLAN ${v.id}`:''}`,ok:!!t&&t.root===core,hint:tHint(core,'stproot',{vs:VS})})}
+  if(G.backup)r.push({who:a1,k:'stpbackup',t:'ACC1 es el root de respaldo (prioridad menor que ACC2 y mayor que el CORE)',ok:VS.every(v=>{const pa=stpOf(a1).prio(v.id),pb=stpOf(a2).prio(v.id),pc=stpOf(core).prio(v.id);return pa<pb&&pa>pc}),hint:tHint(a1,'stpbackup',{vs:VS})});
+  if(G.edge)for(const p of T.pcs){const sw=swByName(p.sw),n=PN(sw,p.slot);r.push({who:sw,k:'edge',t:`${PSh(sw,p.slot)} hacia ${p.name}: puerto edge con BPDU guard`,ok:stpOf(sw).edge(n)&&stpOf(sw).bg(n),hint:tHint(sw,'edge',{slot:p.slot})})}
+  if(G.rg)for(const s2 of['u1','u2']){const n=PN(core,s2),o=T.att.CORE[n].sw;r.push({who:core,k:'rg',t:`${PSh(core,s2)} hacia ${o}: root guard`,ok:stpOf(core).rg(n),hint:tHint(core,'rg',{slot:s2})})}}
  for(const p of T.pcs)if(p.name===T.brokenPC)r.push({who:p,k:'pcip',t:`IP de ${p.name} en su VLAN: ${p.want}/24, gateway ${tnet(p.vlan)}1`,ok:p.ip===p.want&&p.len===24&&p.gw===tnet(p.vlan)+'1',hint:pcHint(p)});
  return r}
+const def0=()=>T;
 function faultFixed(f){const sw=f.sw&&swByName(f.sw),pc=f.pc&&pcByName(f.pc),e=sw&&eff(sw);
  if(f.k==='vlanmiss')return!!e.vlans[f.v.id];
  if(f.k==='accwrong'){const i=e.ifs[PN(sw,f.slot)];return i.mode==='access'&&i.access===f.v.id}
@@ -652,13 +685,16 @@ function faultFixed(f){const sw=f.sw&&swByName(f.sw),pc=f.pc&&pcByName(f.pc),e=s
  if(f.k==='uplinkaccess'){const i=e.ifs[PN(sw,f.slot)],I=T.intent[f.sw];return i.mode==='trunk'&&I.trunk[f.slot].every(v=>allows(i,v.id))&&(!I.native||(i.native||1)===I.native.id)}
  if(f.k==='pcip')return pc.ip===pc.want;
  if(f.k==='pcmask')return pc.len===24;
+ if(f.k==='rootacc'||f.k==='vprio')return[def0().A,def0().B].every(v=>{const t=stpTree(v.id);return t&&t.root.name==='CORE'});
+ if(f.k==='backupbad')return[def0().A,def0().B].every(v=>{const a=swByName('ACC1'),b=swByName('ACC2');return stpOf(a).prio(v.id)<stpOf(b).prio(v.id)});
+ if(f.k==='bgup')return!stpErr(sw,PN(sw,f.slot));
  if(f.k==='sviwrong'||f.k==='svishut')return svis(swByName('CORE')).some(x=>x.vid===f.v.id&&x.up&&x.ip===tnet(f.v)+'2'&&x.len===24);
  return true}
 const tGoalsDone=()=>T.goals.every((g,i)=>T.pinged[i]);
 const tAllOk=()=>tChecks().every(c=>c.ok)&&tGoalsDone();
 function tSolutions(){const o=[];for(const sw of T.sws){const I=T.intent[sw.name],pre=T.pre[sw.name]||{},L=[];
-  if(T.faults.length){for(const f of T.faults.filter(f=>f.sw===sw.name||(f.v&&/svi/.test(f.k)&&sw.name==='CORE')).sort((x,y)=>(x.k==='vlanmiss'?0:1)-(y.k==='vlanmiss'?0:1))){if(f.k==='vlanmiss')L.push(tHint(sw,'vlan',{v:f.v}));if(f.k==='accwrong')L.push(tHint(sw,'access',{slot:f.slot,v:f.v}));if(f.k==='trunkprune')L.push(tHint(sw,'trunk',{slot:f.slot,vs:I.trunk[f.slot]}));if(f.k==='nativemis')L.push(tHint(sw,'native',{slot:f.slot,v:T.NAT}));if(f.k==='uplinkaccess'){L.push(tHint(sw,'trunk',{slot:f.slot,vs:I.trunk[f.slot]}));if(I.native)L.push(tHint(sw,'native',{slot:f.slot,v:I.native}))}if(f.k==='trunkleak')L.push(sw.vendor==='cisco'?`configure terminal\ninterface ${PSh(sw,f.slot)}\n switchport trunk allowed vlan ${vlist(I.trunk[f.slot])}`:sw.vendor==='aruba'?`configure terminal\ninterface ${PN(sw,f.slot)}\n no vlan trunk allowed ${f.v.id}`:`configure\ndelete interfaces ${PN(sw,f.slot)} unit 0 family ethernet-switching vlan members ${f.v.name}\ncommit`);if(f.k==='portdown')L.push(sw.vendor==='cisco'?`configure terminal\ninterface ${PSh(sw,f.slot)}\n no shutdown`:sw.vendor==='aruba'?`configure terminal\ninterface ${PN(sw,f.slot)}\n no shutdown`:`configure\ndelete interfaces ${PN(sw,f.slot)} disable\ncommit`);if(/svi/.test(f.k))L.push(tHint(sw,'svi',{v:f.v,ip:tnet(f.v)+'2'}))}}
-  else{if(!pre.l2){I.vlans.filter(v=>!pre.vl||v.user).forEach(v=>L.push(tHint(sw,'vlan',{v})));if(!pre.acc)for(const[s,v]of Object.entries(I.access))L.push(tHint(sw,'access',{slot:s,v}));for(const[s,vs]of Object.entries(I.trunk)){L.push(tHint(sw,'trunk',{slot:s,vs}));if(I.native)L.push(tHint(sw,'native',{slot:s,v:I.native}))}}if(!pre.svi)for(const[vid,ip]of Object.entries(I.svi))L.push(tHint(sw,'svi',{v:+vid===T.A.id?T.A:T.B,ip}))}
+  if(T.faults.length){for(const f of T.faults.filter(f=>f.sw===sw.name||(f.v&&/svi/.test(f.k)&&sw.name==='CORE')).sort((x,y)=>(x.k==='vlanmiss'?0:1)-(y.k==='vlanmiss'?0:1))){if(f.k==='vlanmiss')L.push(tHint(sw,'vlan',{v:f.v}));if(f.k==='accwrong')L.push(tHint(sw,'access',{slot:f.slot,v:f.v}));if(f.k==='trunkprune')L.push(tHint(sw,'trunk',{slot:f.slot,vs:I.trunk[f.slot]}));if(f.k==='nativemis')L.push(tHint(sw,'native',{slot:f.slot,v:T.NAT}));if(f.k==='rootacc')L.push(tHint(sw,sw.name==='ACC1'?'stpbackup':'stpdef',{vs:[T.A,T.B]}));if(f.k==='backupbad')L.push(tHint(sw,'stpbackup',{vs:[T.A,T.B]}));if(f.k==='vprio')L.push(tHint(sw,'stproot',{vs:[T.B]}));if(f.k==='bgup')L.push(tHint(sw,'edgeoff',{slot:f.slot}));if(f.k==='uplinkaccess'){L.push(tHint(sw,'trunk',{slot:f.slot,vs:I.trunk[f.slot]}));if(I.native)L.push(tHint(sw,'native',{slot:f.slot,v:I.native}))}if(f.k==='trunkleak')L.push(sw.vendor==='cisco'?`configure terminal\ninterface ${PSh(sw,f.slot)}\n switchport trunk allowed vlan ${vlist(I.trunk[f.slot])}`:sw.vendor==='aruba'?`configure terminal\ninterface ${PN(sw,f.slot)}\n no vlan trunk allowed ${f.v.id}`:`configure\ndelete interfaces ${PN(sw,f.slot)} unit 0 family ethernet-switching vlan members ${f.v.name}\ncommit`);if(f.k==='portdown')L.push(sw.vendor==='cisco'?`configure terminal\ninterface ${PSh(sw,f.slot)}\n no shutdown`:sw.vendor==='aruba'?`configure terminal\ninterface ${PN(sw,f.slot)}\n no shutdown`:`configure\ndelete interfaces ${PN(sw,f.slot)} disable\ncommit`);if(/svi/.test(f.k))L.push(tHint(sw,'svi',{v:f.v,ip:tnet(f.v)+'2'}))}}
+  else{if(!pre.l2){I.vlans.filter(v=>!pre.vl||v.user).forEach(v=>L.push(tHint(sw,'vlan',{v})));if(!pre.acc)for(const[s,v]of Object.entries(I.access))L.push(tHint(sw,'access',{slot:s,v}));for(const[s,vs]of Object.entries(I.trunk)){L.push(tHint(sw,'trunk',{slot:s,vs}));if(I.native)L.push(tHint(sw,'native',{slot:s,v:I.native}))}}if(!pre.svi)for(const[vid,ip]of Object.entries(I.svi))L.push(tHint(sw,'svi',{v:+vid===T.A.id?T.A:T.B,ip}));const G=T.stpGoal;if(G){if(G.root&&sw.name==='CORE')L.push(tHint(sw,'stproot',{vs:[T.A,T.B]}));if(G.backup&&sw.name==='ACC1')L.push(tHint(sw,'stpbackup',{vs:[T.A,T.B]}));if(G.edge)for(const p of T.pcs.filter(p=>p.sw===sw.name))L.push(tHint(sw,'edge',{slot:p.slot}));if(G.rg&&sw.name==='CORE')for(const s2 of['u1','u2'])L.push(tHint(sw,'rg',{slot:s2}))}}
   if(L.length)o.push({t:sw.name+' · '+VEND[sw.vendor].label,s:(sw.vendor==='cisco'?'enable\n':'')+L.map(x=>x.replace(/^configure terminal\n|^configure\n/,'').replace(/\ncommit$/,'')).join('\n').replace(/^/,sw.vendor==='juniper'?'configure\n':'configure terminal\n')+(sw.vendor==='juniper'?'\ncommit':'\nend\nwrite memory')})}
  for(const p of T.pcs)if(p.name===T.brokenPC||T.faults.some(f=>f.pc===p.name&&/pc/.test(f.k)))o.push({t:p.name,s:pcHint(p)});return o}
 function tPing(p,arg){const r=reachT(p,arg),gi=T.goals.findIndex(g=>g.from===p.name&&g.to===arg),gwOk=p.gw&&sameNet(p.ip,p.gw,p.len);
@@ -678,9 +714,11 @@ function drawTopoT(){const big=T.three,H=big?380:300;$('#topo').setAttribute('vi
   if(a.pc){const p=pcByName(a.pc);B={x:p.tx,y:p.ty};key=sw.name+n}else{const o=swByName(a.sw);B={x:o.tx,y:o.ty};key=[sw.name+n,o.name+a.port].sort().join('|');if(drawn.has(key))continue;tr=!SC.exam&&up&&eff(sw).ifs[n].mode==='trunk'&&eff(o).ifs[a.port].mode==='trunk'}
   drawn.add(key);const p1=clip(A,B,47,17),p2=a.pc?clip(B,A,26,20):clip(B,A,47,17);
   L.push(`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${up?(tr?'var(--trunk)':'var(--blue)'):'#9aa4ad'}" stroke-width="${tr?6:3.5}" ${up?'':'stroke-dasharray="6 5"'} stroke-linecap="round"/>`);
-  LED.push(`<circle cx="${p1.x}" cy="${p1.y}" r="4.5" fill="${up?'var(--ok)':'#9aa4ad'}"/>`);
+  const ledC=(s2,pn)=>{if(typeof stpOn==='function'&&stpOn()&&!SC.exam){if(stpErr(s2,pn))return'var(--bad)';if(stpBlocked(s2,pn,T.A.id))return'#f5a623'}return null};
+  const bl=(x,y,c)=>{if(c)LED.push(`<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="${c}" stroke-width="2.5"/>`,`<text x="${x}" y="${y+22}" text-anchor="middle" font-size="10" font-weight="700" font-family="IBM Plex Mono,monospace" fill="${c}">${c==='#f5a623'?'BLK':'ERR'}</text>`)};
+  LED.push(`<circle cx="${p1.x}" cy="${p1.y}" r="4.5" fill="${ledC(sw,n)||(up?'var(--ok)':'#9aa4ad')}"/>`);if(!a.pc)bl(p1.x,p1.y,ledC(sw,n));
   const m={x:p1.x+(p2.x-p1.x)*(a.pc?.5:.3),y:p1.y+(p2.y-p1.y)*(a.pc?.5:.3)},side=(p2.x>=p1.x?1:-1);TX.push(tx(m.x+(a.pc?side*8:0),m.y+(a.pc?4:-8),PSh(sw,Object.keys(SLOT[sw.vendor]).find(k=>PN(sw,k)===n)),a.pc?(side>0?'start':'end'):'middle',11));
-  if(!a.pc){const o=swByName(a.sw),q={x:p2.x+(p1.x-p2.x)*.3,y:p2.y+(p1.y-p2.y)*.3};LED.push(`<circle cx="${p2.x}" cy="${p2.y}" r="4.5" fill="${up?'var(--ok)':'#9aa4ad'}"/>`);TX.push(tx(q.x,q.y-8,PSh(o,Object.keys(SLOT[o.vendor]).find(k=>PN(o,k)===a.port)),'middle',11))}}
+  if(!a.pc){const o=swByName(a.sw),q={x:p2.x+(p1.x-p2.x)*.3,y:p2.y+(p1.y-p2.y)*.3};LED.push(`<circle cx="${p2.x}" cy="${p2.y}" r="4.5" fill="${ledC(o,a.port)||(up?'var(--ok)':'#9aa4ad')}"/>`);bl(p2.x,p2.y,ledC(o,a.port));TX.push(tx(q.x,q.y-8,PSh(o,Object.keys(SLOT[o.vendor]).find(k=>PN(o,k)===a.port)),'middle',11))}}
  const swG=d=>{const x=d.tx,y=d.ty,col=d.vendor==='aruba'?'#d7dce1':d.vendor==='juniper'?'#2b2e33':'#3c5a78',sv=svis(d).filter(s=>s.up).map(s=>'.'+s.ip.split('.')[3]+'/v'+s.vid).join(' ');
   const lx=d.lab==='left'?x-56:d.lab==='right'?x+56:x,ly=d.lab==='top'?y-46:y-6,an=d.lab==='left'?'end':d.lab==='right'?'start':'middle';
   return`<g class="dev" data-dev="${d.name}" tabindex="0" role="button" aria-label="Abrir consola de ${d.name}"><rect class="hit" x="${x-52}" y="${y-24}" width="104" height="48" rx="9" fill="transparent" stroke="${cur===d?'var(--blue)':'transparent'}" stroke-width="2"/><rect x="${x-46}" y="${y-16}" width="92" height="32" rx="5" fill="${col}"/>${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${x-38+i*9.5}" y="${y-6}" width="6" height="5" fill="#111"/><rect x="${x-38+i*9.5}" y="${y+2}" width="6" height="5" fill="#111"/>`).join('')}
@@ -713,7 +751,7 @@ function drawTopo(){if(TP())return drawTopoT();$('#topo').setAttribute('viewBox'
 const mmss=ms=>{const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
 setInterval(()=>{if(TP()&&T&&CLK(T.id)&&!done&&!SC.exam){const e=$('#lclock');if(e)e.textContent=mmss(Date.now()-LS.t0)}},1000);
 function drawScore(){const e=$('#lscore');if(e&&TP()&&T&&CLK(T.id)&&!SC.exam){e.innerHTML=`<span class="lclockw">${'⏱'} <b id="lclock" class="mono">${mmss(Date.now()-LS.t0)}</b></span> Puntaje: <strong>${labScore()}/100</strong> · necesitas ${T.id==='plab'?80:90}. Cada ping fallido a la lista resta 5. Equivocarte de comando no resta.`;return}if(e)e.innerHTML=`Puntaje del ticket: <strong>${labScore()}/100</strong> · necesitas 90. Restan: ver un comando en las pistas (−10) y cada ping fallido al objetivo (−5). Abrir la pista y leer la pregunta guía es gratis. Equivocarte de comando no resta: ${LS.err?`llevas ${LS.err} y está bien, así se aprende.`:'así se aprende.'}`}
-const SOC={vlan:'¿Ya existe esa VLAN en este switch? Revísalo con show vlan (en Juniper: show vlans). La VLAN se crea en cada switch: no viaja sola.',pc:'¿En qué VLAN está el puerto que va hacia la PC? ¿Está en modo access y encendido? El diagrama te dice qué puerto es.',up:'¿El puerto entre switches es trunk? ¿Deja pasar todas las VLAN que necesitas? Si solo lleva una, la otra no cruza.',svi:'¿Este switch ya tiene una interfaz vlan con una IP de esa red? En Cisco nace apagada; en Juniper hay que ligarla a la VLAN.',pcip:'Compara la IP de la PC (ipconfig) con la red de su VLAN: ¿coincide el tercer número? ¿Y la máscara y el gateway?',nat:'La nativa es la VLAN que viaja SIN etiqueta por el trunk. Debe ser la misma en los dos extremos; si no, la VLAN que un lado manda sin etiqueta llega al otro como si fuera de otra VLAN.',fault:'Haz los pings de la lista: ¿cuál falla? Eso te dice qué VLAN y qué tramo revisar. Luego ve de abajo hacia arriba: puerto, VLAN, trunk, IP.'};
+const SOC={stproot:'El root bridge es el de menor Bridge ID: prioridad primero y, si empatan, la MAC más baja. Si no tocas nada, gana el switch con la MAC más baja, que casi nunca es el CORE.',stpbackup:'El respaldo es el segundo Bridge ID más bajo: prioridad menor que la de ACC2, pero mayor que la del CORE.',edge:'Un puerto de PC no debe esperar a que STP converja (edge/PortFast) y nunca debe recibir BPDU (BPDU guard).',rg:'Root guard en los puertos del CORE hacia los pisos: si un switch de piso intenta ser root, ese puerto se bloquea.',vlan:'¿Ya existe esa VLAN en este switch? Revísalo con show vlan (en Juniper: show vlans). La VLAN se crea en cada switch: no viaja sola.',pc:'¿En qué VLAN está el puerto que va hacia la PC? ¿Está en modo access y encendido? El diagrama te dice qué puerto es.',up:'¿El puerto entre switches es trunk? ¿Deja pasar todas las VLAN que necesitas? Si solo lleva una, la otra no cruza.',svi:'¿Este switch ya tiene una interfaz vlan con una IP de esa red? En Cisco nace apagada; en Juniper hay que ligarla a la VLAN.',pcip:'Compara la IP de la PC (ipconfig) con la red de su VLAN: ¿coincide el tercer número? ¿Y la máscara y el gateway?',nat:'La nativa es la VLAN que viaja SIN etiqueta por el trunk. Debe ser la misma en los dos extremos; si no, la VLAN que un lado manda sin etiqueta llega al otro como si fuera de otra VLAN.',fault:'Haz los pings de la lista: ¿cuál falla? Eso te dice qué VLAN y qué tramo revisar. Luego ve de abajo hacia arriba: puerto, VLAN, trunk, IP.'};
 function drawChecks(){
   const cs=checks();
   if(TP()&&T.blind&&!SC.exam){const n=cs.filter(c=>c.ok).length;$('#chk').innerHTML=`<li class="${n===cs.length?'ok':''}"><span class="dot"></span><div><div class="sw">Configuración</div>${n} de ${cs.length} requisitos listos. Sin pistas: revisa con show.</div></li>`+T.goals.map((g,i)=>`<li class="${T.pinged[i]?'ok':''}"><span class="dot"></span><div><div class="sw">${g.from} · ping</div>${g.label} <code>${g.to}</code></div></li>`).join('');
@@ -791,6 +829,26 @@ function topoTexts(){const X=topoTexts0();if(T.sim&&!SC.exam){X.h='Simulacro: '+
 function topoTexts0(){const A=T.A,B=T.B,vs=T.sws.map(s=>`${s.name}: ${VEND[s.vendor].label}`).join(' · '),g=T.goals.map(x=>`<li><code>${x.from}</code> → <code>${x.to}</code></li>`).join('');
  const BLG=n=>`<summary>Modo a ciegas: qué cuenta</summary><p>Aquí no hay pasos, ni checklist, ni pistas: solo el objetivo y los pings. Es la prueba real de que sabes configurar sin copiar. Si te atoras, regresa a ${n} y vuelve.</p><p>Los comandos con error no restan.</p>`;
  const PROG=`<summary>Lab pro: qué cuenta</summary><p>Sin pasos, sin checklist y sin pistas: solo el ticket, los pings y el reloj. El tiempo no te quita puntos, pero queda como tu récord. Cada ping fallido a la lista resta 5.</p><p>Al terminar verás qué estaba mal y la solución de cada switch.</p>`;
+ const STPG=`<table class="stack"><thead><tr><th>Para…</th><th>Cisco IOS</th><th>Aruba AOS-CX</th><th>Juniper Junos</th></tr></thead><tbody><tr><td>Ver el árbol</td><td><code>show spanning-tree</code></td><td><code>show spanning-tree</code></td><td><code>show spanning-tree bridge</code><br><code>show spanning-tree interface</code></td></tr><tr><td>Root (prioridad 4096)</td><td><code>spanning-tree vlan ${A.id},${B.id} priority 4096</code></td><td><code>spanning-tree priority 1</code></td><td><code>set protocols rstp bridge-priority 4k</code></td></tr><tr><td>Respaldo (8192)</td><td><code>spanning-tree vlan ${A.id},${B.id} priority 8192</code></td><td><code>spanning-tree priority 2</code></td><td><code>set protocols rstp bridge-priority 8k</code></td></tr><tr><td>Puerto de usuario</td><td><code>spanning-tree portfast</code><br><code>spanning-tree bpduguard enable</code></td><td><code>spanning-tree port-type admin-edge</code><br><code>spanning-tree bpdu-guard</code></td><td><code>set protocols rstp interface ge-0/0/1 edge</code><br><code>set protocols rstp bpdu-block-on-edge</code></td></tr><tr><td>Root guard</td><td><code>spanning-tree guard root</code></td><td><code>spanning-tree root-guard</code></td><td><code>set protocols rstp interface ge-0/0/23 no-root-port</code></td></tr></tbody></table><p class="small">En el diagrama, el LED <span style="color:#f5a623">ámbar</span> es un puerto bloqueado por STP y el <span style="color:var(--bad)">rojo</span>, uno apagado por BPDU guard.</p>`;
+ if(T.id==='lab4')return{h:'El root en su lugar',tk:`Ticket #${T.tk} · prioridad alta · de: Arquitectura de red`,
+  p:`"Agregamos un enlace directo entre ACC1 y ACC2 para tener redundancia. Funciona, pero el tráfico entre pisos va por donde no debe." Hoy <strong>nadie configuró Spanning Tree</strong> y el root lo eligió la MAC más baja: un switch de acceso. Haz que el <strong>CORE sea el root</strong> de ${A.name} (VLAN ${A.id}) y ${B.name} (VLAN ${B.id}) y que <strong>ACC1 sea el respaldo</strong>.`,
+  goal:`CORE root, ACC1 respaldo y los pings de la lista funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar: cómo se resuelve este ticket</summary><ol class="pasos"><li><strong>Mira quién es el root hoy</strong> en cualquier switch: <code>show spanning-tree</code> (Juniper: <code>show spanning-tree bridge</code>). Fíjate en la Root ID y en qué puerto está bloqueado.</li><li><strong>CORE con prioridad 4096</strong>. En Cisco, un árbol por VLAN: pon las dos VLAN.</li><li><strong>ACC1 con prioridad 8192</strong>, para que sea el root si el CORE falla.</li><li><strong>Vuelve a mirar:</strong> ahora el puerto bloqueado (ámbar) debe quedar en el enlace entre ACC1 y ACC2, del lado de ACC2.</li></ol>${STPG}<p>Los pings que deben funcionar:</p><ul>${g}</ul>`};
+ if(T.id==='lab4b')return{h:'Protege los puertos de usuario',tk:`Ticket #${T.tk} · prioridad media · de: Seguridad informática`,
+  p:`"La semana pasada alguien conectó un switch de casa en una sala de juntas y robó el root." El root ya está bien (CORE, con ACC1 de respaldo). Ahora protege la red: los <strong>4 puertos de PC</strong> como edge con <strong>BPDU guard</strong>, y <strong>root guard</strong> en los dos puertos del CORE hacia los pisos.`,
+  goal:`Puertos de usuario protegidos, root guard en el CORE y los pings funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar</summary><ol class="pasos"><li><strong>Edge (PortFast):</strong> el puerto de una PC pasa a forwarding de inmediato, sin esperar a STP.</li><li><strong>BPDU guard:</strong> si por ese puerto llega un BPDU (alguien conectó un switch), el puerto se apaga.</li><li><strong>Root guard</strong> en el CORE hacia los pisos: ningún switch de abajo puede volverse root por ahí.</li><li><strong>Nunca</strong> pongas edge ni BPDU guard en un puerto entre switches: se apagaría.</li></ol>${STPG}<ul>${g}</ul>`};
+ if(T.id==='lab4c')return{h:SC.exam?'Certificación: parte práctica':'A ciegas: Spanning Tree completo',tk:`Ticket #${T.tk} · prioridad alta · de: Arquitectura de red`,
+  p:`Triángulo CORE, ACC1 y ACC2 con un enlace redundante entre los pisos. Deja Spanning Tree como en producción: <strong>CORE root</strong> de las VLAN ${A.id} y ${B.id} (4096), <strong>ACC1 respaldo</strong> (8192), los <strong>4 puertos de PC</strong> como edge con BPDU guard y <strong>root guard</strong> en los dos puertos del CORE hacia los pisos.${SC.exam?' Sin pistas.':' Sin guía ni pistas.'}`,
+  goal:`Diseño completo y los pings funcionan. Vendors: ${vs}.`,guide:`<summary>Modo a ciegas: qué cuenta</summary><p>Solo el objetivo y los pings. Si te atoras, regresa a TK-4001 y TK-4002.</p>`};
+ if(T.id==='tsh4')return{h:'Troubleshooting: el árbol torcido',tk:`Ticket #${T.tk} · prioridad ALTA · de: Mesa de ayuda`,
+  p:`"Desde el fin de semana la red de ${A.name} y ${B.name} va lenta y el NOC ve cambios de topología." La regla de la casa: CORE root (4096) en las dos VLAN, ACC1 respaldo (8192). Hay <strong>3 fallas</strong>: al menos dos son de Spanning Tree.`,
+  goal:`Las 3 fallas corregidas y los pings funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar: cómo se diagnostica STP</summary><ol class="pasos"><li><strong>¿Quién es el root?</strong> En cualquier switch, la Root ID. Si no es el CORE, busca quién tiene la prioridad más baja.</li><li><strong>En Cisco, VLAN por VLAN:</strong> cada VLAN tiene su propio árbol; puede estar bien en una y mal en la otra.</li><li><strong>¿Dónde está el bloqueo?</strong> Debe quedar en el enlace ACC1–ACC2. Si bloquea un uplink al CORE, algo está mal.</li><li>Luego lo de siempre: puertos arriba y trunks con las VLAN.</li></ol>${STPG}<ul>${g}</ul>`};
+ if(T.id==='tsh4b')return{h:'Troubleshooting: la plantilla equivocada',tk:`Ticket #${T.tk} · prioridad ALTA · de: NOC`,
+  p:`"Anoche un técnico aplicó la plantilla de puertos de usuario a todo un switch de piso, incluido el uplink." Ese piso sigue en línea gracias al enlace redundante, pero va por el camino largo. Además alguien movió la prioridad de un switch de acceso. Hay <strong>3 fallas</strong>.`,
+  goal:`Las 3 fallas corregidas y los pings funcionan. Vendors: ${vs}.`,
+  guide:`<summary>Antes de empezar</summary><ol class="pasos"><li><strong>Busca puertos apagados</strong> entre switches: <code>show interfaces status</code> (err-disabled), <code>show interface brief</code>, <code>show interfaces terse</code>.</li><li><strong>BPDU guard en un uplink</strong> lo apaga en cuanto llega el primer BPDU del otro switch. Quítalo; en Cisco, después haz <code>shutdown</code> y <code>no shutdown</code> para sacarlo de err-disabled.</li><li><strong>Revisa el root</strong> como en TK-4050.</li></ol>${STPG}<ul>${g}</ul>`};
  if(T.id==='plab')return{h:'Examen de ubicación: lab práctico',tk:`Lab de ubicación · ${VEND[T.sws[0].vendor].label}`,
   p:`Dos switches <strong>${VEND[T.sws[0].vendor].label}</strong> en blanco. ${A.name} (VLAN ${A.id}) y ${B.name} (VLAN ${B.id}) tienen una PC en cada switch. Crea las dos VLAN con su nombre en los dos switches, pon cada PC en su VLAN y deja el enlace entre ellos como trunk con las dos. Sin pistas: así se ve si ya sabes configurar.`,
   goal:'Los pings de la lista funcionan. Necesitas 80 o más: cada ping fallido resta 5.',guide:`<summary>Qué cuenta</summary><p>Es el mismo trabajo del lab a ciegas de la Zona 1. Se califica el resultado: que los pings funcionen. Escribe <code>?</code> si olvidas un comando; equivocarte de comando no resta.</p>`};
@@ -982,5 +1040,96 @@ function build3D(){if(TP())return build3DT();
     R.render(sc,cam);G.raf=requestAnimationFrame(loop)};
   G={R,ro,raf:0};G.raf=requestAnimationFrame(loop);
 }
+/* PacketPath · Spanning Tree en el simulador (Zona 4). Se carga después de lab.js y comparte su ámbito global. */
+const STPZ=id=>/^(lab4|lab4b|lab4c|tsh4|tsh4b)$/.test(id);
+const stpMacN=sw=>sw.bmac||((([...sw.name].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7))%200)+20);
+const stpMac=(sw,v)=>{const b=[0x00,0x1a,0x2b,0x00,0x0a,stpMacN(sw)];return v==='cisco'?[0,2,4].map(k=>(b[k]*256+b[k+1]).toString(16).padStart(4,'0')).join('.'):b.map(x=>x.toString(16).padStart(2,'0')).join(':')};
+function stpOf(sw){
+ if(sw.vendor==='juniper'){const r=sw.act.rstp||{};return{on:!r.disable,prio:()=>r.prio??32768,edge:n=>!!(r.edge||{})[n],bg:n=>!!r.bpdub&&!!(r.edge||{})[n],rg:n=>!!(r.nrp||{})[n],mode:'RSTP'}}
+ const s=(sw.stp=sw.stp||{}),acc=n=>((sw.ifs[n]||{}).mode==='access');
+ const edge=n=>!!((s.edge||{})[n]||(sw.vendor==='cisco'&&s.pfdef&&acc(n)));
+ return{on:s.on!==false,prio:v=>sw.vendor==='cisco'?((s.vprio||{})[v]??32768):(s.prio??32768),edge,bg:n=>!!((s.bg||{})[n]||(sw.vendor==='cisco'&&s.bgdef&&edge(n))),rg:n=>!!(s.rg||{})[n],mode:sw.vendor==='cisco'?'rstp':'MSTP'}}
+const stpOn=()=>TP()&&T&&STPZ(T.id);
+/* Puerto apagado por BPDU guard: tiene BPDU guard y del otro lado hay un switch que manda BPDU */
+function stpErr(sw,n){if(!stpOn())return false;const a=T.att[sw.name][n];if(!a||!a.sw)return false;const o=swByName(a.sw);return stpOf(sw).bg(n)&&stpOf(o).on}
+function stpSetPrio(sw,vs,p){if(sw.vendor==='juniper'){const r=(sw.act.rstp=sw.act.rstp||{});if(p==null)delete r.prio;else r.prio=p;return}const s=(sw.stp=sw.stp||{});if(sw.vendor==='cisco'){s.vprio=s.vprio||{};for(const v of vs){if(p==null)delete s.vprio[v];else s.vprio[v]=p}}else{if(p==null)delete s.prio;else s.prio=p}}
+function stpSetPort(sw,n,k,on){if(sw.vendor==='juniper'){const r=(sw.act.rstp=sw.act.rstp||{}),m={edge:'edge',rg:'nrp'}[k];if(k==='bg'){(r.edge=r.edge||{});if(on){r.edge[n]=true;r.bpdub=true}return}const o=(r[m]=r[m]||{});if(on)o[n]=true;else delete o[n];return}
+ const s=(sw.stp=sw.stp||{}),o=(s[k]=s[k]||{});if(on)o[n]=true;else delete o[n]}
+/* Árbol de una VLAN: root, puerto raíz de cada switch y rol de cada puerto entre switches */
+function stpTree(V){const sws=T.sws.filter(s=>eff(s).vlans[V]&&stpOf(s).on);if(!sws.length)return null;
+ const key=s=>[stpOf(s).prio(V),stpMacN(s)],cmp=(a,b)=>a[0]-b[0]||a[1]-b[1];
+ const root=sws.slice().sort((a,b)=>cmp(key(a),key(b)))[0];
+ const L=[];for(const l of T.links){const a=swByName(l.a),b=swByName(l.b);if(!sws.includes(a)||!sws.includes(b))continue;const pa=PN(a,l.as),pb=PN(b,l.bs);if(!tLinkUp(a,pa))continue;const ca=carry(a,pa,V),cb=carry(b,pb,V);if(!ca||ca!==cb)continue;L.push({a,b,pa,pb})}
+ const dist=new Map([[root,0]]);let ch=true;while(ch){ch=false;for(const l of L)for(const[x,y]of[[l.a,l.b],[l.b,l.a]])if(dist.has(x)&&(!dist.has(y)||dist.get(x)+1<dist.get(y))){dist.set(y,dist.get(x)+1);ch=true}}
+ const role={},rp={};
+ for(const s of sws){if(s===root||!dist.has(s))continue;const c=[];for(const l of L){if(l.a===s&&dist.has(l.b)&&dist.get(l.b)+1===dist.get(s))c.push({p:l.pa,n:l.b,np:l.pb});if(l.b===s&&dist.has(l.a)&&dist.get(l.a)+1===dist.get(s))c.push({p:l.pb,n:l.a,np:l.pa})}
+  c.sort((x,y)=>cmp(key(x.n),key(y.n))||ports(s.vendor).indexOf(x.p)-ports(s.vendor).indexOf(y.p));if(c[0]){rp[s.name]=c[0].p;role[s.name+'|'+c[0].p]='Root'}}
+ for(const l of L){const ra=role[l.a.name+'|'+l.pa],rb=role[l.b.name+'|'+l.pb];if(ra==='Root'){role[l.b.name+'|'+l.pb]='Desg';continue}if(rb==='Root'){role[l.a.name+'|'+l.pa]='Desg';continue}
+  const da=[dist.get(l.a)??99,...key(l.a)],db=[dist.get(l.b)??99,...key(l.b)],aw=da[0]-db[0]||da[1]-db[1]||da[2]-db[2];
+  role[l.a.name+'|'+l.pa]=aw<0?'Desg':'Altn';role[l.b.name+'|'+l.pb]=aw<0?'Altn':'Desg'}
+ return{root,rp,role,dist}}
+function stpBlocked(sw,n,V){if(!stpOn())return false;const t=stpTree(V);return!!t&&t.role[sw.name+'|'+n]==='Altn'}
+const stpUserV=()=>[T.A.id,T.B.id];
+/* ---- show ---- */
+const RL={Root:['Root','FWD','Root','Forwarding','ROOT'],Desg:['Desg','FWD','Designated','Forwarding','DESG'],Altn:['Altn','BLK','Alternate','Blocking','ALT']};
+function stpPorts(sw,V){const t=stpTree(V)||{role:{}},o=[],E=eff(sw);for(const n of ports(sw.vendor)){const a=T.att[sw.name][n];if(!a||!tLinkUp(sw,n))continue;const i=E.ifs[n];if(!i||!(i.mode==='trunk'?allows(i,V):i.access===V))continue;o.push({n,r:a.pc?'Desg':(t.role[sw.name+'|'+n]||'Desg'),edge:stpOf(sw).edge(n)})}return o}
+function stpShowC(sw,V){const s=stpOf(sw),t=stpTree(V);if(!eff(sw).vlans[V])return['','Spanning tree instance(s) for vlan '+V+' does not exist.'];if(!t)return['No spanning tree instance exists.'];
+ const isR=t.root===sw,rp=t.rp[sw.name],P=s.prio(V),RP=stpOf(t.root).prio(V);
+ return['','VLAN'+String(V).padStart(4,'0'),'  Spanning tree enabled protocol rstp',`  Root ID    Priority    ${RP+V}`,`             Address     ${stpMac(t.root,'cisco')}`,...(isR?['             This bridge is the root']:[`             Cost        ${4*(t.dist.get(sw)||0)}`,`             Port        ${ports('cisco').indexOf(rp)+1} (${rp})`]),'             Hello Time   2 sec  Max Age 20 sec  Forward Delay 15 sec','',`  Bridge ID  Priority    ${P+V}  (priority ${P} sys-id-ext ${V})`,`             Address     ${stpMac(sw,'cisco')}`,'             Hello Time   2 sec  Max Age 20 sec  Forward Delay 15 sec','',
+  'Interface           Role Sts Cost      Prio.Nbr Type','------------------- ---- --- --------- -------- --------------------------------',...stpPorts(sw,V).map(p=>{const R=RL[p.r];return shortIf(p.n).padEnd(20)+R[0]+' '+R[1]+' '+'4'.padEnd(10)+('128.'+(ports('cisco').indexOf(p.n)+1)).padEnd(9)+'P2p'+(p.edge?' Edge':'')+(s.rg(p.n)?' (root guard)':'')})]}
+function stpShowA(sw){const s=stpOf(sw);if(!s.on)return['Spanning tree status          : Disabled'];const V=T.A.id,t=stpTree(V);if(!t)return['Spanning tree status          : Enabled'];const isR=t.root===sw;
+ return['','Spanning tree status          : Enabled Protocol: MSTP','MST0','  Root ID    Priority    : '+stpOf(t.root).prio(V),'             MAC-Address : '+stpMac(t.root,'aruba'),...(isR?['             This bridge is the root']:['             Root port   : '+t.rp[sw.name],'             Root cost   : '+20000*(t.dist.get(sw)||0)]),'             Hello time(in seconds):2  Max Age(in seconds):20','','  Bridge ID  Priority    : '+s.prio(V),'             MAC-Address : '+stpMac(sw,'aruba'),'',
+  'Port         Role           State      Cost       Priority   Type','------------ -------------- ---------- ---------- ---------- ----------',...stpPorts(sw,V).map(p=>{const R=RL[p.r];return p.n.padEnd(13)+R[2].padEnd(15)+R[3].padEnd(11)+'20000'.padEnd(11)+'128'.padEnd(11)+'P2P'+(p.edge?' Edge':'')})]}
+function stpShowJb(sw){const s=stpOf(sw);if(!s.on)return['','STP bridge parameters','  Spanning tree is disabled'];const V=T.A.id,t=stpTree(V);if(!t)return[];const isR=t.root===sw,f=x=>stpOf(x).prio(V)+'.'+stpMac(x,'juniper');
+ return['','STP bridge parameters','Routing instance name               : GLOBAL','Context ID                          : 0','Enabled protocol                    : RSTP','  Root ID                           : '+f(t.root),...(isR?[]:['  Root cost                         : '+20000*(t.dist.get(sw)||0),'  Root port                         : '+t.rp[sw.name]]),'  Hello time                        : 2 seconds','  Maximum age                       : 20 seconds','  Local parameters','    Bridge ID                       : '+f(sw)]}
+function stpShowJi(sw){const V=T.A.id,t=stpTree(V);if(!t)return[];return['','Spanning tree interface parameters for instance 0','','Interface    Port ID    Designated      Designated         Port    State  Role','                         port ID        bridge ID          Cost',...stpPorts(sw,V).map(p=>{const R=RL[p.r],id='128:'+(ports('juniper').indexOf(p.n)+1);return(p.n+'.0').padEnd(13)+id.padEnd(11)+id.padEnd(8)+(stpOf(t.root).prio(V)+'.'+stpMac(t.root,'juniper').replace(/:/g,'')).padEnd(22)+'20000'.padEnd(8)+R[1].padEnd(7)+R[4]+(p.edge?' (edge)':'')})]}
+const noStp=()=>[{t:'[tutor] En este lab no hay enlaces redundantes: Spanning Tree se practica en los labs de la Zona 4.',c:'tut'}];
+/* ---- comandos ---- */
+const vl=l=>parseList(l)||[];
+const okPrio=p=>/^\d+$/.test(p)&&+p<=61440&&+p%4096===0;
+function cRootPrim(sw,vs,sec){for(const v of vs){let p=sec?28672:24576;if(!sec){const t=stpTree(v);if(t&&t.root!==sw){const rp=stpOf(t.root).prio(v);if(rp<=p)p=Math.max(0,rp-4096)}}stpSetPrio(sw,[v],p)}}
+const C_STP_SHOW=[['show spanning-tree',sw=>stpOn()?[].concat(...Object.keys(eff(sw).vlans).map(Number).filter(v=>v!==1&&v!==999||stpUserV().includes(v)).filter(v=>stpUserV().includes(v)).map(v=>stpShowC(sw,v))):noStp()],
+ ['show spanning-tree vlan <vid>',(sw,[v])=>stpOn()?stpShowC(sw,+v):noStp()],
+ ['show spanning-tree root',sw=>stpOn()?['','                                        Root    Hello Max Fwd','Vlan                   Root ID          Cost    Time  Age Dly  Root Port','---------------- -------------------- --------- ----- --- ---  ------------',...stpUserV().map(v=>{const t=stpTree(v);if(!t)return'';const R=t.root;return('VLAN'+String(v).padStart(4,'0')).padEnd(17)+(String(stpOf(R).prio(v)+v)+' '+stpMac(R,'cisco')).padEnd(21)+String(4*(t.dist.get(sw)||0)).padStart(9)+'    2   20  15  '+(t.root===sw?'':shortIf(t.rp[sw.name]||''))})]:noStp()]];
+function swapShow(arr,news){for(let i=arr.length-1;i>=0;i--)if(/^show spanning-tree/.test(arr[i][0]))arr.splice(i,1);arr.push(...news)}
+swapShow(CIS.user,C_STP_SHOW);swapShow(CIS.priv,C_STP_SHOW);
+CIS.config.push(['spanning-tree mode rapid-pvst',sw=>{(sw.stp=sw.stp||{}).mode='rapid-pvst'}],['spanning-tree mode mst',()=>[{t:'[tutor] En los labs de NetCorp los Cisco usan Rapid PVST+ (el modo por defecto). Déjalo en rapid-pvst.',c:'tut'}]],
+ ['spanning-tree vlan <vlist> priority <word>',(sw,[l,p])=>{if(!okPrio(p))return[{t:'% Bridge Priority must be in increments of 4096.',c:'err'},{t:'% Allowed values are: 0 4096 8192 12288 16384 20480 24576 28672 32768 36864 40960 45056 49152 53248 57344 61440',c:'err'}];stpSetPrio(sw,vl(l),+p)}],
+ ['no spanning-tree vlan <vlist> priority',(sw,[l])=>{stpSetPrio(sw,vl(l),null)}],
+ ['spanning-tree vlan <vlist> root primary',(sw,[l])=>{cRootPrim(sw,vl(l),false)}],['spanning-tree vlan <vlist> root secondary',(sw,[l])=>{cRootPrim(sw,vl(l),true)}],
+ ['spanning-tree portfast default',sw=>{(sw.stp=sw.stp||{}).pfdef=true}],['spanning-tree portfast edge default',sw=>{(sw.stp=sw.stp||{}).pfdef=true}],['spanning-tree portfast bpduguard default',sw=>{(sw.stp=sw.stp||{}).bgdef=true}],['spanning-tree portfast edge bpduguard default',sw=>{(sw.stp=sw.stp||{}).bgdef=true}]);
+const bgMsg=(sw,n)=>stpErr(sw,n)?[`%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port ${n} with BPDU Guard enabled. Disabling port.`,`%PM-4-ERR_DISABLE: bpduguard error detected on ${shortIf(n)}, putting ${shortIf(n)} in err-disable state`]:undefined;
+const onIfs=(sw,f)=>{const L=sw.ctx.range||[sw.ctx.if];let o=[];for(const n of L){const r=f(n);if(r)o=o.concat(r)}return o.length?o:undefined};
+CIS['config-if'].push(['spanning-tree portfast',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',true);if((sw.ifs[n]||{}).mode==='trunk')return['%Warning: portfast should only be enabled on ports connected to a single','host. Connecting hubs, concentrators, switches, bridges, etc... to this','interface  when portfast is enabled, can cause temporary bridging loops.']})],['spanning-tree portfast edge',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',true)})],['no spanning-tree portfast',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',false)})],
+ ['spanning-tree bpduguard enable',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'bg',true);return bgMsg(sw,n)})],['no spanning-tree bpduguard enable',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'bg',false)})],['spanning-tree bpduguard disable',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'bg',false)})],
+ ['spanning-tree guard root',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'rg',true)})],['no spanning-tree guard root',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'rg',false)})]);
+const A_STP_SHOW=[['show spanning-tree',sw=>stpOn()?stpShowA(sw):noStp()],['show spanning-tree detail',sw=>stpOn()?stpShowA(sw):noStp()]];
+swapShow(ARU.priv,A_STP_SHOW);swapShow(ARU.config,A_STP_SHOW);
+ARU.config.push(['spanning-tree',sw=>{(sw.stp=sw.stp||{}).on=true}],['no spanning-tree',sw=>{(sw.stp=sw.stp||{}).on=false;return[{t:'[tutor] Ojo: sin Spanning Tree, un enlace redundante forma un bucle.',c:'tut'}]}],['spanning-tree mode mstp',()=>{}],
+ ['spanning-tree priority <word>',(sw,[m])=>{if(!/^\d+$/.test(m)||+m>15)return[{t:'Invalid input: '+m,c:'err'},{t:'[tutor] En AOS-CX la prioridad es un multiplicador de 0 a 15 (x 4096). Por ejemplo: spanning-tree priority 1 = 4096.',c:'tut'}];stpSetPrio(sw,[],+m*4096)}],['no spanning-tree priority',sw=>{stpSetPrio(sw,[],null)}]);
+ARU['config-if'].push(['spanning-tree port-type admin-edge',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',true)})],['no spanning-tree port-type',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',false)})],['spanning-tree port-type admin-network',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'edge',false)})],
+ ['spanning-tree bpdu-guard',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'bg',true);if(stpErr(sw,n))return['Port '+n+' disabled: BPDU guard']})],['no spanning-tree bpdu-guard',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'bg',false)})],
+ ['spanning-tree root-guard',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'rg',true)})],['no spanning-tree root-guard',sw=>onIfs(sw,n=>{stpSetPort(sw,n,'rg',false)})]);
+for(let i=J_OP.length-1;i>=0;i--)if(/^show spanning-tree/.test(J_OP[i][0]))J_OP.splice(i,1);
+J_OP.push(['show spanning-tree bridge',sw=>stpOn()?stpShowJb(sw):noStp()],['show spanning-tree interface',sw=>stpOn()?stpShowJi(sw):noStp()]);
+/* Juniper: set protocols rstp … (lo llama jPath) */
+function jRstpPath(toks){const b=kw(toks[1],['rstp']);if(b===undefined)return{inc:1};if(!b)return{err:1,tut:'En los EX con ELS se usa protocols rstp.'};if(toks.length===2)return{rstp:{}};
+ const c=kw(toks[2],['bridge-priority','interface','bpdu-block-on-edge','disable']);if(!c)return{err:2};
+ if(c==='bpdu-block-on-edge')return{rstp:{bpdub:true}};if(c==='disable')return{rstp:{dis:true}};
+ if(c==='bridge-priority'){const v=toks[3];if(v===undefined)return{rstp:{prioDel:true}};const n=/^\d+k$/i.test(v)?parseInt(v)*1024:+v;if(!(n>=0&&n<=61440&&n%4096===0))return{err:3,msg:'value is not within range',tut:'Se escribe en múltiplos de 4k: 0, 4k, 8k … 60k.'};return{rstp:{prio:n}}}
+ const ifn=normIf('juniper',toks[3]||'');if(!toks[3])return{inc:1};if(!ifn)return{err:3,msg:`invalid interface type in '${toks[3]}'`};if(toks.length===4)return{rstp:{rif:ifn}};
+ const d=kw(toks[4],['edge','no-root-port','cost']);if(!d)return{err:4};if(d==='cost')return{err:4,tut:'En los labs no hace falta cambiar el costo.'};return{rstp:{rif:ifn,[d==='edge'?'edge':'nrp']:true}}}
+function jRstpApply(C,r,set){const R=C.rstp=C.rstp||{};const x=r.rstp;if(set&&x.prioDel)return[{t:'missing argument.',c:'err'}];
+ if(set){if(x.prio!==undefined)R.prio=x.prio;if(x.bpdub)R.bpdub=true;if(x.dis)R.disable=true;if(x.rif){if(x.edge)(R.edge=R.edge||{})[x.rif]=true;if(x.nrp)(R.nrp=R.nrp||{})[x.rif]=true}}
+ else{if(x.prio!==undefined||x.prioDel)delete R.prio;if(x.bpdub)delete R.bpdub;if(x.dis)delete R.disable;if(x.rif){if(x.edge&&R.edge)delete R.edge[x.rif];else if(x.nrp&&R.nrp)delete R.nrp[x.rif];else{if(R.edge)delete R.edge[x.rif];if(R.nrp)delete R.nrp[x.rif]}}if(!Object.keys(x).length)C.rstp={}}}
+function jRstpLines(cfg){const R=cfg.rstp||{},o=[];if(R.disable)o.push('set protocols rstp disable');if(R.prio!==undefined)o.push('set protocols rstp bridge-priority '+(R.prio/1024)+'k');if(R.bpdub)o.push('set protocols rstp bpdu-block-on-edge');for(const n of Object.keys(R.edge||{}))o.push(`set protocols rstp interface ${n} edge`);for(const n of Object.keys(R.nrp||{}))o.push(`set protocols rstp interface ${n} no-root-port`);return o}
+function jRstpTree(cfg){const L=jRstpLines(cfg);if(!L.length)return[];const R=cfg.rstp||{},I=n=>' '.repeat(n*4),o=['protocols {',I(1)+'rstp {'];if(R.disable)o.push(I(2)+'disable;');if(R.prio!==undefined)o.push(I(2)+'bridge-priority '+(R.prio/1024)+'k;');const ifs=[...new Set(Object.keys(R.edge||{}).concat(Object.keys(R.nrp||{})))];for(const n of ifs){o.push(I(2)+'interface '+n+' {');if((R.edge||{})[n])o.push(I(3)+'edge;');if((R.nrp||{})[n])o.push(I(3)+'no-root-port;');o.push(I(2)+'}')}if(R.bpdub)o.push(I(2)+'bpdu-block-on-edge;');o.push(I(1)+'}','}');return o}
+JT.protocols={d:'Protocolos',next:{rstp:{d:'Rapid Spanning Tree',next:{'bridge-priority':{d:'Prioridad del bridge',arg:{n:'<0..60k>',d:'Múltiplos de 4k; el menor gana el root'}},interface:{d:'Opciones por interfaz',arg:{n:'<interfaz>',d:'Por ejemplo ge-0/0/1',list:()=>ports('juniper'),next:{edge:{d:'Puerto de usuario (edge)'},'no-root-port':{d:'Root guard: nunca será root port'}}}},'bpdu-block-on-edge':{d:'BPDU guard en los puertos edge'}}}}};
+/* run-config de Cisco y Aruba */
+function cStpRun(sw){const s=sw.stp||{},o=['spanning-tree mode rapid-pvst'];if(s.pfdef)o.push('spanning-tree portfast edge default');if(s.bgdef)o.push('spanning-tree portfast edge bpduguard default');const by={};for(const[v,p]of Object.entries(s.vprio||{}))(by[p]=by[p]||[]).push(+v);for(const[p,vs]of Object.entries(by))o.push('spanning-tree vlan '+rangeStr(vs)+' priority '+p);return o.concat(['!'])}
+function cStpIf(sw,n){const s=sw.stp||{},o=[];if((s.edge||{})[n])o.push(' spanning-tree portfast');if((s.bg||{})[n])o.push(' spanning-tree bpduguard enable');if((s.rg||{})[n])o.push(' spanning-tree guard root');return o}
+function aStpRun(sw){const s=sw.stp||{};if(!stpOn())return[];const o=[];if(s.on!==false)o.push('spanning-tree');if(s.prio!==undefined)o.push('spanning-tree priority '+(s.prio/4096));return o}
+function aStpIf(sw,n){const s=sw.stp||{},o=[];if((s.edge||{})[n])o.push('    spanning-tree port-type admin-edge');if((s.bg||{})[n])o.push('    spanning-tree bpdu-guard');if((s.rg||{})[n])o.push('    spanning-tree root-guard');return o}
+
 reset();
 }
