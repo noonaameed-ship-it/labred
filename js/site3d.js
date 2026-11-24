@@ -1,6 +1,7 @@
 /* PacketPath · Sitio 3D: cuarto de telecomunicaciones con racks, puertos y cables que el alumno conecta. */
 import * as THREE from './vendor/three.module.min.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
+import {VN,pn,mkDev,IF,run,prompt,banner,prioOf,G} from './site3d-cli.js';
 
 const COL={utp:0x2f7bf2,fibra:0xf59e0b,consola:0x7dd3fc,horiz:0x6b7280};
 const CABLE={utp:'UTP (cobre)',fibra:'Fibra',consola:'Consola'};
@@ -13,31 +14,95 @@ const key=(a,b)=>[a,b].sort().join('|');
 const FULL1=[['PP:01','ACC1:Gi0/1','utp'],['PP:02','ACC1:Gi0/2','utp'],['PP:03','ACC2:Gi0/1','utp'],['PP:04','ACC2:Gi0/2','utp']];
 const FULL2=[['ACC1:Te0/1','CORE:Te0/1','fibra'],['ACC2:Te0/1','CORE:Te0/2','fibra']];
 const FULL4=[['ACC1:Te0/2','CORE:Te0/3','fibra'],['ACC2:Te0/2','CORE:Te0/4','fibra']];
+const CON=d=>[['LAP:USB',d+':CON','consola']];
+const VV={10:'VENTAS',20:'RRHH'};
+// configuración previa neutra
+function preCfg(d,o){const v=d.v;if(o.host)d.host=o.host;Object.assign(d.vlans,o.vlans||{});
+ for(const[g,vid]of Object.entries(o.access||{})){const i=IF(d,g);i.mode='access';i.access=vid;i.up=true;if(v==='juniper'){i.fam=true;i.mem=[d.vlans[vid]]}}
+ for(const[g,[vs,nat]]of Object.entries(o.trunk||{})){const i=IF(d,g);i.mode='trunk';i.allowed=vs.slice();i.native=nat||1;i.up=true;if(v==='juniper'){i.fam=true;i.mem=vs.map(x=>d.vlans[x])}}
+ for(const g of o.up||[])IF(d,g).up=true;
+ for(const[vid,[ip,len]]of Object.entries(o.svi||{})){d.svi[vid]={ip,len,up:true};if(v==='juniper')d.l3[d.vlans[vid]]=+vid}
+ if(o.gw)d.gw=o.gw;if(o.stp&&v==='aruba')d.stp.mode='mstp';d.saved=true}
+const UP4=['Gi0/1','Gi0/2','Gi0/3','Gi0/4'];
+const BASE1={host:'ACC1',vlans:VV,access:{'Gi0/1':10,'Gi0/2':20}};
+const BASEC={host:'CORE',vlans:VV,trunk:{'Te0/1':[[10,20]],'Te0/2':[[10,20]],'Te0/3':[[10,20]],'Te0/4':[[10,20]]},stp:1};
+const BASE2={host:'ACC2',vlans:VV,access:{'Gi0/1':10,'Gi0/2':20},trunk:{'Te0/1':[[10,20]],'Te0/2':[[10,20]]},stp:1};
+const SAVE=v=>v==='juniper'?'commit':'write memory';
+const SH={ifs:{cisco:'show interfaces status',aruba:'show interface brief',juniper:'show interfaces terse'},stp:{cisco:'show spanning-tree',aruba:'show spanning-tree',juniper:'show spanning-tree bridge'},lacp:{cisco:'show etherchannel summary',aruba:'show lacp interfaces',juniper:'show lacp interfaces'}};
+const saveGoal=n=>({t:v=>v==='juniper'?'Aplica los cambios con commit':'Guarda la configuración ('+SAVE(v)+')',ok:D=>{const d=D[n];return d.saved&&(d.v!=='juniper'||!d.cand||JSON.stringify(d.cand)===JSON.stringify(pickCfg(d)))}});
+const pickCfg=d=>{const o={};['host','vlans','ifs','lags','svi','gw','stp','aecount','l3'].forEach(k=>o[k]=d[k]);return o};
+const code=a=>'<pre class="s3code">'+a.join('\n')+'</pre>';
 const MIS=[
- {id:'m1',z:'Zona 0',t:'Patch cords del piso',
-  story:'Primer día en NetCorp. El cableado horizontal de los cuatro escritorios ya llega al patch panel (puertos 01 a 04). Lupita: "D-01 y D-02 van a ACC1, D-03 y D-04 a ACC2. Usa los primeros puertos de cada switch."',
-  pre:[],req:FULL1,
-  hints:['Los patch cords son de cobre: elige el cable UTP.','Toca el puerto 01 del patch panel (rack IDF, arriba) y luego Gi0/1 de ACC1. Haz lo mismo con 02 → Gi0/2.','03 → ACC2 Gi0/1 y 04 → ACC2 Gi0/2. ACC2 es el switch de abajo en el rack IDF.'],
-  done:'Los cuatro escritorios ya tienen enlace: las luces verdes del switch son la capa física funcionando.'},
- {id:'m2',z:'Zona 1',t:'Uplinks de fibra al CORE',
-  story:'Los pisos tienen enlace, pero ACC1 y ACC2 no hablan con el CORE. Beto: "Los uplinks van por fibra, de los puertos SFP. Usa Te0/1 en cada switch de acceso; en el CORE, Te0/1 para ACC1 y Te0/2 para ACC2."',
-  pre:FULL1,req:FULL2,
-  hints:['Los puertos SFP (los cuadrados grises a la derecha) solo aceptan fibra: elige Fibra.','ACC1 Te0/1 → CORE Te0/1. El CORE está en el rack MDF, el de la izquierda.','ACC2 Te0/1 → CORE Te0/2.'],
-  done:'Topología en estrella lista: cada switch de acceso sube al CORE por fibra.'},
- {id:'m3',z:'Zona 1',t:'Consola al CORE',
-  story:'El CORE es nuevo y no tiene IP de administración. La única forma de entrar es por consola. Lupita: "Toma la laptop del carrito y conéctala al puerto CON del CORE."',
-  pre:FULL1.concat(FULL2),req:[['LAP:USB','CORE:CON','consola']],
-  hints:['El puerto de consola no es de red: necesita el cable de consola (celeste).','Un extremo va al USB de la laptop del carrito.','El otro va al puerto CON del CORE (el azul, a la izquierda del switch).'],
-  done:'Ya tienes consola. Así se configura un equipo nuevo antes de que tenga IP.',go:['#lab-1','Abrir la consola: tu primer lab']},
- {id:'m4',z:'Zona 5',t:'Doble uplink: prepara el LAG',
-  story:'Gerencia quiere que un cable roto no deje a un piso sin red. Beto: "Pon un segundo uplink de fibra en cada switch: ACC1 Te0/2 → CORE Te0/3 y ACC2 Te0/2 → CORE Te0/4. Luego lo configuras como LAG."',
-  pre:FULL1.concat(FULL2),req:FULL4,
-  hints:['Otra vez fibra entre puertos SFP.','ACC1 Te0/2 → CORE Te0/3.','ACC2 Te0/2 → CORE Te0/4.'],
-  done:'Dos cables por switch. Sin configurar, Spanning Tree bloquearía uno; como LAG se usan los dos.',go:['#lab-5b','Configurar el LAG en el simulador']},
- {id:'m5',z:'Troubleshooting',t:'Ticket: alguien movió cables',
+ {id:'z0',z:'Zona 0',t:'Enciende el piso',con:'ACC1',
+  story:'Primer día en NetCorp. El cableado horizontal de los cuatro escritorios ya llega al patch panel (puertos 01 a 04). Lupita: "D-01 y D-02 van a ACC1, D-03 y D-04 a ACC2. Después conecta la laptop a la consola de ACC1 y revisa que los puertos estén arriba."',
+  pre:[],req:FULL1.concat(CON('ACC1')),
+  cfg:D=>{preCfg(D.ACC1,{host:'ACC1',up:UP4});preCfg(D.ACC2,{host:'ACC2',up:UP4});preCfg(D.CORE,{host:'CORE'})},
+  goals:[{t:v=>'En la consola de ACC1, revisa el estado de los puertos con '+SH.ifs[v],ok:D=>!!D.ACC1.ran.ifs}],
+  hints:[v=>'Los patch cords son de cobre (UTP): 01 y 02 a los primeros puertos de ACC1; 03 y 04 a los de ACC2 (el switch de abajo en el IDF). Luego, con el cable de consola, une el USB de la laptop con el puerto CON de ACC1.',
+   v=>v==='cisco'?'En Cisco entras en modo usuario (>). Usa enable y luego el show que lista los puertos con su estado.':v==='aruba'?'En Aruba ya entras con privilegios (#). Usa el show que resume las interfaces.':'En Junos estás en modo operativo (>). Usa el show que lista las interfaces en formato corto.',
+   v=>code(v==='cisco'?['enable','show interfaces status']:[SH.ifs[v]])+'Busca que los puertos de los escritorios digan <b>connected</b> / <b>up</b>.'],
+  done:'Los cuatro escritorios tienen enlace y lo comprobaste desde la consola: así se verifica la capa física.'},
+ {id:'z1',z:'Zona 1',t:'Switch nuevo para VENTAS',con:'ACC1',
+  story:'ACC1 llegó de fábrica. Lupita: "Ponle nombre ACC1, crea la VLAN 10 VENTAS y la 20 RRHH, deja el escritorio D-01 en VENTAS y D-02 en RRHH, y guarda. Sin IP todavía: entra por consola."',
+  pre:FULL1,req:CON('ACC1'),
+  cfg:D=>{preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  goals:[{t:()=>'Nombre del equipo: ACC1',ok:D=>D.ACC1.host.toUpperCase()==='ACC1'},
+   {t:()=>'VLAN 10 VENTAS y VLAN 20 RRHH',ok:D=>G.vlan(D.ACC1,10,'VENTAS')&&G.vlan(D.ACC1,20,'RRHH')},
+   {t:v=>pn(v,'Gi0/1')+' (D-01) en acceso a la VLAN 10'+(v==='aruba'?', encendido':''),ok:D=>G.access(D.ACC1,'Gi0/1',10)},
+   {t:v=>pn(v,'Gi0/2')+' (D-02) en acceso a la VLAN 20'+(v==='aruba'?', encendido':''),ok:D=>G.access(D.ACC1,'Gi0/2',20)},saveGoal('ACC1')],
+  hints:[v=>'Orden de trabajo: nombre, VLAN con su nombre, puertos de acceso y guardar. Un switch sin guardar pierde todo al reiniciar.',
+   v=>v==='cisco'?'Comandos: enable, configure terminal, hostname, vlan / name, interface g0/1, switchport mode access, switchport access vlan, write memory.':v==='aruba'?'Comandos: configure terminal, hostname, vlan / name, interface 1/1/1, no shutdown (en Aruba los puertos vienen apagados), vlan access, write memory.':'Comandos: configure, set system host-name, set vlans NOMBRE vlan-id, set interfaces … family ethernet-switching interface-mode access y vlan members, commit.',
+   v=>code(v==='cisco'?['enable','configure terminal','hostname ACC1','vlan 10',' name VENTAS','vlan 20',' name RRHH','interface g0/1',' switchport mode access',' switchport access vlan 10','interface g0/2',' switchport mode access',' switchport access vlan 20','end','write memory']:v==='aruba'?['configure terminal','hostname ACC1','vlan 10','  name VENTAS','vlan 20','  name RRHH','interface 1/1/1','  no shutdown','  vlan access 10','interface 1/1/2','  no shutdown','  vlan access 20','end','write memory']:['configure','set system host-name ACC1','set vlans VENTAS vlan-id 10','set vlans RRHH vlan-id 20','set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members VENTAS','set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access','set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members RRHH','commit'])],
+  done:'ACC1 tiene nombre, VLAN y puertos de acceso, y la configuración quedó guardada.',go:['#lab-1','Seguir practicando en el simulador']},
+ {id:'z2',z:'Zona 2',t:'IP de gestión para ACC1',con:'ACC1',
+  story:'Beto no quiere bajar al cuarto cada vez que hay que revisar ACC1. "Dale una IP de gestión en la VLAN 99 (GESTION): 192.168.99.11 con máscara /24, y el gateway 192.168.99.1. Así entramos por SSH desde el NOC."',
+  pre:FULL1,req:CON('ACC1'),
+  cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  goals:[{t:()=>'VLAN 99 con nombre GESTION',ok:D=>G.vlan(D.ACC1,99,'GESTION')},
+   {t:v=>(v==='juniper'?'irb.99':'Interfaz vlan 99')+' con 192.168.99.11/24'+(v==='cisco'?' y encendida':v==='juniper'?' y ligada a la VLAN (l3-interface)':''),ok:D=>G.svi(D.ACC1,99,'192.168.99.11',24)},
+   {t:v=>'Gateway por defecto 192.168.99.1'+(v==='cisco'?' (ip default-gateway)':' (ruta 0.0.0.0/0)'),ok:D=>D.ACC1.gw==='192.168.99.1'},saveGoal('ACC1')],
+  hints:[v=>'Un switch de capa 2 solo necesita una IP para administrarse: va en una interfaz virtual de la VLAN de gestión. /24 es lo mismo que 255.255.255.0.',
+   v=>v==='cisco'?'Crea la VLAN 99, entra a interface vlan 99, pon ip address con máscara completa y no shutdown; el gateway va en modo global con ip default-gateway.':v==='aruba'?'Crea la VLAN 99, entra a interface vlan 99 y pon la IP con prefijo (/24); el gateway es una ruta: ip route 0.0.0.0/0.':'Crea la VLAN, pon la IP en irb unit 99, liga la VLAN con l3-interface irb.99 y agrega la ruta estática por defecto.',
+   v=>code(v==='cisco'?['enable','configure terminal','vlan 99',' name GESTION','interface vlan 99',' ip address 192.168.99.11 255.255.255.0',' no shutdown','exit','ip default-gateway 192.168.99.1','end','write memory']:v==='aruba'?['configure terminal','vlan 99','  name GESTION','interface vlan 99','  ip address 192.168.99.11/24','exit','ip route 0.0.0.0/0 192.168.99.1','end','write memory']:['configure','set vlans GESTION vlan-id 99','set interfaces irb unit 99 family inet address 192.168.99.11/24','set vlans GESTION l3-interface irb.99','set routing-options static route 0.0.0.0/0 next-hop 192.168.99.1','commit'])],
+  done:'ACC1 ya se puede administrar por la red. La consola queda para emergencias.'},
+ {id:'z3',z:'Zona 3',t:'Uplink trunk al CORE',con:'ACC1',
+  story:'Los escritorios de VENTAS y RRHH no llegan al resto de la red. Beto: "Pon la fibra de ACC1 Te0/1 al CORE Te0/1 (y la de ACC2 al CORE Te0/2). Luego configura en ACC1 el uplink como trunk: solo VLAN 10 y 20, y nativa 999 (NATIVA), que nadie usa."',
+  pre:FULL1,req:FULL2.concat(CON('ACC1')),
+  cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  goals:[{t:()=>'VLAN 999 con nombre NATIVA',ok:D=>G.vlan(D.ACC1,999,'NATIVA')},
+   {t:v=>pn(v,'Te0/1')+' en trunk solo con VLAN 10 y 20',ok:D=>G.trunk(D.ACC1,'Te0/1',[10,20])&&D.ACC1.ifs['Te0/1'].allowed.every(x=>[10,20,999].includes(x))},
+   {t:v=>pn(v,'Te0/1')+' con VLAN nativa 999',ok:D=>G.trunk(D.ACC1,'Te0/1',[10,20],999)},saveGoal('ACC1')],
+  hints:[v=>'Los SFP solo aceptan fibra. En el trunk se limitan las VLAN permitidas y se cambia la nativa a una VLAN sin uso, por seguridad (contra VLAN hopping).',
+   v=>v==='cisco'?'En la interfaz te0/1: switchport mode trunk, switchport trunk allowed vlan y switchport trunk native vlan.':v==='aruba'?'El uplink es 1/1/25. Enciéndelo y usa vlan trunk native y vlan trunk allowed (la VLAN 999 debe existir).':'El uplink es xe-0/1/0: interface-mode trunk, vlan members [ VENTAS RRHH ] y native-vlan-id 999 (a nivel de interfaz).',
+   v=>code(v==='cisco'?['enable','configure terminal','vlan 999',' name NATIVA','interface te0/1',' switchport mode trunk',' switchport trunk allowed vlan 10,20',' switchport trunk native vlan 999','end','write memory']:v==='aruba'?['configure terminal','vlan 999','  name NATIVA','interface 1/1/25','  no shutdown','  vlan trunk native 999','  vlan trunk allowed 10,20','end','write memory']:['configure','set vlans NATIVA vlan-id 999','set interfaces xe-0/1/0 unit 0 family ethernet-switching interface-mode trunk','set interfaces xe-0/1/0 unit 0 family ethernet-switching vlan members [ VENTAS RRHH ]','set interfaces xe-0/1/0 native-vlan-id 999','commit'])],
+  done:'El uplink lleva solo las VLAN necesarias y la nativa ya no es la 1.',go:['#lab-3','Practicar trunks en el simulador']},
+ {id:'z4',z:'Zona 4',t:'El CORE como root bridge',con:'CORE',
+  story:'Pusiste un segundo uplink por redundancia y ahora hay bucles físicos: Spanning Tree bloquea un cable. Pero el root bridge quedó en ACC2, el switch más viejo (MAC más baja). Lupita: "Cablea los segundos uplinks y haz al CORE root de las VLAN 10 y 20."',
+  pre:FULL1.concat(FULL2),req:FULL4.concat(CON('CORE')),
+  cfg:D=>{preCfg(D.ACC1,{...BASE1,trunk:{'Te0/1':[[10,20]],'Te0/2':[[10,20]]},stp:1});preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  goals:[{t:v=>v==='cisco'?'Spanning Tree en modo rapid-pvst':v==='aruba'?'Spanning Tree activado':'RSTP activo (ya viene en Junos)',ok:D=>D.CORE.v==='cisco'?D.CORE.stp.mode==='rapid-pvst':D.CORE.v==='aruba'?D.CORE.stp.mode!=='off':true},
+   {t:()=>'El CORE es root de las VLAN 10 y 20 (prioridad menor a 32768)',ok:D=>[10,20].every(v=>prioOf(D.CORE,v)<32768)},
+   {t:v=>'Comprueba quién es root con '+SH.stp[v],ok:D=>!!D.CORE.ran.stp&&[10,20].every(v=>prioOf(D.CORE,v)<32768)},saveGoal('CORE')],
+  hints:[v=>'Gana el root el switch con menor bridge ID: primero la prioridad y, si empatan, la MAC más baja. Por eso ganó ACC2. Baja la prioridad del CORE.',
+   v=>v==='cisco'?'spanning-tree mode rapid-pvst y spanning-tree vlan 10,20 priority 4096 (múltiplos de 4096).':v==='aruba'?'Activa spanning-tree y usa spanning-tree priority 1 (en Aruba se multiplica por 4096).':'set protocols rstp bridge-priority 4k y commit.',
+   v=>code(v==='cisco'?['enable','configure terminal','spanning-tree mode rapid-pvst','spanning-tree vlan 10,20 priority 4096','end','show spanning-tree','write memory']:v==='aruba'?['configure terminal','spanning-tree','spanning-tree priority 1','end','show spanning-tree','write memory']:['configure','set protocols rstp bridge-priority 4k','commit','run show spanning-tree bridge'])],
+  done:'El CORE es el root: el tráfico sigue el camino corto y el cable bloqueado queda donde tú decidiste.',go:['#lab-4','Practicar Spanning Tree en el simulador']},
+ {id:'z5',z:'Zona 5',t:'LAG de ACC1 al CORE',con:'ACC1',
+  story:'Con STP, uno de los dos uplinks de ACC1 está bloqueado sin hacer nada. Beto: "El CORE ya tiene su lado listo con LACP activo. Junta en ACC1 los dos uplinks (Te0/1 y Te0/2, hoy de fábrica) en un LAG con LACP y pásale las VLAN 10 y 20."',
+  pre:FULL1.concat(FULL2,FULL4),req:CON('ACC1'),
+  cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  goals:[{t:v=>pn(v,'Te0/1')+' y '+pn(v,'Te0/2')+' en el mismo LAG con LACP'+(v==='juniper'?' (con device-count)':v==='aruba'?' (lag encendido)':''),ok:D=>G.lag(D.ACC1,['Te0/1','Te0/2'])!=null},
+   {t:()=>'El LAG en trunk con VLAN 10 y 20',ok:D=>G.lagTrunk(D.ACC1,['Te0/1','Te0/2'],[10,20])},
+   {t:v=>'Comprueba los dos miembros con '+SH.lacp[v],ok:D=>!!D.ACC1.ran.lacp&&G.lag(D.ACC1,['Te0/1','Te0/2'])!=null},saveGoal('ACC1')],
+  hints:[v=>'Un LAG junta los dos cables en un enlace lógico: STP deja de bloquear y se usan los dos. Las VLAN se configuran en la interfaz del LAG, no en los puertos.',
+   v=>v==='cisco'?'interface range te0/1 - 2 con channel-group 1 mode active; luego interface port-channel 1 en trunk.':v==='aruba'?'Crea interface lag 1 (no shutdown, lacp mode active, trunk) y mete 1/1/25 y 1/1/26 con lag 1.':'device-count en chassis, ether-options 802.3ad ae0 en xe-0/1/0 y xe-0/1/1, lacp active y el trunk en ae0.',
+   v=>code(v==='cisco'?['enable','configure terminal','interface range te0/1 - 2',' channel-group 1 mode active','exit','interface port-channel 1',' switchport mode trunk',' switchport trunk allowed vlan 10,20','end','show etherchannel summary','write memory']:v==='aruba'?['configure terminal','interface lag 1','  no shutdown','  lacp mode active','  vlan trunk native 1','  vlan trunk allowed 10,20','interface 1/1/25','  no shutdown','  lag 1','interface 1/1/26','  no shutdown','  lag 1','end','show lacp interfaces','write memory']:['configure','set chassis aggregated-devices ethernet device-count 1','set interfaces xe-0/1/0 ether-options 802.3ad ae0','set interfaces xe-0/1/1 ether-options 802.3ad ae0','set interfaces ae0 aggregated-ether-options lacp active','set interfaces ae0 unit 0 family ethernet-switching interface-mode trunk','set interfaces ae0 unit 0 family ethernet-switching vlan members [ VENTAS RRHH ]','commit','run show lacp interfaces'])],
+  done:'Dos cables, un enlace lógico: más capacidad y si se corta uno, el piso ni lo nota.',go:['#lab-5','Practicar LAG en el simulador']},
+ {id:'t1',z:'Troubleshooting',t:'Ticket: alguien movió cables',
   story:'Ticket #8812: "Después de la limpieza del cuarto, D-02 y D-03 no tienen red y todo el piso de ACC2 está aislado." Encuentra los cables mal puestos, quítalos y deja todo como estaba documentado.',
-  pre:'ticket',req:FULL1.concat(FULL2,FULL4),
-  hints:['Compara cada cable con la documentación de la lista de tareas. Toca un cable para ver sus extremos y quitarlo.','Revisa el patch panel: un patch cord quedó en el switch equivocado y otro en un puerto que no es el suyo.','En la fibra: a ACC2 le falta un uplink y dos uplinks quedaron cruzados en los puertos del CORE (Te0/1 es de ACC1, Te0/2 de ACC2).'],
+  pre:'ticket',req:FULL1.concat(FULL2,FULL4),goals:[],
+  cfg:D=>{preCfg(D.ACC1,BASE1);preCfg(D.ACC2,BASE2);preCfg(D.CORE,BASEC)},
+  hints:[()=>'Compara cada cable con la documentación de la lista de tareas. Toca un cable para ver sus extremos y quitarlo.',()=>'Revisa el patch panel: un patch cord quedó en el switch equivocado y otro en un puerto que no es el suyo.',()=>'En la fibra: a ACC2 le falta un uplink y dos uplinks quedaron cruzados en los puertos del CORE (Te0/1 es de ACC1, Te0/2 de ACC2).'],
   done:'Ticket cerrado. Así se diagnostica la capa 1: lo documentado contra lo que hay de verdad.'}
 ];
 function ticketPre(){const r=FULL1.concat(FULL2,FULL4).map(x=>x.slice());
@@ -52,17 +117,19 @@ const prog={get(){try{if(window.PP3D)return window.PP3D.get();return JSON.parse(
  set(id,stars){try{if(window.PP3D)return window.PP3D.done(id,stars);const p=this.get();p[id]=Math.max(p[id]||0,stars);localStorage.setItem('pp3d',JSON.stringify(p))}catch(e){}}};
 
 let S=null;
+const getV=()=>{try{return localStorage.getItem('pp3dv')||'cisco'}catch(e){return'cisco'}};
 export function unmount(){if(!S)return;S.alive=false;cancelAnimationFrame(S.raf);S.ro&&S.ro.disconnect();S.renderer&&S.renderer.dispose();S=null}
 
-export function mount(view){
+export function mount(view,start){
  unmount();
  const done=prog.get();
- view.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / <a href="#arena">arena</a> / sitio 3D</p><h1>Sitio 3D: el cuarto de telecom</h1><p>Lleva los cables tú mismo: patch cords, fibra y consola. Gira con un dedo, acerca con dos y toca un equipo para verlo de cerca.</p></div></header>
+ view.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / <a href="#arena">arena</a> / sitio 3D</p><h1>Labs 3D: el cuarto de telecom</h1><p>Un lab por zona. Llevas los cables (patch cords, fibra y consola) y configuras el switch por consola en Cisco, Aruba o Juniper. Gira con un dedo, acerca con dos y toca un equipo para verlo de cerca.</p></div></header>
  <div class="s3w"><div class="s3main"><div class="s3stage" id="s3stage"><canvas id="s3c" aria-label="Cuarto de telecomunicaciones en 3D"></canvas><div class="s3lbl" id="s3lbl"></div>
   <div class="s3bar s3top"><div class="s3seg" role="group" aria-label="Tipo de cable">${Object.entries(CABLE).map(([k,t])=>`<button data-cab="${k}" class="${k==='utp'?'on':''}"><i style="background:#${COL[k].toString(16).padStart(6,'0')}"></i>${t}</button>`).join('')}</div>
   <div class="s3seg" role="group" aria-label="Vista"><button data-cam="all">Cuarto</button><button data-cam="mdf">MDF</button><button data-cam="idf">IDF</button><button data-cam="desk">Escritorios</button></div></div>
-  <div class="s3bar s3bot"><p id="s3msg">Elige el tipo de cable y toca un puerto para tomar el cable. Luego toca (o arrastra hasta) el otro puerto.</p><button class="btnl" id="s3del" hidden>Quitar cable</button><button class="btnl" id="s3cancel" hidden>Soltar cable</button></div></div></div>
- <aside class="s3side"><div class="card"><p class="tid">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${done[m.id]?'★'.repeat(done[m.id])+'☆'.repeat(3-done[m.id]):''}</em></button>`).join('')}</div></div>
+  <div class="s3bar s3bot"><p id="s3msg">Elige el tipo de cable y toca un puerto para tomar el cable. Luego toca (o arrastra hasta) el otro puerto.</p><button class="btnl" id="s3del" hidden>Quitar cable</button><button class="btnl" id="s3cancel" hidden>Soltar cable</button><button class="btn" id="s3open" hidden>Abrir consola</button></div>
+  <div class="s3con" id="s3con" hidden><div class="s3ch"><span id="s3ct">PuTTY</span><button id="s3tk" class="btnl">Tareas</button><button id="s3hb" class="btnl">💡 Pistas</button><button id="s3x" class="btnl">Volver al cuarto</button></div><div class="s3cb"><div class="s3term"><div class="s3out" id="s3out"></div><label class="s3in"><span id="s3pr"></span><input id="s3cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></label></div><div class="s3hp" id="s3hp" hidden></div><div class="s3hp" id="s3tp" hidden></div></div></div></div></div>
+ <aside class="s3side"><div class="card"><p class="tid">Fabricante de los switches</p><div class="s3seg s3ven">${Object.entries(VN).map(([k,t])=>`<button data-ven="${k}" class="${k===getV()?'on':''}">${t.split(' ')[0]}</button>`).join('')}</div><p class="tid" style="margin-top:12px">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${done[m.id]?'★'.repeat(done[m.id])+'☆'.repeat(3-done[m.id]):''}</em></button>`).join('')}</div></div>
  <div class="card" id="s3task"></div></aside></div>`;
  const stage=view.querySelector('#s3stage'),canvas=view.querySelector('#s3c'),msg=view.querySelector('#s3msg');
  let renderer;try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false})}catch(e){stage.innerHTML='<p style="padding:20px">Tu navegador no tiene WebGL activado, así que no puede mostrar el sitio 3D. Prueba con Chrome, Edge o Safari actualizados.</p>';return}
@@ -161,7 +228,7 @@ export function mount(view){
   if(/sfp/.test(ks))return'Un puerto SFP de fibra no se conecta con un puerto RJ45 de cobre. Une SFP con SFP (fibra) o RJ45 con RJ45 (UTP).';
   return t==='utp'?'':'Los puertos RJ45 y el patch panel son de cobre: usa cable UTP.'}
  function startOk(P,t){if(P.kind==='sfp'&&t!=='fibra')return'Ese es un '+KIND.sfp+'. Elige el cable de Fibra primero.';if((P.kind==='rj45'||P.kind==='pp')&&t!=='utp')return'Ese es un '+KIND[P.kind]+'. Elige el cable UTP primero.';if((P.kind==='con'||P.kind==='usb')&&t!=='consola')return'Ese es un '+KIND[P.kind]+'. Elige el cable de Consola primero.';return''}
- const pname=P=>(P.dev==='PP'?'Patch panel '+P.name:P.dev==='LAP'?'Laptop USB':P.dev+' '+P.name);
+ const pname=P=>(P.dev==='PP'?'Patch panel '+P.name:P.dev==='LAP'?'Laptop USB':P.kind==='con'?P.dev+' consola (CON)':P.dev+' '+pn(S.V,P.name));
  const say=(t,k)=>{msg.textContent=t;msg.className=k||''};
  // ---------- interacción ----------
  const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let down=null;
@@ -175,9 +242,9 @@ export function mount(view){
  function drop(){if(S.carry&&S.carry.mesh){scene.remove(S.carry.mesh);S.carry.mesh.geometry.dispose()}S.carry=null;view.querySelector('#s3cancel').hidden=true}
  function finish(P){const A=S.carry.P;if(P.cable&&P!==A){say(pname(P)+' ya tiene un cable. Quítalo primero si quieres cambiarlo.','bad');sfx('bad');return}
   const err=why(A,P,S.cab);if(err){say(err,'bad');sfx('bad');return}
-  drop();addCable(A.id,P.id,S.cab);say(`Conectado: ${pname(A)} ↔ ${pname(P)} (${CABLE[S.cab]}).`,'ok');sfx('ok');check()}
+  drop();addCable(A.id,P.id,S.cab);say(`Conectado: ${pname(A)} ↔ ${pname(P)} (${CABLE[S.cab]}).`,'ok');sfx('ok');check();if(S.cab==='consola')setTimeout(openCon,450)}
  function selCable(c){S.sel=c;S.cables.forEach(x=>x.mesh.material.emissiveIntensity=x===c?.9:.08);view.querySelector('#s3del').hidden=!c;if(c)say(`Cable ${CABLE[c.type]}: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}.`)}
- view.querySelector('#s3del').addEventListener('click',()=>{if(!S.sel)return;rmCable(S.sel);say('Cable quitado.');selCable(null);check()});
+ view.querySelector('#s3del').addEventListener('click',()=>{if(!S.sel)return;if(S.sel.type==='consola')closeCon();rmCable(S.sel);say('Cable quitado.');selCable(null);check()});
  view.querySelector('#s3cancel').addEventListener('click',()=>{drop();say('Soltaste el cable.')});
  canvas.addEventListener('pointerdown',e=>{const o=hit(e);down={x:e.clientX,y:e.clientY,o,t:performance.now()};if(o&&o.userData.port&&!S.carry){ctl.enabled=false;grab(o.userData.port);if(S.carry)S.carry.drag=true}},{capture:true});
  canvas.addEventListener('pointermove',e=>{if(!S.carry){if(e.pointerType==='mouse'){const o=hit(e);canvas.style.cursor=o&&(o.userData.port||o.userData.cable||o.userData.dev)?'pointer':'grab';if(o&&o.userData.port&&!down){const P=o.userData.port;say(`${pname(P)} · ${P.label!==P.name?P.label+' · ':''}${KIND[P.kind]}${P.cable?' · conectado':''}`)}}return}
@@ -194,26 +261,53 @@ export function mount(view){
   selCable(null);if(o&&o.userData.dev&&o.userData.dev!=='DESK'){focusDev(o.userData.dev);say('Acercando '+(o.userData.dev==='PP'?'el patch panel':o.userData.dev)+'. Toca un puerto para tomar el cable.')}});
  const sfx=k=>{try{window.PPsfx&&window.PPsfx(k)}catch(e){}};
  // ---------- misiones ----------
- const task=view.querySelector('#s3task');
- function load(i){const m=MIS[i];S.mis=m;S.hint=0;drop();selCable(null);for(const c of S.cables.slice())rmCable(c);
+ const task=view.querySelector('#s3task'),con=view.querySelector('#s3con'),cout=view.querySelector('#s3out'),cin=view.querySelector('#s3cmd'),cpr=view.querySelector('#s3pr'),hp=view.querySelector('#s3hp'),tp=view.querySelector('#s3tp'),openB=view.querySelector('#s3open');
+ S.V=getV();
+ const env={cabled:(dev,g)=>{const P=S.ports[dev+':'+g];return!!(P&&P.cable)},get devs(){return[S.D.CORE,S.D.ACC1,S.D.ACC2]},lagPeerOk:(d,g,m)=>m==='active'||m==='passive'};
+ const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+ function conDev(){const c=S.ports['LAP:USB'].cable;if(!c)return null;const o=c.a==='LAP:USB'?c.b:c.a;return o.split(':')[0]}
+ function print(lines){for(const l of lines){const d=document.createElement('div');if(typeof l==='string')d.textContent=l;else{d.textContent=l.t;d.className=l.c||''}cout.appendChild(d)}cout.scrollTop=cout.scrollHeight}
+ function openCon(){const dn=conDev();if(!dn)return;const d=S.D[dn];S.cd=d;con.hidden=false;view.querySelector('#s3ct').textContent=`PuTTY · COM3 · ${dn} · ${VN[S.V]}`;
+  if(!d.opened){d.opened=true;print(banner(d))}cpr.textContent=prompt(d)+' ';if(S.mis.con&&dn!==S.mis.con)print([{t:`[tutor] Estás en la consola de ${dn}, pero esta misión es en ${S.mis.con}. Mueve el cable de consola.`,c:'tut'}]);
+  rTasks();setTimeout(()=>cin.focus({preventScroll:true}),50)}
+ function closeCon(){con.hidden=true}
+ view.querySelector('#s3x').addEventListener('click',closeCon);openB.addEventListener('click',openCon);
+ view.querySelector('#s3hb').addEventListener('click',()=>{hp.hidden=!hp.hidden;tp.hidden=true;rHints()});
+ view.querySelector('#s3tk').addEventListener('click',()=>{tp.hidden=!tp.hidden;hp.hidden=true;rTasks()});
+ let hi=-1;cin.addEventListener('keydown',e=>{const d=S.cd;if(!d)return;
+  if(e.key==='Enter'){const l=cin.value;cin.value='';hi=-1;print([{t:prompt(d)+' '+l,c:'cmdl'}]);if(d.v==='cisco'&&d.mode==='exec'&&!l.trim()&&!d.started){d.started=1}const o=run(d,l,env);print(o);cpr.textContent=prompt(d)+' ';check()}
+  else if(e.key==='ArrowUp'){const h=d.hist;if(!h.length)return;hi=hi<0?h.length-1:Math.max(0,hi-1);cin.value=h[hi];e.preventDefault()}
+  else if(e.key==='ArrowDown'){const h=d.hist;if(hi<0)return;hi=Math.min(h.length,hi+1);cin.value=h[hi]||'';e.preventDefault()}});
+ cout.addEventListener('click',()=>cin.focus({preventScroll:true}));
+ function rHints(){const m=S.mis;hp.innerHTML='<p class="tid">💡 Pistas</p>'+m.hints.map((h,i)=>`<div class="s3hl"><b>Pista ${i+1}</b>${i<S.hint?`<div>${h(S.V)}</div>`:i===S.hint?`<button class="btnl" data-h="${i}">Ver pista ${i+1}</button>`:'<div class="small">Se abre después de la anterior.</div>'}</div>`).join('')+'<p class="small">Cada pista después de la primera quita una estrella.</p>';
+  hp.querySelectorAll('[data-h]').forEach(b=>b.addEventListener('click',()=>{S.hint++;rHints();check(true)}))}
+ function rTasks(){tp.innerHTML='<p class="tid">Tareas</p>'+task.querySelector('.s3tl').outerHTML;const t=task.querySelectorAll('.s3tl li'),ok=task.querySelectorAll('.s3tl li.ok').length;view.querySelector('#s3tk').textContent=`Tareas ${ok}/${t.length}`}
+ function load(i){const m=MIS[i];S.mis=m;S.hint=0;drop();selCable(null);closeCon();cout.innerHTML='';for(const c of S.cables.slice())rmCable(c);
+  S.D={CORE:mkDev('CORE',S.V),ACC1:mkDev('ACC1',S.V),ACC2:mkDev('ACC2',S.V)};m.cfg&&m.cfg(S.D);
   (m.pre==='ticket'?ticketPre():m.pre).forEach(([a,b,t])=>addCable(a,b,t));
   view.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));S.won=false;
-  say('Misión: '+m.t+'. Elige el cable y toca un puerto.');check(true);
-  const fv=m.id==='m1'?'idf':m.id==='m3'?'all':'all';fly(VIEWS[fv][0],VIEWS[fv][1])}
+  say('Misión: '+m.t+'. '+(m.req.length>1||!m.con?'Elige el cable y toca un puerto.':'Conecta la laptop a la consola de '+m.con+'.'));check(true);
+  const fv=m.id==='z0'?'idf':'all';fly(VIEWS[fv][0],VIEWS[fv][1])}
  function check(silent){const m=S.mis;if(!m)return;const have=new Map(S.cables.map(c=>[key(c.a,c.b),c]));
   const need=new Set(m.req.concat(m.pre==='ticket'?[]:m.pre).map(([a,b])=>key(a,b)));
-  const rows=m.req.map(([a,b,t])=>{const c=have.get(key(a,b)),ok=c&&c.type===t;return{ok,txt:`${pname(S.ports[a])} → ${pname(S.ports[b])}`+(S.ports[a].dev==='PP'?` <span class="small">(${DESK[a.slice(3)]||''})</span>`:'')+` · ${CABLE[t]}`}});
+  const rows=m.req.map(([a,b,t])=>{const c=have.get(key(a,b)),ok=c&&c.type===t;return{ok,txt:`🔌 ${pname(S.ports[a])} → ${pname(S.ports[b])}`+(S.ports[a].dev==='PP'?` <span class="small">(${DESK[a.slice(3)]||''})</span>`:'')+` · ${CABLE[t]}`}});
+  const cabOk=rows.every(r=>r.ok);
+  const grows=(m.goals||[]).map(g=>({ok:cabOk&&g.ok(S.D),txt:'⌨️ '+esc(g.t(S.V))}));
   const extra=S.cables.filter(c=>!need.has(key(c.a,c.b)));
-  const win=rows.every(r=>r.ok)&&!extra.length;
-  task.innerHTML=`<p class="tid">${m.z} · misión</p><h3>${m.t}</h3><p>${m.story}</p><ul class="s3tl">${rows.map(r=>`<li class="${r.ok?'ok':''}">${r.ok?'✓':'○'} ${r.txt}</li>`).join('')}${extra.map(c=>`<li class="bad">✗ Sobra o está mal: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}</li>`).join('')}</ul>
-  <div class="s3h">${m.hints.map((h,i)=>i<S.hint?`<p><b>Pista ${i+1}:</b> ${h}</p>`:'').join('')}${S.hint<3&&!win?`<button class="btnl" id="s3hint">Ver pista ${S.hint+1} de 3</button>`:''}</div>
+  const win=cabOk&&grows.every(r=>r.ok)&&!extra.length;
+  openB.hidden=!conDev()||!con.hidden;if(conDev())openB.textContent='Abrir consola de '+conDev();
+  task.innerHTML=`<p class="tid">${m.z} · misión · ${VN[S.V]}</p><h3>${m.t}</h3><p>${m.story}</p><ul class="s3tl">${rows.concat(grows).map(r=>`<li class="${r.ok?'ok':''}">${r.ok?'✓':'○'} ${r.txt}</li>`).join('')}${extra.map(c=>`<li class="bad">✗ Sobra o está mal: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}</li>`).join('')}</ul>
+  <div class="s3h">${m.hints.map((h,i)=>i<S.hint?`<div><b>Pista ${i+1}:</b> ${h(S.V)}</div>`:'').join('')}${S.hint<3&&!win?`<button class="btnl" id="s3hint">Ver pista ${S.hint+1} de 3</button>`:''}</div>
   ${win?`<div class="s3win"><b>¡Misión cumplida!</b> ${'★'.repeat(3-Math.min(S.hint,2))}${'☆'.repeat(Math.min(S.hint,2))}<p>${m.done}</p>${m.go?`<a class="btn" href="${m.go[0]}">${m.go[1]}</a>`:''}${MIS.indexOf(m)<MIS.length-1?`<button class="btnl" id="s3next">Siguiente misión</button>`:''}</div>`:''}`;
-  const hb=task.querySelector('#s3hint');if(hb)hb.addEventListener('click',()=>{S.hint++;check(true)});
+  const hb=task.querySelector('#s3hint');if(hb)hb.addEventListener('click',()=>{S.hint++;check(true);if(!hp.hidden)rHints()});
   const nb=task.querySelector('#s3next');if(nb)nb.addEventListener('click',()=>load(MIS.indexOf(m)+1));
+  if(!con.hidden)rTasks();
   if(win&&!S.won&&!silent){S.won=true;const stars=3-Math.min(S.hint,2);prog.set(m.id,stars);sfx('win');say('¡Misión cumplida! '+m.done,'ok');
-   const b=view.querySelector(`[data-m="${MIS.indexOf(m)}"] em`);if(b)b.textContent='★'.repeat(Math.max(stars,prog.get()[m.id]||0))+'☆'.repeat(3-Math.max(stars,prog.get()[m.id]||0))}}
+   if(!con.hidden)print([{t:'[tutor] ✔ ¡Misión cumplida! '+m.done,c:'win'}]);
+   const b=view.querySelector(`[data-m="${MIS.indexOf(m)}"] em`);if(b){const st=Math.max(stars,prog.get()[m.id]||0);b.textContent='★'.repeat(st)+'☆'.repeat(3-st)}}}
  view.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>load(+b.dataset.m)));
- const first=MIS.findIndex(m=>!done[m.id]);load(first<0?0:first);
+ view.querySelectorAll('[data-ven]').forEach(b=>b.addEventListener('click',()=>{S.V=b.dataset.ven;try{localStorage.setItem('pp3dv',S.V)}catch(e){}view.querySelectorAll('[data-ven]').forEach(x=>x.classList.toggle('on',x===b));load(MIS.indexOf(S.mis))}));
+ const si=MIS.findIndex(m=>m.id===start),first=MIS.findIndex(m=>!done[m.id]);load(si>=0?si:first<0?0:first);if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
  // ---------- ciclo ----------
  const fit=()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
  S.ro=new ResizeObserver(fit);S.ro.observe(stage);fit();
@@ -225,5 +319,5 @@ export function mount(view){
   for(const L of S.labels){if(L.obj){L.obj.getWorldPosition(v3);if(L.off)v3.add(L.off)}else v3.copy(L.p);const dist=cam.position.distanceTo(v3);v3.project(cam);
    const vis=v3.z<1&&Math.abs(v3.x)<1.05&&Math.abs(v3.y)<1.05&&!(L.el.classList.contains('dc')&&d>4);L.el.style.display=vis?'':'none';if(vis)L.el.style.transform=`translate(${(v3.x+1)/2*w}px,${(1-v3.y)/2*h}px) translate(-50%,-50%)`;L.el.style.opacity=dist>7?.6:1}}
  loop();
- window.__s3={xy(id){const P=S.ports[id];const v=pw(P);v.project(cam);const r=canvas.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]},focus:focusDev,cables:()=>S.cables.map(c=>[c.a,c.b,c.type])};
+ window.__s3={xy(id){const P=S.ports[id];const v=pw(P);v.project(cam);const r=canvas.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]},focus:focusDev,cables:()=>S.cables.map(c=>[c.a,c.b,c.type]),cmd(l){cin.value=l;cin.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))},load,tasks:()=>task.innerText,hint3:i=>MIS[i].hints[2](S.V),req:i=>MIS[i].req,open:openCon,out:()=>cout.innerText};
 }

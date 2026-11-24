@@ -1065,3 +1065,22 @@ table.stack td code{white-space:normal;overflow-wrap:anywhere}
 .card.ar.s3card{border-color:var(--blue)}
 @media(max-width:900px){.s3w{grid-template-columns:1fr;padding:10px}.s3stage{height:62vh}.s3seg button{padding:6px 8px;font-size:12px}.s3top{gap:6px}}
 .s3bar [hidden]{display:none!important}
+.s3con{position:absolute;inset:8px;z-index:5;display:flex;flex-direction:column;background:#0d1117;border:1px solid #2dd4bf;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.6);overflow:hidden}
+.s3con[hidden]{display:none}
+.s3ch{display:flex;gap:6px;align-items:center;padding:6px 8px;background:#161b22;border-bottom:1px solid #243432;flex-wrap:wrap}
+.s3ch span{flex:1;font:600 12px 'IBM Plex Mono',monospace;color:#8ea29f;min-width:120px}
+.s3ch .btnl{background:#0d1117;color:#e3ebe8;padding:5px 10px;font-size:13px;min-height:32px}
+.s3cb{flex:1;display:grid;grid-template-columns:1fr;min-height:0;position:relative}
+.s3term{display:flex;flex-direction:column;min-height:0}
+.s3out{flex:1;overflow:auto;padding:10px 12px;font:13px/1.45 'IBM Plex Mono',monospace;color:#7ee787;white-space:pre-wrap;word-break:break-word}
+.s3out .err{color:#ff7b72}.s3out .tut{color:#79c0ff}.s3out .dim{color:#6e7681}.s3out .cmdl{color:#e6edf3}.s3out .win{color:#33d17f;font-weight:700}
+.s3in{display:flex;align-items:center;gap:0;padding:8px 12px;border-top:1px solid #21262d;font:14px 'IBM Plex Mono',monospace;color:#7ee787}
+.s3in span{white-space:pre}.s3in input{flex:1;background:none;border:0;outline:0;color:#e6edf3;font:inherit;min-width:0;padding:4px 0}
+.s3hp{position:absolute;top:0;right:0;bottom:0;width:min(360px,100%);overflow:auto;background:#111c1b;border-left:1px solid #243432;padding:12px;color:#e3ebe8;font-size:14px}
+.s3hp[hidden]{display:none}.s3hp .tid{color:#2dd4bf}
+.s3hl{border-top:1px solid #243432;padding:8px 0;display:flex;flex-direction:column;gap:6px}
+.s3code{background:#0b0f12;color:#7ee787;border:1px solid #243432;border-radius:6px;padding:8px;font:12px/1.45 'IBM Plex Mono',monospace;white-space:pre-wrap;word-break:break-word;margin:6px 0}
+.s3ven{background:var(--soft);border-color:var(--line)}.s3ven button{color:var(--ink)}
+.s3h>div{font-size:14px;background:var(--soft);padding:8px;border-radius:6px;margin:6px 0}
+input#s3cmd:focus,.s3in input:focus{outline:none!important;box-shadow:none!important}
+@media(max-width:900px){.s3in{font-size:16px}.s3out{font-size:12.5px}}
