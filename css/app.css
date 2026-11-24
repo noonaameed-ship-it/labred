@@ -1039,3 +1039,29 @@ table.tnw th,table.tnw td{white-space:nowrap}
 .badge span{display:block}.badge .btier{display:block}
 @media (max-width:600px){.badges{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.badge{grid-template-columns:1fr;padding:10px;gap:6px;align-content:start}.badge .bi{width:36px;height:36px}.badge b{font-size:13px}.badge span{font-size:11.5px}}
 table.stack td code{white-space:normal;overflow-wrap:anywhere}
+/* Sitio 3D */
+.s3w{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;max-width:1280px;margin:0 auto;padding:16px}
+.s3stage{position:relative;height:min(72vh,720px);border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:#0b1312;touch-action:none}
+.s3stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.s3lbl{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.s3l{position:absolute;left:0;top:0;font:600 12px 'IBM Plex Mono',monospace;color:#e3ebe8;background:rgba(11,19,18,.72);border:1px solid rgba(45,212,191,.35);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.s3l.rk{font-size:14px;color:#2dd4bf}.s3l.dc{color:#8ea29f;border-color:transparent}.s3l.dk{font-size:11px}
+.s3bar{position:absolute;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:none}.s3bar>*{pointer-events:auto}
+.s3top{top:8px;justify-content:space-between}.s3bot{bottom:8px}
+.s3seg{display:flex;background:rgba(11,19,18,.82);border:1px solid #243432;border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+.s3seg button{background:none;border:0;color:#cfdad7;font:600 13px 'IBM Plex Sans',sans-serif;padding:7px 10px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center;min-height:36px}
+.s3seg button.on{background:#2dd4bf;color:#04201c}.s3seg i{width:14px;height:6px;border-radius:3px;display:inline-block}
+.s3bot p{flex:1 1 220px;margin:0;background:rgba(11,19,18,.85);color:#e3ebe8;border:1px solid #243432;border-radius:8px;padding:8px 10px;font-size:14px;line-height:1.35}
+.s3bot p.bad{border-color:#ff7a64;color:#ffc2b8}.s3bot p.ok{border-color:#33d17f;color:#b9f5d2}
+.s3bot .btnl{background:#111c1b;color:#e3ebe8}
+.s3side{display:flex;flex-direction:column;gap:14px}.s3side .card{max-width:none}
+.s3mis{display:flex;flex-direction:column;gap:6px}
+.s3mis button{text-align:start;background:var(--soft);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--ink);font:600 14px 'IBM Plex Sans',sans-serif;display:grid;grid-template-columns:1fr auto;gap:0 8px}
+.s3mis button span{grid-column:1/-1;font:500 11px 'IBM Plex Mono',monospace;color:var(--mut)}.s3mis button em{font-style:normal;color:var(--gold)}
+.s3mis button.on{border-color:var(--blue);box-shadow:3px 3px 0 var(--blue)}
+.s3tl{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:5px;font-size:14px}.s3tl li.ok{color:var(--ok)}.s3tl li.bad{color:var(--bad)}
+.s3h p{font-size:14px;background:var(--soft);padding:8px;border-radius:6px}
+.s3win{margin-top:10px;border:1.5px solid var(--ok);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}.s3win b{color:var(--ok)}
+.card.ar.s3card{border-color:var(--blue)}
+@media(max-width:900px){.s3w{grid-template-columns:1fr;padding:10px}.s3stage{height:62vh}.s3seg button{padding:6px 8px;font-size:12px}.s3top{gap:6px}}
+.s3bar [hidden]{display:none!important}
