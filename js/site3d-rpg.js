@@ -16,9 +16,12 @@ export function initRPG(X){
   scene.add(g);return{g,legs,arms,t:0}}
  function walkAnim(P,moving,dt){P.t+=dt*(moving?9:0);const k=moving?Math.sin(P.t)*.55:0;P.legs[0].rotation.x=k;P.legs[1].rotation.x=-k;P.arms[0].rotation.x=-k*.8;P.arms[1].rotation.x=k*.8}
  const me=person(0x0f766e,0x1f2937,0x2b1d14);me.g.visible=false;
+ const beacon=new THREE.Mesh(new THREE.ConeGeometry(.12,.26,16),new THREE.MeshBasicMaterial({color:0xfacc15}));beacon.rotation.x=Math.PI;beacon.visible=false;scene.add(beacon);
+ const ringB=new THREE.Mesh(new THREE.RingGeometry(.35,.45,32),new THREE.MeshBasicMaterial({color:0xfacc15,transparent:true,opacity:.6,side:THREE.DoubleSide}));ringB.rotation.x=-Math.PI/2;ringB.visible=false;scene.add(ringB);
  const meL={el:lbl('Tú','me'),obj:me.g,off:new THREE.Vector3(0,1.85,0)};
  // ---------- UI ----------
- stage.insertAdjacentHTML('beforeend',`<div class="s3joy" id="s3joy" hidden><i></i></div><button class="s3act" id="s3act" hidden>Hablar</button><div class="s3dlg" id="s3dlg" hidden></div><button class="btnl s3exit" id="s3exit" hidden>🚶 Salir del rack</button><div class="s3fade" id="s3fade" hidden></div>`);
+ stage.insertAdjacentHTML('beforeend',`<div class="s3joy" id="s3joy" hidden><i></i></div><button class="s3act" id="s3act" hidden>Hablar</button><div class="s3dlg" id="s3dlg" hidden></div><button class="btnl s3exit" id="s3exit" hidden>🚶 Salir del rack</button><div class="s3fade" id="s3fade" hidden></div><div class="s3help" id="s3intro" hidden><div><h3>Cómo funciona un caso de cliente</h3><p>Eres el ingeniero que va al sitio del cliente. Es como un trabajo real, en 5 pasos:</p><ol><li><b>Beto, tu jefe,</b> te explica el caso.</li><li><b>Platica con el cliente:</b> elige qué preguntarle para entender qué necesita. Las buenas preguntas te dan los datos; las innecesarias restan puntos.</li><li><b>Propón la solución</b> y di qué necesitas. Si te la aprueba, te da la <b>ventana</b> (día y hora para hacerlo sin afectar a nadie).</li><li><b>En la ventana, ve al rack:</b> cablea y configura por consola.</li><li><b>Entrega al cliente:</b> explícale qué hiciste. Mínimo 70 puntos para cerrar bien el caso.</li></ol><div class="s3keys"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: caminar</span><span>Arrastrar: girar la cámara</span><span><kbd>E</kbd>: hablar / usar</span><span><kbd>1</kbd>-<kbd>4</kbd>: elegir respuesta</span><span>📱 Celular: joystick y botón verde</span></div><p class="small">El <b style="color:#facc15">cono amarillo</b> siempre marca a dónde ir.</p><button class="btn" id="s3go">¡Vamos!</button></div></div>`);
+ const intro=stage.querySelector('#s3intro');stage.querySelector('#s3go').addEventListener('click',()=>{intro.hidden=true});
  const joy=stage.querySelector('#s3joy'),act=stage.querySelector('#s3act'),dlg=stage.querySelector('#s3dlg'),exitB=stage.querySelector('#s3exit'),fade=stage.querySelector('#s3fade'),nextEl=view.querySelector('#s3next');
  const topBars=()=>view.querySelectorAll('.s3top');
  // joystick
@@ -27,7 +30,7 @@ export function initRPG(X){
   const mv=e=>{if(e.pointerId!==id)return;let dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy),mx=42;if(d>mx){dx*=mx/d;dy*=mx/d}knob.style.transform=`translate(${dx}px,${dy}px)`;R.joy.x=dx/mx;R.joy.y=dy/mx};
   joy.addEventListener('pointermove',mv);const up=e=>{if(e.pointerId!==id)return;id=null;knob.style.transform='';R.joy.x=R.joy.y=0};joy.addEventListener('pointerup',up);joy.addEventListener('pointercancel',up)}
  const typing=e=>e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA');
- const kd=e=>{if(!R.on||typing(e)||!view.classList.contains('on'))return;const k=e.key.toLowerCase();
+ const kd=e=>{if(!R.on||typing(e)||!view.classList.contains('on')||!intro.hidden)return;const k=e.key.toLowerCase();
   if(!dlg.hidden){const n=+e.key;if(n>=1&&n<=6){const b=dlg.querySelectorAll('[data-o]')[n-1];if(b){b.click();e.preventDefault()}}else if((k===' '||k==='enter'||k==='e')&&dlg.querySelector('[data-c]')){dlg.querySelector('[data-c]').click();e.preventDefault()}return}
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){R.keys[k]=1;e.preventDefault()}
   if((k==='e'||k===' '||k==='enter')&&!act.hidden){act.click();e.preventDefault()}};
@@ -48,9 +51,9 @@ export function initRPG(X){
   R.boss=npc({name:'Beto · tu jefe',shirt:0x1d4ed8,hair:0x111111},[5.2,0,3.4],-Math.PI/2);
   R.cli=npc(c.client,c.client.pos||[2.3,0,2.35],c.client.rot!=null?c.client.rot:Math.PI*.8);
   R.sign=lbl(c.site,'rk site');S.labels.push(R.sLab={el:R.sign,p:new THREE.Vector3(4.9,2.5,4.95)});
-  walkMode();night(false);obj('Habla con Beto, tu jefe, para recibir el caso. Acércate y presiona <b>E</b> (o el botón Hablar).');
+  intro.hidden=false;walkMode();night(false);obj('Habla con Beto, tu jefe, para recibir el caso. Acércate y presiona <b>E</b> (o el botón Hablar).');
   say('Caso: '+c.t+'. Muévete con WASD o las flechas (en el celular, con el joystick). Arrastra para girar la cámara.');rCase()}
- function stop(silent){R.on=false;stage.classList.remove('walk');S.mode=null;S.onWin=null;me.g.visible=false;meL.el.style.display='none';clearNpcs();if(R.sLab){R.sign.remove();S.labels=S.labels.filter(x=>x!==R.sLab);R.sLab=null}
+ function stop(silent){R.on=false;beacon.visible=ringB.visible=false;intro.hidden=true;stage.classList.remove('walk');S.mode=null;S.onWin=null;me.g.visible=false;meL.el.style.display='none';clearNpcs();if(R.sLab){R.sign.remove();S.labels=S.labels.filter(x=>x!==R.sLab);R.sLab=null}
   dlg.hidden=true;act.hidden=true;joy.hidden=true;exitB.hidden=true;night(false);rackModeUI(true);
   ctl.minAzimuthAngle=-1.15;ctl.maxAzimuthAngle=1.15;ctl.minDistance=.35;ctl.maxDistance=6.5;ctl.maxPolarAngle=Math.PI*.47}
  function walkMode(){S.mode='walk';stage.classList.add('walk');me.g.visible=true;meL.el.style.display='';rackModeUI(false);exitB.hidden=true;joy.hidden=!matchMedia('(pointer:coarse)').matches&&innerWidth>900;
@@ -109,6 +112,7 @@ export function initRPG(X){
    walkAnim(me,moving,dt);
    if(!S.anim){ctl.target.lerp(new THREE.Vector3(P.position.x,1.1,P.position.z),.15)}
    const a=actionFor();if(a){act.hidden=false;act.textContent=a[0]+' (E)';act.onclick=a[1]}else act.hidden=true}
+  {const tg=R.stage===0?R.boss.g.position:R.stage===1||R.stage===4?R.cli.g.position:R.stage<4?RACK:null;const show=!!tg&&S.mode==='walk'&&dlg.hidden;beacon.visible=ringB.visible=show;if(show){const t=performance.now()/300;beacon.position.set(tg.x,(tg===RACK?2.0:2.25)+Math.sin(t)*.08,tg.z);ringB.position.set(tg.x,.02,tg.z);ringB.material.opacity=.35+.3*Math.sin(t)}}
   R.npcs.forEach(n=>{walkAnim(n,false,dt);if(near(n,2.2)&&S.mode==='walk'){const a=Math.atan2(P.position.x-n.g.position.x,P.position.z-n.g.position.z);let d=a-n.g.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));n.g.rotation.y+=d*Math.min(1,dt*5)}});
   if(S.mode==='walk'){cam.position.x=Math.max(B.x0-.2,Math.min(B.x1+3,cam.position.x));cam.position.z=Math.max(-.9,Math.min(B.z1+3,cam.position.z));cam.position.y=Math.max(.8,cam.position.y)}}
  const tp=(x,z)=>{me.g.position.set(x,0,z)};Object.assign(R,{start,stop,tick,backFromRack,tp});return R}

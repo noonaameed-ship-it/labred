@@ -1108,3 +1108,6 @@ input#s3cmd:focus,.s3in input:focus{outline:none!important;box-shadow:none!impor
 @media(max-width:900px){.s3exit{top:auto;bottom:66px}.s3say{font-size:15px}}
 .s3stage.walk .s3bot{display:none}.s3stage.walk .s3next{top:10px;bottom:auto}
 @media(max-width:900px){.s3stage.walk .s3act{bottom:24px}.s3stage.walk .s3joy{bottom:20px}}
+.s3mis button.lk{opacity:.55;cursor:not-allowed}.s3mis button.lk em{grid-column:1/-1;color:var(--mut);font-weight:400}
+.s3keys{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:#cfdad7;margin:8px 0}.s3keys kbd{display:inline-block;min-width:20px;text-align:center;background:#0b1312;border:1px solid #3a4b48;border-bottom-width:3px;border-radius:4px;padding:1px 5px;margin-right:2px;font:700 12px 'IBM Plex Mono',monospace;color:#e3ebe8}
+#s3tidy.on{background:#facc15;color:#2b2100}

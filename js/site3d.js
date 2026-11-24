@@ -267,6 +267,9 @@ const prog={get(){try{if(window.PP3D)return window.PP3D.get();return JSON.parse(
  set(id,stars){try{if(window.PP3D)return window.PP3D.done(id,stars);const p=this.get();p[id]=Math.max(p[id]||0,stars);localStorage.setItem('pp3d',JSON.stringify(p))}catch(e){}}};
 
 let S=null;
+const UNL={t1:'d0b',c1:'d3b',c2:'d5b',c3:'d3b'};
+const isOpen=id=>{try{if(!window.PP3D)return true;if(/^d/.test(id))return window.PP3D.open(id);return!UNL[id]||window.PP3D.passed(UNL[id])}catch(e){return true}};
+const lockTxt=id=>/^d/.test(id)?'Se abre cuando llegues a este ticket en tu mapa':'Se abre al aprobar '+(UNL[id]||'').replace(/^d(\d)(.)/,(m,z,l)=>'el Lab 3D-'+z+l.toUpperCase());
 const PASS3=70;const scoreStars=sc=>sc>=90?3:sc>=80?2:sc>=70?1:0;
 function badge(id,v){if(!v)return'';if(/^d/.test(id)){const st=scoreStars(v);return st?'★'.repeat(st)+'☆'.repeat(3-st)+' '+v:'✗ '+v}return'★'.repeat(v)+'☆'.repeat(3-v)}
 const getV=()=>{try{return localStorage.getItem('pp3dv')||'cisco'}catch(e){return'cisco'}};
@@ -278,29 +281,32 @@ export function mount(view,start){
  view.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / <a href="#arena">arena</a> / sitio 3D</p><h1>Labs 3D: el cuarto de telecom</h1><p>Un lab por zona. Llevas los cables (patch cords, fibra y consola) y configuras el switch por consola en Cisco, Aruba o Juniper. Gira con un dedo, acerca con dos y toca un equipo para verlo de cerca.</p></div></header>
  <div class="s3w"><div class="s3main"><div class="s3stage" id="s3stage"><canvas id="s3c" aria-label="Cuarto de telecomunicaciones en 3D"></canvas><div class="s3lbl" id="s3lbl"></div>
   <div class="s3bar s3top"><div class="s3seg" role="group" aria-label="Tipo de cable">${Object.entries(CABLE).map(([k,t])=>`<button data-cab="${k}" class="${k==='utp'?'on':''}"><i style="background:#${COL[k].toString(16).padStart(6,'0')}"></i>${t}</button>`).join('')}</div>
-  <div class="s3seg" role="group" aria-label="Vista"><button data-cam="all">Cuarto</button><button data-cam="mdf">MDF</button><button data-cam="idf">IDF</button><button data-cam="desk">Escritorios</button></div></div>
+  <div class="s3seg" role="group" aria-label="Vista"><button data-cam="all">Cuarto</button><button data-cam="mdf">MDF</button><button data-cam="idf">IDF</button><button data-cam="desk">Escritorios</button><button id="s3tidy" class="on" title="Peinar o desordenar los cables">🧹 Peinados</button></div></div>
   <div class="s3next" id="s3next"></div><button class="s3q" id="s3q" aria-label="Cómo se juega">?</button>
   <div class="s3help" id="s3help" hidden><div><h3>Cómo se juega</h3><ol><li><b>Lee la misión</b> (a la derecha o abajo): te dice qué cables poner y qué configurar.</li><li><b>Elige el tipo de cable</b> arriba: UTP (cobre), Fibra o Consola.</li><li><b>Toca el puerto de origen</b> (el que <span class="s3pulse">parpadea</span>) y luego el de destino. También puedes arrastrar.</li><li><b>Conecta la consola</b>: cable de consola del USB de la laptop al puerto CON azul del switch. Se abre la terminal.</li><li><b>Configura</b> con comandos reales. Si te atoras, abre 💡 Pistas.</li></ol><p class="small">Gira con un dedo o el mouse, acerca con dos dedos o la rueda. Los botones Cuarto, MDF, IDF y Escritorios te llevan a cada lugar.</p><button class="btn" id="s3hok">¡Entendido!</button></div></div>
   <div class="s3bar s3bot"><p id="s3msg">Elige el tipo de cable y toca un puerto para tomar el cable. Luego toca (o arrastra hasta) el otro puerto.</p><button class="btnl" id="s3del" hidden>Quitar cable</button><button class="btnl" id="s3cancel" hidden>Soltar cable</button><button class="btn" id="s3open" hidden>Abrir consola</button></div>
   <div class="s3con" id="s3con" hidden><div class="s3ch"><span id="s3ct">PuTTY</span><button id="s3tk" class="btnl">Tareas</button><button id="s3hb" class="btnl">💡 Pistas</button><button id="s3x" class="btnl">Volver al cuarto</button></div><div class="s3cb"><div class="s3term"><div class="s3out" id="s3out"></div><label class="s3in"><span id="s3pr"></span><input id="s3cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando"></label></div><div class="s3hp" id="s3hp" hidden></div><div class="s3hp" id="s3tp" hidden></div></div></div></div></div>
- <aside class="s3side"><div class="card"><p class="tid">Fabricante de los switches</p><div class="s3seg s3ven">${Object.entries(VN).map(([k,t])=>`<button data-ven="${k}" class="${k===getV()?'on':''}">${t.split(' ')[0]}</button>`).join('')}</div><p class="tid" style="margin-top:12px">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${badge(m.id,done[m.id])}</em></button>`).join('')}</div></div>
- <div class="card"><p class="tid">Casos de cliente · modo libre</p><div class="s3mis">${CASES.map((c,i)=>`<button data-case="${i}"><span>${c.site}</span>${c.t}<em>${done[c.id]?(done[c.id]>=70?'✓ ':'✗ ')+done[c.id]:''}</em></button>`).join('')}</div></div><div class="card" id="s3task"></div></aside></div>`;
+ <aside class="s3side"><div class="card"><p class="tid">Fabricante de los switches</p><div class="s3seg s3ven">${Object.entries(VN).map(([k,t])=>`<button data-ven="${k}" class="${k===getV()?'on':''}">${t.split(' ')[0]}</button>`).join('')}</div><p class="tid" style="margin-top:12px">Misiones</p><div class="s3mis" id="s3mis">${MIS.map((m,i)=>isOpen(m.id)?`<button data-m="${i}"><span>${m.z}</span>${m.t}<em>${badge(m.id,done[m.id])}</em></button>`:`<button class="lk" disabled title="${lockTxt(m.id)}"><span>${m.z} · 🔒</span>${m.t}<em class="small">${lockTxt(m.id)}</em></button>`).join('')}</div></div>
+ <div class="card"><p class="tid">Casos de cliente · modo libre</p><div class="s3mis">${CASES.map((c,i)=>isOpen(c.id)?`<button data-case="${i}"><span>${c.site}</span>${c.t}<em>${done[c.id]?(done[c.id]>=70?'✓ ':'✗ ')+done[c.id]:''}</em></button>`:`<button class="lk" disabled><span>${c.site} · 🔒</span>${c.t}<em class="small">${lockTxt(c.id)}</em></button>`).join('')}</div></div><div class="card" id="s3task"></div></aside></div>`;
  const stage=view.querySelector('#s3stage'),canvas=view.querySelector('#s3c'),msg=view.querySelector('#s3msg');
  let renderer;try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false})}catch(e){stage.innerHTML='<p style="padding:20px">Tu navegador no tiene WebGL activado, así que no puede mostrar el sitio 3D. Prueba con Chrome, Edge o Safari actualizados.</p>';return}
  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
  const dark=matchMedia('(prefers-color-scheme: dark)').matches&&document.documentElement.dataset.theme!=='light'||document.documentElement.dataset.theme==='dark';
- const scene=new THREE.Scene();scene.background=new THREE.Color(dark?0x0b1312:0xdfe7e5);
+ const scene=new THREE.Scene();scene.background=new THREE.Color(dark?0x1f2b2a:0xdfe7e5);
  const cam=new THREE.PerspectiveCamera(45,1,0.05,60);
- const ctl=new OrbitControls(cam,canvas);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*0.47;ctl.minPolarAngle=Math.PI*0.12;ctl.minAzimuthAngle=-1.15;ctl.maxAzimuthAngle=1.15;ctl.minDistance=0.35;ctl.maxDistance=6.5;ctl.screenSpacePanning=true;ctl.target.set(0.4,1.3,0);
- const hemi=new THREE.HemisphereLight(0xffffff,dark?0x1a2624:0x8a9a96,dark?1.6:1.9);scene.add(hemi);
+ const ctl=new OrbitControls(cam,canvas);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*0.47;ctl.minPolarAngle=Math.PI*0.12;ctl.minAzimuthAngle=-.9;ctl.maxAzimuthAngle=.9;ctl.minDistance=0.35;ctl.maxDistance=6.5;ctl.screenSpacePanning=true;ctl.target.set(0.4,1.3,0);
+ const hemi=new THREE.HemisphereLight(0xffffff,dark?0x1a2624:0x8a9a96,dark?1.6:1.9);scene.add(hemi);hemi.intensity*=1.25;
  const dl=new THREE.DirectionalLight(0xffffff,dark?1.9:1.7);dl.position.set(2,4,5);scene.add(dl);const fl2=new THREE.PointLight(0xbfeee6,dark?6:4,6,1.5);fl2.position.set(0,2.3,1.6);scene.add(fl2);
  S={alive:true,renderer,scene,cam,ctl,ports:{},cables:[],cab:'utp',carry:null,sel:null,mis:null,hint:0,anim:null,labels:[]};
  const mat=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:.7,metalness:.15,...o});
  const box=(w,h,d,m,x,y,z,par)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);(par||scene).add(b);return b};
  // cuarto
- const fl=new THREE.Mesh(new THREE.PlaneGeometry(14,10),mat(dark?0x16201f:0xc9d3d1,{roughness:.95}));fl.rotation.x=-Math.PI/2;scene.add(fl);
- const grid=new THREE.GridHelper(14,28,dark?0x2a3a38:0xaab6b3,dark?0x1e2b29:0xbfc9c6);grid.position.y=.002;scene.add(grid);
- box(14,4,.1,mat(dark?0x13201e:0xe9efed),0,2,-1.2);box(.1,4,10,mat(dark?0x111c1b:0xe3eae8),-3.2,2,0);
+ const fl=new THREE.Mesh(new THREE.PlaneGeometry(14,10),mat(dark?0x4a5654:0xc9d3d1,{roughness:.95}));fl.rotation.x=-Math.PI/2;scene.add(fl);
+ const grid=new THREE.GridHelper(14,28,dark?0x5e6b69:0xaab6b3,dark?0x55625f:0xbfc9c6);grid.position.y=.002;scene.add(grid);
+ box(14,4,.1,mat(dark?0x5a6866:0xe9efed),0,2,-1.2);box(.1,4,10,mat(dark?0x546260:0xe3eae8),-3.2,2,0);
+ // escalerilla aérea y organizadores verticales
+ {const m=mat(0x8a949b,{metalness:.6,roughness:.4});for(const z of[.22,.56])box(3.2,.025,.025,m,0,2.72,z);for(let x=-1.5;x<=1.51;x+=.25)box(.02,.02,.36,m,x,2.72,.39);
+  for(const x of[-1.43,-.07,.07,1.43]){box(.1,2.4,.1,mat(0x1a1d20,{metalness:.3}),x,1.32,.47);for(let y=.25;y<2.5;y+=.1)box(.12,.012,.02,mat(0x2c3136),x,y,.53)}}
  const tray=box(4.4,.06,.35,mat(0x3f4a48,{metalness:.6}),1,2.75,-.75);
  // rack
  function rack(x,name){const g=new THREE.Group();g.position.set(x,0,0);scene.add(g);const m=mat(0x1b1f22,{metalness:.5,roughness:.5});
@@ -330,7 +336,7 @@ export function mount(view,start){
  {const g=new THREE.Group();g.position.set(0,1.86,.42);idf.add(g);const b=box(1.06,.09,.12,mat(0x2b2f33,{metalness:.4}),0,0,-.06,g);b.userData.dev='PP';pickables.push(b);
   for(let n=1;n<=24;n++){const P=port('PP',pad(n),'pp',-.42+(n-1)*.036+Math.floor((n-1)/6)*.012,0,g,'Puerto '+pad(n)+(DESK[pad(n)]?' → escritorio '+DESK[pad(n)]:''))}
   S.labels.push({el:lbl('Patch panel','dv'),p:null,obj:g,off:new THREE.Vector3(-.42,.085,0)});devs.PP=g}
- box(1.06,.07,.2,mat(0x15181a),0,1.745,.33,idf);// organizador
+ for(const y of[1.745,1.395]){box(1.06,.07,.2,mat(0x15181a),0,y,.33,idf);for(let x=-.48;x<=.49;x+=.06)box(.012,.07,.03,mat(0x2c3136),x,y,.45,idf)}box(1.06,.07,.2,mat(0x15181a),0,1.72,.33,mdf);for(let x=-.48;x<=.49;x+=.06)box(.012,.07,.03,mat(0x2c3136),x,1.72,.45,mdf);// organizadores horizontales
  sw('ACC1',idf,1.62);sw('ACC2',idf,1.48);
  // escritorios
  const desk=new THREE.Group();desk.position.set(3.1,0,.6);desk.rotation.y=-.55;scene.add(desk);
@@ -357,6 +363,7 @@ export function mount(view,start){
  function fly(pos,tgt){S.anim={t0:performance.now(),p0:cam.position.clone(),t0v:ctl.target.clone(),p1:new THREE.Vector3(...pos),t1:new THREE.Vector3(...tgt)}}
  function focusDev(name){const g=devs[name];if(!g)return;const w=new THREE.Vector3();g.getWorldPosition(w);if(name==='LAP')fly([w.x+.5,w.y+1.2,w.z+.9],[w.x,w.y+.85,w.z]);else{const d=Math.max(.75,Math.min(2.2,.6/(Math.tan(Math.PI/8)*cam.aspect)));fly([w.x+.05,w.y+.08+d*.12,w.z+d],[w.x,w.y,w.z])}}
  cam.position.set(...VIEWS.all[0]);ctl.target.set(...VIEWS.all[1]);
+ view.querySelector('#s3tidy').addEventListener('click',e=>{S.tidy=!S.tidy;e.currentTarget.classList.toggle('on',S.tidy);e.currentTarget.textContent=S.tidy?'🧹 Peinados':'🍝 Sin peinar';rebuildCables();say(S.tidy?'Cables peinados: salen al organizador horizontal, bajan por el organizador vertical y entre racks suben a la escalerilla. Así se ve un cuarto profesional y se encuentra cada cable en segundos.':'Así se ve un cuarto sin peinar: cables colgando frente a los equipos, imposibles de seguir y fáciles de jalar por accidente. Compáralo y vuelve a peinarlos.')});
  view.querySelectorAll('[data-cam]').forEach(b=>b.addEventListener('click',()=>{const v=VIEWS[b.dataset.cam];fly(v[0],v[1])}));
  view.querySelectorAll('[data-cab]').forEach(b=>b.addEventListener('click',()=>{S.cab=b.dataset.cab;view.querySelectorAll('[data-cab]').forEach(x=>x.classList.toggle('on',x===b));if(S.carry){say(`Cambiaste a cable ${CABLE[S.cab]}. Vuelve a tomarlo del puerto.`);drop()}}));
  // ---------- cables ----------
@@ -366,8 +373,19 @@ export function mount(view,start){
   if(!b){return new THREE.CatmullRomCurve3([a,a1,a1.clone().lerp(a1,.5)])}
   const h=Math.hypot(a.x-b.x,a.z-b.z)+Math.abs(a.y-b.y)*.3,my=Math.max(.04,Math.min(a.y,b.y)-.06-.22*h);
   const m=a1.clone().lerp(b1,.5);m.y=my;m.z=Math.max(m.z,Math.max(a1.z,b1.z));return new THREE.CatmullRomCurve3([a,a1,m,b1,b],false,'centripetal')}
- function tube(c,type,r){return new THREE.Mesh(new THREE.TubeGeometry(c,64,r||(type==='fibra'?.007:.009),8),new THREE.MeshStandardMaterial({color:COL[type],roughness:.55,emissive:COL[type],emissiveIntensity:.08}))}
- function addCable(a,b,type){const A=S.ports[a],B=S.ports[b];const m=tube(curve(pw(A),out(A),pw(B),out(B)),type);scene.add(m);const c={a,b,type,mesh:m};m.userData.cable=c;S.cables.push(c);A.cable=c;B.cable=c;
+ const RX={CORE:-.75,PP:.75,ACC1:.75,ACC2:.75},MG={CORE:1.72,PP:1.745,ACC1:1.745,ACC2:1.395};S.tidy=true;
+ function fillet(P){const r=[P[0]];for(let i=1;i<P.length-1;i++){const a=P[i-1],b=P[i],c=P[i+1],d1=b.clone().sub(a),d2=c.clone().sub(b),l1=d1.length(),l2=d2.length();if(l1<1e-4||l2<1e-4){r.push(b);continue}const k=Math.min(.035,l1/2.2,l2/2.2);r.push(b.clone().addScaledVector(d1,-k/l1),b.clone().addScaledVector(d2,k/l2))}r.push(P[P.length-1]);return new THREE.CatmullRomCurve3(r,false,'centripetal')}
+ function tidyCurve(A,B,idx){const V=(x,y,z)=>new THREE.Vector3(x,y,z),o=((idx%7)-3)*.006;let a=pw(A),b=pw(B);
+  const ra=RX[A.dev],rb=RX[B.dev];if(ra==null&&rb==null)return null;if(ra==null)return tidyCurve(B,A,idx);
+  const zf=.5+o,a1=a.clone().addScaledVector(out(A),.05),ma=MG[A.dev]+o*.6,P=[a,a1,V(a.x,ma,zf)];
+  if(rb!=null&&ra===rb){const mb=MG[B.dev]+o*.6,b1=b.clone().addScaledVector(out(B),.05);if(Math.abs(ma-mb)<.01)P.push(V(b.x,ma,zf));else{const side=(a.x+b.x)/2>ra?ra+.68:ra-.68;P.push(V(side,ma,zf),V(side,mb,zf),V(b.x,mb,zf))}P.push(V(b.x,mb,zf),b1,b)}
+  else if(rb!=null){const sa=rb>ra?ra+.68:ra-.68,sb=rb>ra?rb-.68:rb+.68,mb=MG[B.dev]+o*.6,b1=b.clone().addScaledVector(out(B),.05),top=2.72+o*.5,zt=.39+o;P.push(V(sa,ma,zf),V(sa,top,zt),V(sb,top,zt),V(sb,mb,zf),V(b.x,mb,zf),b1,b)}
+  else{const b1=b.clone().addScaledVector(out(B),.08),sa=b.x>ra?ra+.68:ra-.68;P.push(V(sa,ma,zf),V(sa,.04,zf),V(sa,.04,b1.z),V(b1.x,.04,b1.z),b1,b)}
+  return fillet(P)}
+ function cableCurve(A,B,idx){return(S.tidy&&tidyCurve(A,B,idx))||curve(pw(A),out(A),pw(B),out(B))}
+ function rebuildCables(){S.cables.forEach((c,i)=>{scene.remove(c.mesh);c.mesh.geometry.dispose();const m=tube(cableCurve(S.ports[c.a],S.ports[c.b],i),c.type);m.userData.cable=c;c.mesh=m;scene.add(m)})}
+ function tube(c,type,r){return new THREE.Mesh(new THREE.TubeGeometry(c,120,r||(type==='fibra'?.007:.009),8),new THREE.MeshStandardMaterial({color:COL[type],roughness:.55,emissive:COL[type],emissiveIntensity:.08}))}
+ function addCable(a,b,type){const A=S.ports[a],B=S.ports[b];const m=tube(cableCurve(A,B,S.cables.length),type);scene.add(m);const c={a,b,type,mesh:m};m.userData.cable=c;S.cables.push(c);A.cable=c;B.cable=c;
   for(const P of[A,B]){const pl=new THREE.Mesh(new THREE.BoxGeometry(P.kind==='sfp'?.04:.03,P.kind==='sfp'?.024:.022,.04),new THREE.MeshStandardMaterial({color:type==='fibra'?0x1d4ed8:type==='consola'?0x7dd3fc:0x93c5fd,transparent:type==='utp',opacity:.85}));pl.position.copy(P.mesh.position);pl.position.z+=.022;P.mesh.parent.add(pl);(c.plugs=c.plugs||[]).push(pl)}
   leds();return c}
  function rmCable(c){scene.remove(c.mesh);c.mesh.geometry.dispose();(c.plugs||[]).forEach(p=>p.parent.remove(p));S.ports[c.a].cable=null;S.ports[c.b].cable=null;S.cables=S.cables.filter(x=>x!==c);leds()}
@@ -484,7 +502,7 @@ export function mount(view,start){
  [hemi,dl,fl2].forEach(l=>l.userData.base=l.intensity);S.cleanup=[];
  S.rpg=initRPG({THREE,scene,cam,ctl,canvas,stage,view,S,lbl,say,loadM,fly,VIEWS,sfx,dark,lights:[hemi,dl,fl2],task,prog:(id,sc)=>{prog.set(id,sc);const b=view.querySelector(`[data-case="${CASES.findIndex(c=>c.id===id)}"] em`);if(b)b.textContent=(sc>=70?'✓ ':'✗ ')+sc},onUnmount:f=>S.cleanup.push(f),loadFirst:()=>load(0)});
  view.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>{view.querySelectorAll('[data-m],[data-case]').forEach(x=>x.classList.toggle('on',x===b));drop();selCable(null);closeCon();S.rpg.start(CASES[+b.dataset.case]);stage.scrollIntoView({block:'start',behavior:'smooth'})}));
- if(/^z\d$/.test(start||''))start='d'+start[1]+'a';const ci=CASES.findIndex(c=>c.id===start);if(ci>=0){load(0);S.rpg.start(CASES[ci]);setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300)}const si=ci>=0?-2:MIS.findIndex(m=>m.id===start),first=MIS.findIndex(m=>/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]);if(si!==-2)load(si>=0?si:first<0?0:first);if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
+ if(/^z\d$/.test(start||''))start='d'+start[1]+'a';const ci=CASES.findIndex(c=>c.id===start&&isOpen(c.id));if(ci>=0){load(0);S.rpg.start(CASES[ci]);setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300)}const si=ci>=0?-2:MIS.findIndex(m=>m.id===start&&isOpen(m.id)),first=MIS.findIndex(m=>isOpen(m.id)&&(/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]));const anyOpen=MIS.some(m=>isOpen(m.id)),lastOpen=MIS.map(m=>isOpen(m.id)).lastIndexOf(true);if(si!==-2)load(si>=0?si:first>=0?first:Math.max(0,lastOpen));if(!anyOpen&&ci<0){stage.insertAdjacentHTML('beforeend','<div class="s3help"><div><h3>🔒 Tus labs 3D se abren conforme avanzas</h3><p>Cada zona tiene dos labs 3D justo antes de su certificación. El primero, <b>3D-0A</b>, se abre al terminar los tickets de la Zona 0.</p><p class="small">Mientras tanto, puedes ver el cuarto de telecom: gira y acerca para conocer los racks.</p><a class="btn" href="#mapa">Ir a mi mapa</a> <button class="btnl" onclick="this.closest(\'.s3help\').remove()">Solo ver el cuarto</button></div></div>')}if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
  // ---------- ciclo ----------
  const fit=()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
  S.ro=new ResizeObserver(fit);S.ro.observe(stage);fit();
