@@ -1,12 +1,12 @@
 /* PacketPath · Sitio 3D: cuarto de telecomunicaciones con racks, puertos y cables que el alumno conecta. */
 import * as THREE from './vendor/three.module.min.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import {VN,pn,mkDev,IF,run,prompt,banner,prioOf,G} from './site3d-cli.js';
+import {VN,pn,mkDev,IF,run,prompt,banner,prioOf,G,SN,VSF,vsxState,svlFormed,stackRing,vcState,iccpUp,mcPairs} from './site3d-cli.js';
 import {initRPG} from './site3d-rpg.js';
 
-const COL={utp:0x2f7bf2,fibra:0xf59e0b,consola:0x7dd3fc,horiz:0x6b7280};
-const CABLE={utp:'UTP (cobre)',fibra:'Fibra',consola:'Consola'};
-const KIND={rj45:'puerto RJ45 de cobre',sfp:'puerto SFP para fibra',con:'puerto de consola',usb:'puerto USB',pp:'puerto del patch panel'};
+const COL={utp:0x2f7bf2,fibra:0xf59e0b,consola:0x7dd3fc,stack:0x7c3aed,horiz:0x6b7280};
+const CABLE={utp:'UTP (cobre)',fibra:'Fibra',consola:'Consola',stack:'Stack'};
+const KIND={rj45:'puerto RJ45 de cobre',sfp:'puerto SFP para fibra',con:'puerto de consola',usb:'puerto USB',pp:'puerto del patch panel',stk:'puerto de stack (StackWise; en el equipo real va atrás)'};
 const DESK={'01':'D-01 · PC-VEN1','02':'D-02 · PC-RRH1','03':'D-03 · PC-VEN2','04':'D-04 · PC-RRH2'};
 const pad=n=>String(n).padStart(2,'0');
 const key=(a,b)=>[a,b].sort().join('|');
@@ -31,7 +31,7 @@ const BASE2={host:'ACC2',vlans:VV,access:{'Gi0/1':10,'Gi0/2':20},trunk:{'Te0/1':
 const SAVE=v=>v==='juniper'?'commit':'write memory';
 const SH={ifs:{cisco:'show interfaces status',aruba:'show interface brief',juniper:'show interfaces terse'},stp:{cisco:'show spanning-tree',aruba:'show spanning-tree',juniper:'show spanning-tree bridge'},lacp:{cisco:'show etherchannel summary',aruba:'show lacp interfaces',juniper:'show lacp interfaces'}};
 const saveGoal=n=>({t:v=>v==='juniper'?'Aplica los cambios con commit':'Guarda la configuración ('+SAVE(v)+')',ok:D=>{const d=D[n];return d.saved&&(d.v!=='juniper'||!d.cand||JSON.stringify(d.cand)===JSON.stringify(pickCfg(d)))}});
-const pickCfg=d=>{const o={};['host','vlans','ifs','lags','svi','gw','stp','aecount','l3'].forEach(k=>o[k]=d[k]);return o};
+const pickCfg=d=>{const o={};['host','vlans','ifs','lags','svi','gw','stp','aecount','l3','jx','vcpre','vcm'].forEach(k=>o[k]=d[k]);return o};
 const code=a=>'<pre class="s3code">'+a.join('\n')+'</pre>';
 const MIS=[
  {id:'d0a',z:'Zona 0',t:'Conecta los escritorios',
@@ -255,6 +255,94 @@ const CASES=[
 ];
 
 MIS.sort((a,b)=>(a.id==='t1')-(b.id==='t1')||a.id.localeCompare(b.id));
+/* ---------- Zona 5 por fabricante: stack y multichasis ---------- */
+const MC2=[['CORE:Te0/3','CORE2:Te0/3','fibra'],['CORE:Te0/4','CORE2:Te0/4','fibra'],['CORE:Gi0/22','CORE2:Gi0/22','utp'],['ACC1:Te0/1','CORE:Te0/1','fibra'],['ACC1:Te0/2','CORE2:Te0/1','fibra']];
+const both=f=>D=>f(D.CORE)&&f(D.CORE2);
+const lagHas=(d,n,gs)=>gs.every(g=>d.ifs[g]&&d.ifs[g].lag===n&&d.ifs[g].up);
+const savedJ=d=>d.saved&&(d.v!=='juniper'||!d.cand||JSON.stringify(d.cand)===JSON.stringify(pickCfg(d)));
+const VMIS=[
+ {id:'v1',v:'aruba',z:'Zona 5 · Aruba',t:'VSF: dos switches, uno solo',multiCon:1,con:'ACC1',noRing:true,
+  story:'Los dos switches del piso (ACC1 y ACC2, Aruba CX 6300) deben ser uno solo: <b>VSF</b>. ACC1 será el conductor (miembro 1) y ACC2 el miembro 2, en standby. El enlace VSF va por el puerto <code>1/1/27</code> de cada uno. Ventaja: una IP, una configuración y un LAG desde los dos miembros hacia el core.',
+  pre:FULL1,req:[['ACC1:Te0/3','ACC2:Te0/3','fibra']],
+  cfg:D=>{preCfg(D.ACC1,{host:'ACC1',vlans:VV});preCfg(D.ACC2,{host:'ACC2',vlans:VV})},
+  goals:[{t:()=>'ACC1: vsf member 1 con link 1 en 1/1/27',ok:D=>{const m=D.ACC1.vsf.mem[1];return!!(m&&m.links[1]&&m.links[1].includes(27))}},
+   {t:()=>'ACC1: vsf member 2 (type jl668a) con link 1 en 2/1/27',ok:D=>{const m=D.ACC1.vsf.mem[2];return!!(m&&m.links[1]&&m.links[1].includes(27))}},
+   {t:()=>'ACC1: vsf secondary-member 2 y vsf split-detect mgmt',ok:D=>D.ACC1.vsf.sec===2&&D.ACC1.vsf.split==='mgmt'},
+   {t:()=>'ACC1: guarda con write memory',ok:D=>D.ACC1.saved&&!!D.ACC1.vsf.mem[2]},
+   {t:()=>'ACC2 (mueve la consola): su link VSF en 1/1/27 y vsf renumber-to 2',ok:D=>{const m=D.ACC2.vsf.mem[1];return!!(m&&m.links[1]&&m.links[1].includes(27))&&D.ACC2.vsf.renum&&D.ACC2.vsf.num===2}},
+   {t:()=>'ACC1: verifica con show vsf (miembro 2 en Standby)',ok:(D,e)=>!!D.ACC1.ran.vsf&&VSF(e)&&D.ACC1.vsf.sec===2}],
+  hints:[()=>'Cable de fibra entre 1/1/27 de los dos (Te0/3). En el conductor se declaran los dos miembros con su link; en ACC2 se declara su link y se renumera a 2: se reinicia y se une.',
+   ()=>'Comandos: <code>vsf member N</code> → <code>link 1 N/1/27</code>; <code>vsf secondary-member 2</code>; <code>vsf split-detect mgmt</code>; en ACC2 <code>vsf renumber-to 2</code> y confirmas con y.',
+   ()=>'<b>ACC1:</b>'+code(['configure terminal','vsf member 1','  link 1 1/1/27','  exit','vsf member 2','  type jl668a','  link 1 2/1/27','  exit','vsf secondary-member 2','vsf split-detect mgmt','end','write memory'])+'<b>ACC2</b> (mueve el cable de consola):'+code(['configure terminal','vsf member 1','  link 1 1/1/27','  end','vsf renumber-to 2','y'])+'<b>ACC1:</b> <code>show vsf</code>'],
+  done:'ACC1 y ACC2 ya son un solo switch: una IP, una configuración y respaldo si se cae el conductor.'},
+ {id:'v2',v:'aruba',z:'Zona 5 · Aruba',t:'VSX: dos cores, cero cortes',multiCon:1,con:'CORE',noRing:true,
+  story:'El core pasa a dos Aruba CX 8360 en <b>VSX</b>: CORE (primary) y CORE2 (secondary). ISL = LAG 256 con <code>1/1/27</code> y <code>1/1/28</code>. Keepalive por <code>1/1/22</code>: 192.168.0.1/30 (CORE) y .2 (CORE2). ACC1 baja con un cable a cada core (a <code>1/1/25</code> de los dos): ahí va el LAG 1 <b>multi-chassis</b>. El gateway de VENTAS (192.168.10.1) con <b>active-gateway</b> en los dos, MAC virtual 12:00:00:00:01:00.',
+  pre:[],req:MC2,
+  cfg:D=>{preCfg(D.CORE,{host:'CORE',vlans:VV,svi:{10:['192.168.10.2',24]}});preCfg(D.CORE2,{host:'CORE2',vlans:VV,svi:{10:['192.168.10.3',24]}});preCfg(D.ACC1,{host:'ACC1',vlans:VV})},
+  goals:[{t:()=>'ISL: LAG 256 encendido con 1/1/27 y 1/1/28 en los dos cores',ok:both(d=>d.lags[256]&&d.lags[256].up&&lagHas(d,256,['Te0/3','Te0/4']))},
+   {t:()=>'CORE: vsx con inter-switch-link lag 256 y role primary',ok:D=>D.CORE.vsx.isl===256&&D.CORE.vsx.role==='primary'},
+   {t:()=>'CORE2: vsx con inter-switch-link lag 256 y role secondary',ok:D=>D.CORE2.vsx.isl===256&&D.CORE2.vsx.role==='secondary'},
+   {t:()=>'Keepalive: IP en 1/1/22 (.1 y .2 /30) y keepalive peer/source cruzados',ok:(D,e)=>vsxState(e).ka},
+   {t:()=>'LAG 1 multi-chassis en los dos con 1/1/25, LACP activo y trunk VLAN 10 y 20',ok:both(d=>{const L=d.lags[1];return!!(L&&L.mc&&L.up&&L.lacp==='active'&&L.mode==='trunk'&&L.allowed&&[10,20].every(v=>L.allowed.includes(v))&&lagHas(d,1,['Te0/1']))})},
+   {t:()=>'active-gateway 192.168.10.1 mac 12:00:00:00:01:00 en la VLAN 10 de los dos',ok:both(d=>{const s=d.svi[10];return!!(s&&s.ag&&s.ag.ip==='192.168.10.1'&&s.ag.mac==='12:00:00:00:01:00')})},
+   {t:()=>'Guarda los dos y verifica con show vsx status (ISL In-Sync y keepalive establecido)',ok:(D,e)=>{const x=vsxState(e);return D.CORE.saved&&D.CORE2.saved&&!!(D.CORE.ran.vsx||D.CORE2.ran.vsx)&&x.islUp&&x.ka}}],
+  hints:[()=>'Primero los 5 cables: dos fibras de ISL (Te0/3 y Te0/4 entre cores), el UTP de keepalive (Gi0/22) y un uplink de ACC1 a cada core. Luego configura un core, mueve la consola y configura el otro, igual pero con role secondary e IP .2.',
+   ()=>'Orden en cada core: <code>interface lag 256</code> (no shutdown, no routing, trunk all, lacp) y sus miembros → <code>interface 1/1/22</code> con IP → bloque <code>vsx</code> → <code>interface lag 1 multi-chassis</code> → <code>active-gateway</code> en <code>interface vlan 10</code> → write memory.',
+   ()=>'<b>CORE</b> (en CORE2 cambia: <code>ip address 192.168.0.2/30</code>, <code>role secondary</code>, <code>keepalive peer 192.168.0.1 source 192.168.0.2</code>):'+code(['configure terminal','interface lag 256','  no shutdown','  no routing','  vlan trunk native 1','  vlan trunk allowed all','  lacp mode active','interface 1/1/27','  no shutdown','  lag 256','interface 1/1/28','  no shutdown','  lag 256','interface 1/1/22','  no shutdown','  ip address 192.168.0.1/30','vsx','  inter-switch-link lag 256','  role primary','  keepalive peer 192.168.0.2 source 192.168.0.1','  exit','interface lag 1 multi-chassis','  no shutdown','  lacp mode active','  vlan trunk native 1','  vlan trunk allowed 10,20','interface 1/1/25','  no shutdown','  lag 1','interface vlan 10','  active-gateway ip 192.168.10.1 mac 12:00:00:00:01:00','end','write memory','show vsx status'])],
+  done:'VSX listo: dos cores independientes, el piso con un LAG a los dos y el gateway respondiendo en ambos. Ya puedes actualizar uno a la vez sin cortar.'},
+ {id:'v3',v:'cisco',z:'Zona 5 · Cisco',t:'StackWise: el anillo de stack',multiCon:1,con:'ACC1',noRing:true,stack:1,
+  story:'ACC1 y ACC2 son Catalyst 9300: se apilan con <b>StackWise</b> usando cables de stack dedicados (en el equipo real van atrás; aquí son los puertos morados STK1 y STK2). Arma el <b>anillo</b> (STK1 de uno al STK2 del otro, dos cables) y deja a ACC1 como activo con prioridad 15 y a ACC2 como standby con 14.',
+  pre:FULL1,req:[['ACC1:STK1','ACC2:STK2','stack'],['ACC2:STK1','ACC1:STK2','stack']],
+  cfg:D=>{preCfg(D.ACC1,{host:'ACC1',vlans:VV});preCfg(D.ACC2,{host:'ACC1',vlans:VV})},
+  goals:[{t:()=>'switch 1 priority 15 (ACC1 será el activo)',ok:D=>D.ACC1.swp[1]===15},
+   {t:()=>'switch 2 priority 14 (ACC2 será el standby)',ok:D=>D.ACC1.swp[2]===14},
+   {t:()=>'Verifica con show switch: 1 Active y 2 Standby',ok:(D,e)=>{const r=stackRing(e);return!!D.ACC1.ran.sw&&r.c1&&r.c2&&D.ACC1.swp[1]===15&&D.ACC1.swp[2]===14}}],
+  hints:[()=>'Dos cables de stack forman un anillo: si se corta uno, el stack sigue por el otro lado. Gana el activo la prioridad más alta (1 a 15).',
+   ()=>'La prioridad se cambia en modo privilegiado: <code>switch N priority P</code> y confirmas con y. Luego <code>show switch</code>.',
+   ()=>code(['enable','switch 1 priority 15','y','switch 2 priority 14','y','show switch','show switch stack-ports'])],
+  done:'Stack en anillo: un solo switch con un activo y un standby listo para tomar el control.'},
+ {id:'v4',v:'cisco',z:'Zona 5 · Cisco',t:'StackWise Virtual: dos cores, un solo switch',multiCon:1,con:'CORE',noRing:true,
+  story:'En campus Cisco, el par de core (Catalyst 9500) se une con <b>StackWise Virtual</b>: un plano de control sobre dos chasis. Los links SVL van por <code>Te0/3</code> y <code>Te0/4</code> entre CORE y CORE2, y la detección de doble activo (DAD) por <code>Gi0/22</code>. Configura los dos, guarda y reinicia (reload).',
+  pre:[],req:MC2.slice(0,3),
+  cfg:D=>{preCfg(D.CORE,{host:'CORE',vlans:VV});preCfg(D.CORE2,{host:'CORE2',vlans:VV})},
+  goals:[{t:()=>'CORE: stackwise-virtual con domain 1',ok:D=>D.CORE.svl.dom===1},
+   {t:()=>'CORE: Te0/3 y Te0/4 como stackwise-virtual link 1, y Gi0/22 como dual-active-detection',ok:D=>D.CORE.svl.links['Te0/3']===1&&D.CORE.svl.links['Te0/4']===1&&!!D.CORE.svl.dad['Gi0/22']},
+   {t:()=>'CORE2: lo mismo (domain 1, links y DAD)',ok:D=>D.CORE2.svl.dom===1&&D.CORE2.svl.links['Te0/3']===1&&D.CORE2.svl.links['Te0/4']===1&&!!D.CORE2.svl.dad['Gi0/22']},
+   {t:()=>'Guarda y reinicia los dos (write memory y reload)',ok:D=>D.CORE.svl.rel&&D.CORE2.svl.rel},
+   {t:()=>'Verifica con show stackwise-virtual',ok:(D,e)=>!!(D.CORE.ran.svl||D.CORE2.ran.svl)&&svlFormed(e)}],
+  hints:[()=>'StackWise Virtual no se activa hasta reiniciar. Configura igual los dos chasis: mismo dominio, mismos links SVL y DAD.',
+   ()=>'<code>stackwise-virtual</code> → <code>domain 1</code>; en las interfaces: <code>stackwise-virtual link 1</code> y <code>stackwise-virtual dual-active-detection</code>; <code>write memory</code> y <code>reload</code>.',
+   ()=>'<b>En CORE y en CORE2:</b>'+code(['enable','configure terminal','stackwise-virtual',' domain 1',' exit','interface range te0/3 - 4',' stackwise-virtual link 1','interface g0/22',' stackwise-virtual dual-active-detection','end','write memory','reload','y'])+'Después: <code>show stackwise-virtual</code>. (En centro de datos con Nexus, lo equivalente es <b>vPC</b>.)'],
+  done:'Los dos cores son un solo switch lógico; si uno falla, el otro sigue. En Nexus harías lo mismo con vPC.'},
+ {id:'v5',v:'juniper',z:'Zona 5 · Juniper',t:'Virtual Chassis: dos EX, un solo equipo',multiCon:1,con:'ACC1',noRing:true,
+  story:'ACC1 y ACC2 son Juniper EX4300: se unen en un <b>Virtual Chassis</b> preprovisionado. El puerto <code>xe-0/1/2</code> de cada uno se convierte en puerto VC, y en ACC1 (master) se declaran los dos miembros por número de serie (míralo con <code>show chassis hardware</code>).',
+  pre:FULL1,req:[['ACC1:Te0/3','ACC2:Te0/3','fibra']],
+  cfg:D=>{preCfg(D.ACC1,{host:'ACC1',vlans:VV});preCfg(D.ACC2,{host:'ACC2',vlans:VV})},
+  goals:[{t:()=>'ACC1: xe-0/1/2 como puerto VC',ok:D=>!!D.ACC1.vcp['Te0/3']},
+   {t:()=>'ACC2 (mueve la consola): xe-0/1/2 como puerto VC',ok:D=>!!D.ACC2.vcp['Te0/3']},
+   {t:()=>'ACC1: virtual-chassis preprovisioned, miembro 0 = serial de ACC1 y miembro 1 = serial de ACC2 (routing-engine), commit',ok:(D,e)=>vcState(e).pre&&savedJ(D.ACC1)},
+   {t:()=>'Verifica con show virtual-chassis (Master y Backup)',ok:(D,e)=>{const x=vcState(e);return!!D.ACC1.ran.vc&&x.vcp&&x.cab&&x.pre}}],
+  hints:[()=>'Cada switch convierte su puerto en VC desde modo operativo. La configuración del VC se hace solo en el master; el backup la recibe.',
+   ()=>'<code>request virtual-chassis vc-port set pic-slot 1 port 2</code> en los dos; en ACC1: <code>set virtual-chassis preprovisioned</code> y <code>set virtual-chassis member N role routing-engine serial-number …</code>.',
+   ()=>'<b>ACC2:</b>'+code(['request virtual-chassis vc-port set pic-slot 1 port 2','show chassis hardware'])+'<b>ACC1:</b>'+code(['request virtual-chassis vc-port set pic-slot 1 port 2','configure','set virtual-chassis preprovisioned','set virtual-chassis member 0 role routing-engine serial-number '+SN.ACC1,'set virtual-chassis member 1 role routing-engine serial-number '+SN.ACC2,'commit','run show virtual-chassis'])],
+  done:'Virtual Chassis formado: ACC1 master, ACC2 backup, administrados como un solo EX.'},
+ {id:'v6',v:'juniper',z:'Zona 5 · Juniper',t:'MC-LAG: dos cores activos',multiCon:1,con:'CORE',noRing:true,
+  story:'El core Juniper usa <b>MC-LAG</b>: CORE y CORE2 independientes, coordinados por ICCP. ICL = <code>ae0</code> con xe-0/1/2 y xe-0/1/3. ICCP por <code>ge-0/0/21</code>: 10.0.0.1/30 (CORE) y .2 (CORE2). Hacia ACC1, <code>ae1</code> (xe-0/1/0 de cada core) es el <b>mc-ae</b>: mismo id, system-id y admin-key; chassis-id 0 y 1; CORE active y CORE2 standby.',
+  pre:[],req:MC2,
+  cfg:D=>{preCfg(D.CORE,{host:'CORE',vlans:VV});preCfg(D.CORE2,{host:'CORE2',vlans:VV});preCfg(D.ACC1,{host:'ACC1',vlans:VV})},
+  goals:[{t:()=>'ICL: ae0 con xe-0/1/2 y xe-0/1/3, trunk VENTAS y RRHH, en los dos (device-count 2)',ok:both(d=>d.aecount>=2&&d.lags[0]&&d.lags[0].mode==='trunk'&&d.lags[0].allowed&&[10,20].every(v=>d.lags[0].allowed.includes(v))&&lagHas(d,0,['Te0/3','Te0/4']))},
+   {t:()=>'ICCP: ge-0/0/21 con 10.0.0.1/30 y .2/30, local-ip-addr y peer cruzados con liveness-detection',ok:(D,e)=>iccpUp(e)},
+   {t:()=>'multi-chassis-protection hacia el peer por ae0 en los dos',ok:both(d=>{const P=mcPairs(d);return!!(P.peer&&P.mcpPeer===P.peer&&P.mcpIf==='ae0')})},
+   {t:()=>'ae1 con xe-0/1/0, LACP activo, mismo system-id y admin-key en los dos, trunk VENTAS y RRHH',ok:D=>{const a=mcPairs(D.CORE),b=mcPairs(D.CORE2),ok=d=>d.lags[1]&&d.lags[1].lacp==='active'&&d.lags[1].mode==='trunk'&&lagHas(d,1,['Te0/1']);return!!(ok(D.CORE)&&ok(D.CORE2)&&a['ae1.system-id']&&a['ae1.system-id']===b['ae1.system-id']&&a['ae1.admin-key']&&a['ae1.admin-key']===b['ae1.admin-key'])}},
+   {t:()=>'mc-ae en ae1: mismo mc-ae-id y redundancy-group, chassis-id 0 y 1, active-active, status-control active/standby',ok:D=>{const a=mcPairs(D.CORE),b=mcPairs(D.CORE2);return!!(a['ae1.mc-ae-id']&&a['ae1.mc-ae-id']===b['ae1.mc-ae-id']&&a['ae1.redundancy-group']&&a['ae1.redundancy-group']===b['ae1.redundancy-group']&&a['ae1.redundancy-group']===a.rg&&a['ae1.chassis-id']==='0'&&b['ae1.chassis-id']==='1'&&a['ae1.mode']==='active-active'&&b['ae1.mode']==='active-active'&&a['ae1.status-control']==='active'&&b['ae1.status-control']==='standby')}},
+   {t:()=>'commit en los dos y verifica con show iccp',ok:(D,e)=>savedJ(D.CORE)&&savedJ(D.CORE2)&&!!(D.CORE.ran.iccp||D.CORE2.ran.iccp)&&iccpUp(e)}],
+  hints:[()=>'Cinco cables como en VSX: ICL (dos fibras), el UTP de ICCP y un uplink de ACC1 a cada core. Luego configura CORE, mueve la consola y configura CORE2 (cambian IP, peer, chassis-id y status-control).',
+   ()=>'Bloques: device-count 2 → ae0 (ICL) → ge-0/0/21 con IP → <code>protocols iccp</code> → <code>multi-chassis multi-chassis-protection</code> → ae1 con <code>lacp system-id/admin-key</code> y <code>mc-ae</code> → commit. Hoy Juniper también ofrece EVPN multihoming (ESI-LAG) como alternativa.',
+   ()=>'<b>CORE</b> (en CORE2: <code>10.0.0.2/30</code>, <code>local-ip-addr 10.0.0.2</code>, peer <code>10.0.0.1</code>, <code>chassis-id 1</code>, <code>status-control standby</code>):'+code(['configure','set chassis aggregated-devices ethernet device-count 2','set interfaces xe-0/1/2 ether-options 802.3ad ae0','set interfaces xe-0/1/3 ether-options 802.3ad ae0','set interfaces ae0 aggregated-ether-options lacp active','set interfaces ae0 unit 0 family ethernet-switching interface-mode trunk','set interfaces ae0 unit 0 family ethernet-switching vlan members [ VENTAS RRHH ]','set interfaces ge-0/0/21 unit 0 family inet address 10.0.0.1/30','set protocols iccp local-ip-addr 10.0.0.1','set protocols iccp peer 10.0.0.2 redundancy-group-id-list 1','set protocols iccp peer 10.0.0.2 liveness-detection minimum-interval 1000','set multi-chassis multi-chassis-protection 10.0.0.2 interface ae0','set switch-options service-id 1','set interfaces xe-0/1/0 ether-options 802.3ad ae1','set interfaces ae1 aggregated-ether-options lacp active','set interfaces ae1 aggregated-ether-options lacp system-id 00:00:00:00:00:01','set interfaces ae1 aggregated-ether-options lacp admin-key 1','set interfaces ae1 aggregated-ether-options mc-ae mc-ae-id 1 redundancy-group 1 chassis-id 0 mode active-active status-control active','set interfaces ae1 unit 0 family ethernet-switching interface-mode trunk','set interfaces ae1 unit 0 family ethernet-switching vlan members [ VENTAS RRHH ]','commit','run show iccp'])],
+  done:'MC-LAG arriba: dos cores independientes y ACC1 con un LAG a los dos, sin bloqueos.'}
+];
+MIS.push(...VMIS);
+
 function ticketPre(){const r=FULL1.concat(FULL2,FULL4).map(x=>x.slice());
  r[1]=['PP:02','ACC1:Gi0/12','utp'];r[2]=['PP:03','ACC1:Gi0/3','utp'];
  r.splice(r.findIndex(x=>x[0]==='ACC2:Te0/1'),1);
@@ -264,14 +352,14 @@ function ticketPre(){const r=FULL1.concat(FULL2,FULL4).map(x=>x.slice());
 
 /* ---------- progreso ---------- */
 const prog={get(){try{if(window.PP3D)return window.PP3D.get();return JSON.parse(localStorage.getItem('pp3d')||'{}')}catch(e){return{}}},
- set(id,stars){try{if(window.PP3D)return window.PP3D.done(id,stars);const p=this.get();p[id]=Math.max(p[id]||0,stars);localStorage.setItem('pp3d',JSON.stringify(p))}catch(e){}}};
+ set(id,stars){try{if(/^v/.test(id)){const p=this.get();p[id]=Math.max(p[id]||0,stars);if(window.PP3D)window.PP3D.done(id,stars);else localStorage.setItem('pp3d',JSON.stringify(p));const pr=[['v1','v2'],['v3','v4'],['v5','v6']].map(x=>Math.min(p[x[0]]||0,p[x[1]]||0));const best=Math.max(...pr);if(best>=70&&window.PP3D)window.PP3D.done('d5c',best);return}if(window.PP3D)return window.PP3D.done(id,stars);const p=this.get();p[id]=Math.max(p[id]||0,stars);localStorage.setItem('pp3d',JSON.stringify(p))}catch(e){}}};
 
 let S=null;
 const UNL={t1:'d0b',c1:'d3b',c2:'d5b',c3:'d3b'};
-const isOpen=id=>{try{if(!window.PP3D)return true;if(/^d/.test(id))return window.PP3D.open(id);return!UNL[id]||window.PP3D.passed(UNL[id])}catch(e){return true}};
-const lockTxt=id=>/^d/.test(id)?'Se abre cuando llegues a este ticket en tu mapa':'Se abre al aprobar '+(UNL[id]||'').replace(/^d(\d)(.)/,(m,z,l)=>'el Lab 3D-'+z+l.toUpperCase());
+const isOpen=id=>{try{if(!window.PP3D)return true;if(/^d/.test(id))return window.PP3D.open(id);if(/^v/.test(id))return window.PP3D.open('d5c');return!UNL[id]||window.PP3D.passed(UNL[id])}catch(e){return true}};
+const lockTxt=id=>/^v/.test(id)?'Se abre al llegar al ticket 3D-5C de la Zona 5':/^d/.test(id)?'Se abre cuando llegues a este ticket en tu mapa':'Se abre al aprobar '+(UNL[id]||'').replace(/^d(\d)(.)/,(m,z,l)=>'el Lab 3D-'+z+l.toUpperCase());
 const PASS3=70;const scoreStars=sc=>sc>=90?3:sc>=80?2:sc>=70?1:0;
-function badge(id,v){if(!v)return'';if(/^d/.test(id)){const st=scoreStars(v);return st?'★'.repeat(st)+'☆'.repeat(3-st)+' '+v:'✗ '+v}return'★'.repeat(v)+'☆'.repeat(3-v)}
+function badge(id,v){if(!v)return'';if(/^[dv]/.test(id)){const st=scoreStars(v);return st?'★'.repeat(st)+'☆'.repeat(3-st)+' '+v:'✗ '+v}return'★'.repeat(v)+'☆'.repeat(3-v)}
 const getV=()=>{try{return localStorage.getItem('pp3dv')||'cisco'}catch(e){return'cisco'}};
 export function unmount(){if(!S)return;(S.cleanup||[]).forEach(f=>{try{f()}catch(e){}});S.alive=false;cancelAnimationFrame(S.raf);S.ro&&S.ro.disconnect();S.renderer&&S.renderer.dispose();S=null}
 
@@ -280,7 +368,7 @@ export function mount(view,start){
  const done=prog.get();
  view.innerHTML=`<header class="band hero"><div class="in"><p class="crumb"><a href="#mapa">Mi red</a> / <a href="#arena">arena</a> / sitio 3D</p><h1>Labs 3D: el cuarto de telecom</h1><p>Un lab por zona. Llevas los cables (patch cords, fibra y consola) y configuras el switch por consola en Cisco, Aruba o Juniper. Gira con un dedo, acerca con dos y toca un equipo para verlo de cerca.</p></div></header>
  <div class="s3w"><div class="s3main"><div class="s3stage" id="s3stage"><canvas id="s3c" aria-label="Cuarto de telecomunicaciones en 3D"></canvas><div class="s3lbl" id="s3lbl"></div>
-  <div class="s3bar s3top"><div class="s3seg" role="group" aria-label="Tipo de cable">${Object.entries(CABLE).map(([k,t])=>`<button data-cab="${k}" class="${k==='utp'?'on':''}"><i style="background:#${COL[k].toString(16).padStart(6,'0')}"></i>${t}</button>`).join('')}</div>
+  <div class="s3bar s3top"><div class="s3seg" role="group" aria-label="Tipo de cable">${Object.entries(CABLE).map(([k,t])=>`<button data-cab="${k}" class="${k==='utp'?'on':''}"${k==='stack'?' hidden':''}><i style="background:#${COL[k].toString(16).padStart(6,'0')}"></i>${t}</button>`).join('')}</div>
   <div class="s3seg" role="group" aria-label="Vista"><button data-cam="all">Cuarto</button><button data-cam="mdf">MDF</button><button data-cam="idf">IDF</button><button data-cam="desk">Escritorios</button><button id="s3tidy" class="on" title="Peinar o desordenar los cables">🧹 Peinados</button></div></div>
   <div class="s3next" id="s3next"></div><button class="s3q" id="s3q" aria-label="Cómo se juega">?</button>
   <div class="s3help" id="s3help" hidden><div><h3>Cómo se juega</h3><ol><li><b>Lee la misión</b> (a la derecha o abajo): te dice qué cables poner y qué configurar.</li><li><b>Elige el tipo de cable</b> arriba: UTP (cobre), Fibra o Consola.</li><li><b>Toca el puerto de origen</b> (el que <span class="s3pulse">parpadea</span>) y luego el de destino. También puedes arrastrar.</li><li><b>Conecta la consola</b>: cable de consola del USB de la laptop al puerto CON azul del switch. Se abre la terminal.</li><li><b>Configura</b> con comandos reales. Si te atoras, abre 💡 Pistas.</li></ol><p class="small">Gira con un dedo o el mouse, acerca con dos dedos o la rueda. Los botones Cuarto, MDF, IDF y Escritorios te llevan a cada lugar.</p><button class="btn" id="s3hok">¡Entendido!</button></div></div>
@@ -318,21 +406,22 @@ export function mount(view,start){
  function lbl(t,c){const d=document.createElement('span');d.className='s3l '+(c||'');d.textContent=t;lblBox.appendChild(d);return d}
  const pickables=[],devs={};
  function port(dev,id,kind,x,y,par,label){const w=kind==='sfp'?.05:kind==='pp'?.034:.036,h=kind==='sfp'?.032:.028;
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,.012),mat(kind==='sfp'?0x8b949b:kind==='con'?0x2563eb:kind==='usb'?0x334155:0x0d1114,{metalness:kind==='sfp'?.6:.1}));
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,.012),mat(kind==='sfp'?0x8b949b:kind==='con'?0x2563eb:kind==='usb'?0x334155:kind==='stk'?0x6d28d9:0x0d1114,{metalness:kind==='sfp'?.6:.1}));
   m.position.set(x,y,0);par.add(m);
   const led=new THREE.Mesh(new THREE.BoxGeometry(.01,.006,.004),new THREE.MeshBasicMaterial({color:0x223}));led.position.set(x-w*.3,y+(h/2+.007)*(y>=0?1:-1),.004);if(kind!=='pp'&&kind!=='usb')par.add(led);
   const P={id:dev+':'+id,dev,name:id,kind,mesh:m,led,label:label||id};m.userData.port=P;S.ports[P.id]=P;pickables.push(m);return P}
  function sw(name,par,y){const g=new THREE.Group();g.position.set(0,y,.42);par.add(g);
-  const body=box(1.06,.09,.6,mat(name==='CORE'?0x23384a:0x24323a,{metalness:.4}),0,0,-.31,g);body.userData.dev=name;pickables.push(body);
-  box(1.06,.09,.006,mat(name==='CORE'?0x2d4a63:0x30434d),0,0,0,g);
+  const body=box(1.06,.09,.6,mat(/^CORE/.test(name)?0x23384a:0x24323a,{metalness:.4}),0,0,-.31,g);body.userData.dev=name;pickables.push(body);
+  box(1.06,.09,.006,mat(/^CORE/.test(name)?0x2d4a63:0x30434d),0,0,0,g);
   for(let n=1;n<=24;n++){const col=(n-1)>>1,row=(n-1)%2;port(name,'Gi0/'+n,'rj45',-.36+col*.042+Math.floor(col/6)*.018,row?-.02:.021,g)}
   for(let n=1;n<=4;n++)port(name,'Te0/'+n,'sfp',.25+((n-1)>>1)*.062,(n-1)%2?-.02:.021,g);
   port(name,'CON','con',-.47,.0,g);
+  if(/^ACC/.test(name)){port(name,'STK1','stk',.43,.0,g);port(name,'STK2','stk',.48,.0,g)}
   const nm=lbl(name,'dv');S.labels.push({el:nm,p:null,obj:g,off:new THREE.Vector3(-.42,.085,0)});devs[name]=g;return g}
  const mdf=rack(-.75,'MDF'),idf=rack(.75,'IDF');
- sw('CORE',mdf,1.62);
- box(1.06,.09,.5,mat(0x2a2f33),0,1.46,.15,mdf);box(1.06,.18,.55,mat(0x202426),0,.3,.12,mdf);// firewall y UPS de adorno
- S.labels.push({el:lbl('Firewall','dc'),p:new THREE.Vector3(-1.37,1.46,.42)},{el:lbl('UPS','dc'),p:new THREE.Vector3(-1.37,.3,.42)});
+ sw('CORE',mdf,1.62);sw('CORE2',mdf,1.50);
+ box(1.06,.07,.2,mat(0x15181a),0,1.40,.33,mdf);box(1.06,.09,.5,mat(0x2a2f33),0,1.30,.15,mdf);box(1.06,.18,.55,mat(0x202426),0,.3,.12,mdf);// firewall y UPS de adorno
+ S.labels.push({el:lbl('Firewall','dc'),p:new THREE.Vector3(-1.37,1.30,.42)},{el:lbl('UPS','dc'),p:new THREE.Vector3(-1.37,.3,.42)});
  {const g=new THREE.Group();g.position.set(0,1.86,.42);idf.add(g);const b=box(1.06,.09,.12,mat(0x2b2f33,{metalness:.4}),0,0,-.06,g);b.userData.dev='PP';pickables.push(b);
   for(let n=1;n<=24;n++){const P=port('PP',pad(n),'pp',-.42+(n-1)*.036+Math.floor((n-1)/6)*.012,0,g,'Puerto '+pad(n)+(DESK[pad(n)]?' → escritorio '+DESK[pad(n)]:''))}
   S.labels.push({el:lbl('Patch panel','dv'),p:null,obj:g,off:new THREE.Vector3(-.42,.085,0)});devs.PP=g}
@@ -373,7 +462,7 @@ export function mount(view,start){
   if(!b){return new THREE.CatmullRomCurve3([a,a1,a1.clone().lerp(a1,.5)])}
   const h=Math.hypot(a.x-b.x,a.z-b.z)+Math.abs(a.y-b.y)*.3,my=Math.max(.04,Math.min(a.y,b.y)-.06-.22*h);
   const m=a1.clone().lerp(b1,.5);m.y=my;m.z=Math.max(m.z,Math.max(a1.z,b1.z));return new THREE.CatmullRomCurve3([a,a1,m,b1,b],false,'centripetal')}
- const RX={CORE:-.75,PP:.75,ACC1:.75,ACC2:.75},MG={CORE:1.72,PP:1.745,ACC1:1.745,ACC2:1.395};S.tidy=true;
+ const RX={CORE:-.75,CORE2:-.75,PP:.75,ACC1:.75,ACC2:.75},MG={CORE:1.72,CORE2:1.40,PP:1.745,ACC1:1.745,ACC2:1.395};S.tidy=true;
  function fillet(P){const r=[P[0]];for(let i=1;i<P.length-1;i++){const a=P[i-1],b=P[i],c=P[i+1],d1=b.clone().sub(a),d2=c.clone().sub(b),l1=d1.length(),l2=d2.length();if(l1<1e-4||l2<1e-4){r.push(b);continue}const k=Math.min(.035,l1/2.2,l2/2.2);r.push(b.clone().addScaledVector(d1,-k/l1),b.clone().addScaledVector(d2,k/l2))}r.push(P[P.length-1]);return new THREE.CatmullRomCurve3(r,false,'centripetal')}
  function tidyCurve(A,B,idx){const V=(x,y,z)=>new THREE.Vector3(x,y,z),o=((idx%7)-3)*.006;let a=pw(A),b=pw(B);
   const ra=RX[A.dev],rb=RX[B.dev];if(ra==null&&rb==null)return null;if(ra==null)return tidyCurve(B,A,idx);
@@ -394,12 +483,13 @@ export function mount(view,start){
  function why(A,B,t){const ks=[A.kind,B.kind].sort().join('+');
   if(A===B)return'Es el mismo puerto.';
   if(A.dev===B.dev&&A.dev!=='PP')return'Conectar un switch consigo mismo crea un bucle. Elige un puerto de otro equipo.';
+  if(/stk/.test(ks)){if(ks!=='stk+stk')return'Los puertos de stack solo se unen con otros puertos de stack, con el cable StackWise.';if(t!=='stack')return'Para unir puertos de stack se usa el cable de stack (morado).';return''}
   if(ks==='pp+pp')return'Dos puertos del patch panel no se conectan entre sí: el patch cord va del patch panel al switch.';
   if(/con|usb/.test(ks)){if(ks!=='con+usb')return A.kind==='usb'||B.kind==='usb'?'La laptop se conecta al puerto CON de un switch, con cable de consola.':'El puerto CON es de administración: va a la laptop con cable de consola, no a la red.';if(t!=='consola')return'Para consola se usa el cable de consola (celeste), no '+CABLE[t]+'.';return''}
   if(ks==='sfp+sfp')return t==='fibra'?'':'Los puertos SFP llevan un transceptor y fibra óptica. Cambia el cable a Fibra.';
   if(/sfp/.test(ks))return'Un puerto SFP de fibra no se conecta con un puerto RJ45 de cobre. Une SFP con SFP (fibra) o RJ45 con RJ45 (UTP).';
   return t==='utp'?'':'Los puertos RJ45 y el patch panel son de cobre: usa cable UTP.'}
- function startOk(P,t){if(P.kind==='sfp'&&t!=='fibra')return'Ese es un '+KIND.sfp+'. Elige el cable de Fibra primero.';if((P.kind==='rj45'||P.kind==='pp')&&t!=='utp')return'Ese es un '+KIND[P.kind]+'. Elige el cable UTP primero.';if((P.kind==='con'||P.kind==='usb')&&t!=='consola')return'Ese es un '+KIND[P.kind]+'. Elige el cable de Consola primero.';return''}
+ function startOk(P,t){if(P.kind==='stk'&&t!=='stack')return'Ese es un '+KIND.stk+'. Elige el cable Stack primero.';if(P.kind!=='stk'&&t==='stack')return'El cable de stack solo va en los puertos STK de los switches.';if(P.kind==='sfp'&&t!=='fibra')return'Ese es un '+KIND.sfp+'. Elige el cable de Fibra primero.';if((P.kind==='rj45'||P.kind==='pp')&&t!=='utp')return'Ese es un '+KIND[P.kind]+'. Elige el cable UTP primero.';if((P.kind==='con'||P.kind==='usb')&&t!=='consola')return'Ese es un '+KIND[P.kind]+'. Elige el cable de Consola primero.';return''}
  const pname=P=>(P.dev==='PP'?'Patch panel '+P.name:P.dev==='LAP'?'Laptop USB':P.kind==='con'?P.dev+' consola (CON)':P.dev+' '+pn(S.V,P.name));
  const say=(t,k)=>{msg.textContent=t;msg.className=k||''};
  // ---------- interacción ----------
@@ -435,7 +525,7 @@ export function mount(view,start){
  // ---------- misiones ----------
  const task=view.querySelector('#s3task'),con=view.querySelector('#s3con'),cout=view.querySelector('#s3out'),cin=view.querySelector('#s3cmd'),cpr=view.querySelector('#s3pr'),hp=view.querySelector('#s3hp'),tp=view.querySelector('#s3tp'),openB=view.querySelector('#s3open');
  S.V=getV();
- const env={cabled:(dev,g)=>{const P=S.ports[dev+':'+g];return!!(P&&P.cable)},get devs(){return[S.D.CORE,S.D.ACC1,S.D.ACC2]},lagPeerOk:(d,g,m)=>m==='active'||m==='passive'};
+ const env={cabled:(dev,g)=>{const P=S.ports[dev+':'+g];return!!(P&&P.cable)},get devs(){return[S.D.CORE,S.D.ACC1,S.D.ACC2]},get D(){return S.D},link:(a,b)=>S.cables.some(c=>key(c.a,c.b)===key(a,b)),lagPeerOk:(d,g,m)=>m==='active'||m==='passive'};
  const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
  function conDev(){const c=S.ports['LAP:USB'].cable;if(!c)return null;const o=c.a==='LAP:USB'?c.b:c.a;return o.split(':')[0]}
  function print(lines){for(const l of lines){const d=document.createElement('div');if(typeof l==='string')d.textContent=l;else{d.textContent=l.t;d.className=l.c||''}cout.appendChild(d)}cout.scrollTop=cout.scrollHeight}
@@ -467,11 +557,12 @@ export function mount(view,start){
     t=busy?`👉 ${pname(busy)} tiene un cable que no va ahí: tócalo y pulsa "Quitar cable".`:`👉 Siguiente: cable <b>${CABLE[ty]}</b> de <b>${pname(A)}</b> a <b>${pname(B)}</b>. Los dos puertos parpadean en amarillo.`;
     if(S.cab!==ty&&!busy)t+=` Primero elige <b>${CABLE[ty]}</b> arriba.`;ring(A);ring(B)}
    else t='👉 Compara los cables con la lista de tareas: quita los que sobran y pon los que faltan.'}
-  else{const g=(m.goals||[]).find(g=>!g.ok(S.D));if(g)t=con.hidden?`👉 Cables listos. Abre la consola de <b>${m.con}</b> y configura: ${esc(g.t(S.V))}.`:`👉 En la consola: ${esc(g.t(S.V))}.`}
+  else{const g=(m.goals||[]).find(g=>!g.ok(S.D,env));if(g)t=con.hidden?`👉 Cables listos. Abre la consola de <b>${m.con}</b> y configura: ${esc(g.t(S.V))}.`:`👉 En la consola: ${esc(g.t(S.V))}.`}
   nextEl.innerHTML=t;nextEl.hidden=!t}
  function load(i){if(S.rpg&&S.rpg.on)S.rpg.stop();loadM(MIS[i])}
  function loadM(m){const i=MIS.indexOf(m);S.mis=m;S.hint=0;S.wrong=0;drop();selCable(null);closeCon();cout.innerHTML='';for(const c of S.cables.slice())rmCable(c);
-  S.D={CORE:mkDev('CORE',S.V),ACC1:mkDev('ACC1',S.V),ACC2:mkDev('ACC2',S.V)};m.cfg&&m.cfg(S.D);
+  if(m.v)S.V=m.v;else S.V=getV();view.querySelectorAll('[data-ven]').forEach(x=>{x.classList.toggle('on',x.dataset.ven===S.V);x.disabled=!!m.v});{const sb=view.querySelector('[data-cab="stack"]');if(sb)sb.hidden=!m.stack}
+  S.D={CORE:mkDev('CORE',S.V),CORE2:mkDev('CORE2',S.V),ACC1:mkDev('ACC1',S.V),ACC2:mkDev('ACC2',S.V)};m.cfg&&m.cfg(S.D);
   (m.pre==='ticket'?ticketPre():m.pre).forEach(([a,b,t])=>addCable(a,b,t));
   view.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i));S.won=false;
   say('Misión: '+m.t+'. '+(m.req.length>1||!m.con?'Elige el cable y toca un puerto.':'Conecta la laptop a la consola de '+m.con+'.'));check(true);
@@ -480,10 +571,10 @@ export function mount(view,start){
   const need=new Set(m.req.concat(m.pre==='ticket'?[]:m.pre).map(([a,b])=>key(a,b)));
   const rows=m.req.map(([a,b,t])=>{const c=have.get(key(a,b)),ok=c&&c.type===t;return{ok,txt:`🔌 ${pname(S.ports[a])} → ${pname(S.ports[b])}`+(S.ports[a].dev==='PP'?` <span class="small">(${DESK[a.slice(3)]||''})</span>`:'')+` · ${CABLE[t]}`}});
   const cabOk=rows.every(r=>r.ok);
-  const grows=(m.goals||[]).map(g=>({ok:cabOk&&g.ok(S.D),txt:'⌨️ '+esc(g.t(S.V))}));
-  const extra=S.cables.filter(c=>!need.has(key(c.a,c.b)));
+  const grows=(m.goals||[]).map(g=>({ok:cabOk&&g.ok(S.D,env),txt:'⌨️ '+esc(g.t(S.V))}));
+  const extra=S.cables.filter(c=>!need.has(key(c.a,c.b))&&!(m.multiCon&&c.type==='consola'));
   const win=cabOk&&grows.every(r=>r.ok)&&!extra.length;
-  const score=Math.max(0,100-(S.hint>=2?15:0)-(S.hint>=3?25:0)-Math.min(20,5*(S.wrong||0))),pass=score>=PASS3,isD=/^[dc]/.test(m.id);
+  const score=Math.max(0,100-(S.hint>=2?15:0)-(S.hint>=3?25:0)-Math.min(20,5*(S.wrong||0))),pass=score>=PASS3,isD=/^[dcv]/.test(m.id);
   if(win){clearRings();nextEl.innerHTML='✅ ¡Misión cumplida! Elige la siguiente misión.';nextEl.hidden=false}else nextStep(m,have);
   openB.hidden=!conDev()||!con.hidden;if(conDev())openB.textContent='Abrir consola de '+conDev();
   task.innerHTML=`<p class="tid">${m.z} · misión · ${VN[S.V]}</p><h3>${m.t}</h3><p>${m.story}</p><ul class="s3tl">${rows.concat(grows).map(r=>`<li class="${r.ok?'ok':''}">${r.ok?'✓':'○'} ${r.txt}</li>`).join('')}${extra.map(c=>`<li class="bad">✗ Sobra o está mal: ${pname(S.ports[c.a])} ↔ ${pname(S.ports[c.b])}</li>`).join('')}</ul>
@@ -502,7 +593,7 @@ export function mount(view,start){
  [hemi,dl,fl2].forEach(l=>l.userData.base=l.intensity);S.cleanup=[];
  S.rpg=initRPG({THREE,scene,cam,ctl,canvas,stage,view,S,lbl,say,loadM,fly,VIEWS,sfx,dark,lights:[hemi,dl,fl2],task,prog:(id,sc)=>{prog.set(id,sc);const b=view.querySelector(`[data-case="${CASES.findIndex(c=>c.id===id)}"] em`);if(b)b.textContent=(sc>=70?'✓ ':'✗ ')+sc},onUnmount:f=>S.cleanup.push(f),loadFirst:()=>load(0)});
  view.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>{view.querySelectorAll('[data-m],[data-case]').forEach(x=>x.classList.toggle('on',x===b));drop();selCable(null);closeCon();S.rpg.start(CASES[+b.dataset.case]);stage.scrollIntoView({block:'start',behavior:'smooth'})}));
- if(/^z\d$/.test(start||''))start='d'+start[1]+'a';const ci=CASES.findIndex(c=>c.id===start&&isOpen(c.id));if(ci>=0){load(0);S.rpg.start(CASES[ci]);setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300)}const si=ci>=0?-2:MIS.findIndex(m=>m.id===start&&isOpen(m.id)),first=MIS.findIndex(m=>isOpen(m.id)&&(/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]));const anyOpen=MIS.some(m=>isOpen(m.id)),lastOpen=MIS.map(m=>isOpen(m.id)).lastIndexOf(true);if(si!==-2)load(si>=0?si:first>=0?first:Math.max(0,lastOpen));if(!anyOpen&&ci<0){stage.insertAdjacentHTML('beforeend','<div class="s3help"><div><h3>🔒 Tus labs 3D se abren conforme avanzas</h3><p>Cada zona tiene dos labs 3D justo antes de su certificación. El primero, <b>3D-0A</b>, se abre al terminar los tickets de la Zona 0.</p><p class="small">Mientras tanto, puedes ver el cuarto de telecom: gira y acerca para conocer los racks.</p><a class="btn" href="#mapa">Ir a mi mapa</a> <button class="btnl" onclick="this.closest(\'.s3help\').remove()">Solo ver el cuarto</button></div></div>')}if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
+ if(/^z\d$/.test(start||''))start='d'+start[1]+'a';if(start==='d5c'){const vv=getV();start={aruba:'v1',cisco:'v3',juniper:'v5'}[vv]}const ci=CASES.findIndex(c=>c.id===start&&isOpen(c.id));if(ci>=0){load(0);S.rpg.start(CASES[ci]);setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300)}const si=ci>=0?-2:MIS.findIndex(m=>m.id===start&&isOpen(m.id)),first=MIS.findIndex(m=>!m.v&&isOpen(m.id)&&(/^d/.test(m.id)?!(done[m.id]>=PASS3):!done[m.id]));const anyOpen=MIS.some(m=>isOpen(m.id)),lastOpen=MIS.map(m=>isOpen(m.id)).lastIndexOf(true);if(si!==-2)load(si>=0?si:first>=0?first:Math.max(0,lastOpen));if(!anyOpen&&ci<0){stage.insertAdjacentHTML('beforeend','<div class="s3help"><div><h3>🔒 Tus labs 3D se abren conforme avanzas</h3><p>Cada zona tiene dos labs 3D justo antes de su certificación. El primero, <b>3D-0A</b>, se abre al terminar los tickets de la Zona 0.</p><p class="small">Mientras tanto, puedes ver el cuarto de telecom: gira y acerca para conocer los racks.</p><a class="btn" href="#mapa">Ir a mi mapa</a> <button class="btnl" onclick="this.closest(\'.s3help\').remove()">Solo ver el cuarto</button></div></div>')}if(si>=0)setTimeout(()=>stage.scrollIntoView({block:'start',behavior:'smooth'}),300);
  // ---------- ciclo ----------
  const fit=()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
  S.ro=new ResizeObserver(fit);S.ro.observe(stage);fit();

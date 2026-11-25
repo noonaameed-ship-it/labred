@@ -8,8 +8,8 @@ function pif(v,s){s=s.toLowerCase().replace(/\s+/g,'');let m;
  if(m=/^ge-0\/0\/(\d+)$/.exec(s))return +m[1]<=23?'Gi0/'+(+m[1]+1):null;if(m=/^xe-0\/1\/(\d+)$/.exec(s))return +m[1]<=3?'Te0/'+(+m[1]+1):null;if(m=/^ae(\d+)$/.exec(s))return'Po'+(+m[1]);return null}
 const ALLG=[...Array(24)].map((_,i)=>'Gi0/'+(i+1)).concat([1,2,3,4].map(n=>'Te0/'+n));
 const clone=o=>JSON.parse(JSON.stringify(o));
-const CORE_F=['host','vlans','ifs','lags','svi','gw','stp','aecount','l3'];
-export function mkDev(name,v){const d={name,v,host:v==='cisco'?'Switch':'switch',vlans:{1:'default'},ifs:{},lags:{},svi:{},gw:null,stp:{mode:v==='cisco'?'pvst':v==='aruba'?'off':'rstp',prio:{}},aecount:0,l3:{},saved:true,mode:v==='cisco'?'exec':v==='aruba'?'priv':'op',ctx:null,cand:null,ran:{},hist:[]};return d}
+const CORE_F=['host','vlans','ifs','lags','svi','gw','stp','aecount','l3','jx','vcpre','vcm'];
+export function mkDev(name,v){const d={name,v,host:v==='cisco'?'Switch':'switch',vlans:{1:'default'},ifs:{},lags:{},svi:{},gw:null,stp:{mode:v==='cisco'?'pvst':v==='aruba'?'off':'rstp',prio:{}},aecount:0,l3:{},jx:{},vcpre:false,vcm:{},vsf:{mem:{},sec:null,split:null,num:1,renum:false},vsx:{isl:null,role:null,kp:null,ks:null},swp:{},svl:{dom:null,links:{},dad:{},rel:false},vcp:{},pend:null,saved:true,mode:v==='cisco'?'exec':v==='aruba'?'priv':'op',ctx:null,cand:null,ran:{},hist:[]};return d}
 export function IF(d,g){return d.ifs[g]||(d.ifs[g]={mode:null,access:1,allowed:null,native:1,desc:'',up:d.v!=='aruba',lag:null,lagMode:null,fam:false})}
 export const RI=(d,g)=>d.ifs[g]||{mode:null,access:1,allowed:null,native:1,desc:'',up:d.v!=='aruba',lag:null,lagMode:null};
 export function LG(d,n){return d.lags[n]||(d.lags[n]={mode:null,access:1,allowed:null,native:1,up:d.v!=='aruba',lacp:null,desc:''})}
@@ -31,13 +31,13 @@ const ipok=s=>/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(s)&&s.split('.
 const m2l=m=>{if(!ipok(m))return null;const b=m.split('.').map(x=>(+x).toString(2).padStart(8,'0')).join('');return /^1*0*$/.test(b)?b.indexOf('0')<0?32:b.indexOf('0'):null};
 const l2m=l=>[0,1,2,3].map(i=>{const b=Math.max(0,Math.min(8,l-i*8));return 256-Math.pow(2,8-b)}).join('.');
 export function prompt(d){const h=d.host;if(d.v==='juniper')return'admin@'+h+(d.mode==='cfg'?'#':'>');
- if(d.v==='cisco')return h+{exec:'>',priv:'#',conf:'(config)#',if:'(config-if)#',range:'(config-if-range)#',vlan:'(config-vlan)#'}[d.mode];
- return h+{priv:'#',conf:'(config)#',if:d.ctx&&/^Po/.test(d.ctx[0])?'(config-lag-if)#':d.ctx&&/^Vl/.test(d.ctx[0])?'(config-if-vlan)#':'(config-if)#',vlan:'(config-vlan-'+(d.ctx||'')+')#'}[d.mode]}
+ if(d.v==='cisco')return h+{exec:'>',priv:'#',conf:'(config)#',if:'(config-if)#',range:'(config-if-range)#',vlan:'(config-vlan)#',svl:'(config-stackwise-virtual)#'}[d.mode];
+ return h+{vsfm:'(vsf-member-'+d.ctx+')#',vsx:'(config-vsx)#',priv:'#',conf:'(config)#',if:d.ctx&&/^Po/.test(d.ctx[0])?'(config-lag-if)#':d.ctx&&/^Vl/.test(d.ctx[0])?'(config-if-vlan)#':'(config-if)#',vlan:'(config-vlan-'+(d.ctx||'')+')#'}[d.mode]}
 export function banner(d){if(d.v==='cisco')return['','Press RETURN to get started.','',U('[tutor] Consola por cable de consola: 9600 baudios, 8N1. Escribe ? para ver los comandos.')];
  if(d.v==='aruba')return['','(C) Copyright 2017-2026 Hewlett Packard Enterprise Development LP','','We\'d like to keep you up to date about:','  * Software feature updates','','switch login: admin','Password:',U('[tutor] En el laboratorio el usuario admin no tiene contraseña. Escribe ? para ver los comandos.')];
  return['','--- JUNOS 23.4R2 Kernel 64-bit','',U('[tutor] Ya estás en la CLI de Junos (modo operativo, >). Escribe ? para ver los comandos.')]}
 // ---------- ejecutar ----------
-export function run(d,line,env){line=line.trim();const out=[];if(!line)return out;d.hist.push(line);
+export function run(d,line,env){line=line.trim();const out=[];if(d.pend){const P=d.pend;d.pend=null;d.hist.push(line);if(/^(y|yes|s|si|sí|)$/i.test(line)){P.f(out)}else out.push('Cancelado.');return out}if(!line)return out;d.hist.push(line);
  if(line==='?'||/\s\?$/.test(line))return help(d);
  try{if(d.v==='cisco')cisco(d,line,env,out);else if(d.v==='aruba')aruba(d,line,env,out);else junos(d,line,env,out)}catch(e){out.push(E('% Error interno: '+e.message))}
  return out}
@@ -50,18 +50,23 @@ function dirty(d){d.saved=false}
 function cisco(d,line,env,out){env0=env;let tk=toks(line),a;
  if(d.mode!=='exec'&&d.mode!=='priv'&&(a=mt(tk,'do **')))return cShow(d,a[1],env,out,true);
  if(d.mode==='exec'){if(mt(tk,'enable'))return d.mode='priv';if(a=mt(tk,'show **'))return cShow(d,a[1],env,out);if(mt(tk,'exit|logout'))return;if(mt(tk,'configure terminal')||mt(tk,'configure')){out.push(E('% Invalid input detected at \'^\' marker.'),U('[tutor] Primero entra al modo privilegiado con enable (el prompt cambia de > a #).'));return}return bad(out,line)}
- if(d.mode==='priv'){if(mt(tk,'configure terminal')||mt(tk,'configure')){out.push('Enter configuration commands, one per line.  End with CNTL/Z.');return d.mode='conf'}
+ if(d.mode==='priv'){if(a=mt(tk,'switch * priority *')){const n=+a[1],p=+a[3];if(!(n>=1&&n<=8)||!(p>=1&&p<=15)){out.push(E('% Invalid input'),U('[tutor] Prioridad de 1 a 15; gana la más alta.'));return}out.push('Changing the Switch Priority of Switch Number '+n+' to '+p,'Do you want to continue?[y/n]? [yes]: ');d.pend={f:o=>{d.swp[n]=p;o.push('New Priority has been set successfully')}};return}
+   if(mt(tk,'reload')){if(!d.saved){out.push(U('[tutor] Hay cambios sin guardar: con reload se perderían. Primero write memory.'));return}out.push('Proceed with reload? [confirm]');d.pend={f:o=>{if(d.svl.dom!=null)d.svl.rel=true;o.push('','%SYS-5-RELOAD: Reload requested by console.','…','Press RETURN to get started.',U('[tutor] El equipo reinició'+(d.svl.dom!=null?' con StackWise Virtual activo.':'.')))}};return}
+   if(mt(tk,'configure terminal')||mt(tk,'configure')){out.push('Enter configuration commands, one per line.  End with CNTL/Z.');return d.mode='conf'}
   if(a=mt(tk,'show **'))return cShow(d,a[1],env,out);if(mt(tk,'write memory')||mt(tk,'write')||mt(tk,'copy running-config startup-config')){out.push('Building configuration...','[OK]');d.saved=true;return}
   if(mt(tk,'disable'))return d.mode='exec';if(mt(tk,'exit|logout'))return d.mode='exec';if(mt(tk,'enable'))return;return bad(out,line)}
  if(mt(tk,'end')){d.mode='priv';d.ctx=null;return}
  if(mt(tk,'exit')){d.mode=d.mode==='conf'?'priv':'conf';d.ctx=null;return}
  if(d.mode==='vlan'&&(a=mt(tk,'name *'))){d.vlans[d.ctx]=a[1];dirty(d);return}
+ if(d.mode==='svl'&&(a=mt(tk,'domain *'))){d.svl.dom=+a[1];dirty(d);return}
  if((d.mode==='if'||d.mode==='range')&&cIf(d,tk,out))return;
  if(cConf(d,tk,out,line))return;
  return bad(out,line)}
 function bad(out,line){out.push(E('% Invalid input detected at \'^\' marker.'),U('[tutor] Revisa la ortografía o escribe ? para ver los comandos de este modo.'))}
 function cConf(d,tk,out,line){let a;
  if(a=mt(tk,'hostname *')){d.host=a[1];dirty(d);d.mode='conf';return 1}
+ if(mt(tk,'stackwise-virtual')){d.mode='svl';dirty(d);return 1}
+ if(a=mt(tk,'switch * priority *')){out.push(E('% Invalid input detected at \'^\' marker.'),U('[tutor] En Catalyst 9300 la prioridad del stack se cambia en modo privilegiado (#), no en configuración: sal con end.'));return 1}
  if(a=mt(tk,'vlan *')){const l=plist(a[1]);if(!l){out.push(E('% Invalid input'));return 1}l.forEach(v=>{if(!d.vlans[v])d.vlans[v]='VLAN'+String(v).padStart(4,'0')});d.mode='vlan';d.ctx=l[0];dirty(d);return 1}
  if(a=mt(tk,'no vlan *')){(plist(a[2])||[]).forEach(v=>{if(v!==1)delete d.vlans[v]});dirty(d);return 1}
  if(a=mt(tk,'interface range **')){const r=a[2].replace(/\s+/g,''),m=/^([a-z]+)0\/(\d+)-(?:[a-z]+0\/)?(\d+)$/i.exec(r);if(!m){out.push(E('% Invalid input'));return 1}const L=[];for(let n=+m[2];n<=+m[3];n++){const g=pif('cisco',m[1]+'0/'+n);if(!g){out.push(E('% Invalid input'));return 1}L.push(g)}d.ctx=L;d.mode='range';return 1}
@@ -79,6 +84,8 @@ function cIf(d,tk,out){let a;const C=d.ctx;const each=f=>{C.forEach(g=>{if(/^Po/
  if(a=mt(tk,'switchport trunk allowed vlan add *')){const l=plist(a[5]);if(!l){out.push(E('% Invalid input'));return 1}return each(i=>i.allowed=[...new Set((i.allowed||[]).concat(l))])}
  if(a=mt(tk,'switchport trunk allowed vlan *')){if(/^all$/i.test(a[4]))return each(i=>i.allowed=null);const l=plist(a[4]);if(!l){out.push(E('% Invalid input'));return 1}return each(i=>i.allowed=l)}
  if(a=mt(tk,'switchport trunk native vlan *')){const v=+a[4];if(!(v>=1&&v<=4094)){out.push(E('% Invalid input'));return 1}return each(i=>i.native=v)}
+ if(a=mt(tk,'stackwise-virtual link *')){if(C.some(g=>!/^Te/.test(g))){out.push(E('% Stackwise virtual link must be a 10G or faster interface'));return 1}C.forEach(g=>d.svl.links[g]=+a[2]);dirty(d);return 1}
+ if(mt(tk,'stackwise-virtual dual-active-detection')){C.forEach(g=>d.svl.dad[g]=1);dirty(d);return 1}
  if(mt(tk,'switchport trunk encapsulation dot1q')||mt(tk,'switchport')||mt(tk,'switchport nonegotiate'))return 1;
  if(a=mt(tk,'description **'))return each(i=>i.desc=a[1]);
  if(mt(tk,'no shutdown')){each(i=>i.up=true);C.forEach(g=>{if(/^Po/.test(g)||env0.cabled(d.name,g))out.push('%LINK-3-UPDOWN: Interface '+longIf(g)+', changed state to up')});return 1}
@@ -100,6 +107,9 @@ function cShow(d,what,env,out,doCmd){env0=env;const w=what.toLowerCase().split(/
   out.push('','Port        Mode             Encapsulation  Status        Native vlan');tr.forEach(([n,i])=>out.push(n.padEnd(12)+'on               802.1q         trunking      '+i.native));out.push('','Port        Vlans allowed on trunk');tr.forEach(([n,i])=>out.push(n.padEnd(12)+(i.allowed?vlist(i.allowed):'1-4094')));out.push('','Port        Vlans allowed and active in management domain');tr.forEach(([n,i])=>out.push(n.padEnd(12)+vlist(Object.keys(d.vlans).map(Number).filter(v=>!i.allowed||i.allowed.includes(v)))));return}
  if(k('spanning-tree')||k('spanning-tree','summary')){d.ran.stp=1;return out.push(...stpShow(d,env))}
  if(k('etherchannel','summary')){d.ran.lacp=1;out.push('Flags:  D - down        P - bundled in port-channel','        I - stand-alone s - suspended','        S - Layer2      U - in use','','Number of channel-groups in use: '+Object.keys(d.lags).length,'','Group  Port-channel  Protocol    Ports','------+-------------+-----------+-----------------------------------------------');for(const n of Object.keys(d.lags)){const ms=ALLG.filter(g=>lagOf(d,g)==+n),any=ms.some(g=>lagUpPair(d,g,env));out.push(String(n).padEnd(7)+('Po'+n+'(S'+(any?'U':'D')+')').padEnd(14)+(ms.some(g=>RI(d,g).lagMode!=='on')?'LACP':'-').padEnd(12)+ms.map(g=>pn('cisco',g)+'('+(lagUpPair(d,g,env)?'P':RI(d,g).up?'I':'D')+')').join(' '))}return}
+ if(k('switch')||k('switch','detail')){d.ran.sw=1;return out.push(...swShow(d,env))}
+ if(k('switch','stack-ports')){d.ran.sw=1;const st=stackRing(env);return out.push('  Switch#    Port1       Port2','  -------    -----       -----','    1        '+(st.c1?'OK  ':'DOWN')+'         '+(st.c2?'OK':'DOWN'),'    2        '+(st.c2?'OK  ':'DOWN')+'         '+(st.c1?'OK':'DOWN'))}
+ if(k('stackwise-virtual')||k('stackwise-virtual','link')||k('stackwise-virtual','dual-active-detection')){d.ran.svl=1;return out.push(...svlShow(d,env))}
  if(k('version'))return out.push('Cisco IOS Software, Version 15.2(7)E8','cisco WS-C2960X-24TD-L (APM86XXX) processor','24 Gigabit Ethernet interfaces','4 Ten Gigabit Ethernet interfaces');
  out.push(E('% Invalid input detected at \'^\' marker.'),U('[tutor] Prueba: show running-config, show vlan brief, show interfaces status, show interfaces trunk, show spanning-tree, show etherchannel summary.'))}
 export function lagUpPair(d,g,env){const i=RI(d,g);if(!i.up||!env.cabled(d.name,g))return false;if(i.lag==null)return true;const m=lagMode(d,g);if(!lagExists(d,i.lag))return false;const L=d.lags[i.lag];if(L&&!L.up)return false;return env.lagPeerOk?env.lagPeerOk(d,g,m):(m==='active'||m==='passive')}
@@ -122,16 +132,23 @@ export const MAC={CORE:'0c9d.92a1.3c00',ACC1:'0c9d.92a1.5e00',ACC2:'0018.b9f0.1a
 function aruba(d,line,env,out){let tk=toks(line),a;
  if(a=mt(tk,'show **'))return aShow(d,a[1],env,out);
  if(mt(tk,'write memory')||mt(tk,'write mem')||mt(tk,'copy running-config startup-config')){out.push('Copying configuration: [Success]');d.saved=true;return}
+ if(d.mode==='priv'&&(a=mt(tk,'vsf renumber-to *'))){const n=+a[2];if(!(n>=2&&n<=10)){out.push(E('Invalid input: '+a[2]));return}out.push('This will save the configuration and reboot the switch.','Continue (y/n)? ');d.pend={f:o=>{d.vsf.num=n;d.vsf.renum=true;d.saved=true;o.push('','Rebooting…','Switch se unió al stack VSF como miembro '+n+'.',U('[tutor] Desde ahora este switch se administra desde la consola del conductor.'))}};return}
  if(d.mode==='priv'){if(mt(tk,'configure terminal')||mt(tk,'configure')||mt(tk,'conf')){return d.mode='conf'}if(mt(tk,'exit'))return;if(mt(tk,'enable'))return out.push(U('[tutor] En Aruba AOS-CX ya entras con privilegios (#). Sigue con configure terminal.'));return bad(out,line)}
  if(mt(tk,'end')){d.mode='priv';d.ctx=null;return}if(mt(tk,'exit')){d.mode=d.mode==='conf'?'priv':'conf';d.ctx=null;return}
  if(d.mode==='vlan'&&(a=mt(tk,'name *'))){d.vlans[d.ctx]=a[1];dirty(d);return}
  if(d.mode==='if'&&aIf(d,tk,out,env))return;
+ if(d.mode==='vsfm'){if(a=mt(tk,'link * **')){const ps=a[2].split(/[\s,]+/).map(x=>{const m=/^(\d+)\/1\/(\d+)$/.exec(x);return m?{mb:+m[1],p:+m[2]}:null});if(ps.some(x=>!x||x.mb!==d.ctx)){out.push(E('Invalid input: '+a[2]),U('[tutor] Los puertos del miembro '+d.ctx+' se escriben '+d.ctx+'/1/N.'));return}const M=d.vsf.mem[d.ctx];M.links[+a[1]]=ps.map(x=>x.p);dirty(d);return}if(mt(tk,'type *'))return;}
+ if(d.mode==='vsx'){if(a=mt(tk,'inter-switch-link lag *')){d.vsx.isl=+a[2];dirty(d);return}if(a=mt(tk,'role *')){const r=['primary','secondary'].find(x=>x.startsWith(a[1].toLowerCase()));if(!r)return bad(out,line);d.vsx.role=r;dirty(d);return}if(a=mt(tk,'keepalive peer * source *')||mt(tk,'keepalive peer * source * vrf *')){if(!ipok(a[2])||!ipok(a[4]))return bad(out,line);d.vsx.kp=a[2];d.vsx.ks=a[4];dirty(d);return}if(mt(tk,'vsx-sync **')||mt(tk,'system-mac *'))return}
+ if(a=mt(tk,'vsf member *')){const n=+a[2];d.vsf.mem[n]=d.vsf.mem[n]||{links:{}};d.mode='vsfm';d.ctx=n;dirty(d);return}
+ if(a=mt(tk,'vsf secondary-member *')){d.vsf.sec=+a[2];dirty(d);return}
+ if(mt(tk,'vsf split-detect mgmt')){d.vsf.split='mgmt';dirty(d);return}
+ if(mt(tk,'vsx')){d.mode='vsx';return}
  if(a=mt(tk,'hostname *')){d.host=a[1];dirty(d);d.mode='conf';return}
  if(a=mt(tk,'vlan *')){const l=plist(a[1]);if(!l)return bad(out,line);l.forEach(v=>{if(!d.vlans[v])d.vlans[v]='VLAN'+v});d.mode='vlan';d.ctx=l[0];dirty(d);return}
  if(a=mt(tk,'no vlan *')){(plist(a[2])||[]).forEach(v=>{if(v!==1)delete d.vlans[v]});dirty(d);return}
- if(a=mt(tk,'interface **')){const s=a[1].replace(/\s+/g,'');let L;const m=/^1\/1\/(\d+)-1\/1\/(\d+)$/.exec(s);if(m){L=[];for(let n=+m[1];n<=+m[2];n++)L.push(pif('aruba','1/1/'+n))}else{const g=pif('aruba',s);L=g?[g]:null}
+ if(a=mt(tk,'interface **')){const mcF=/\s+multi-chassis$/i.test(a[1]);a[1]=a[1].replace(/\s+multi-chassis$/i,'');const s=a[1].replace(/\s+/g,'');let L;const m=/^1\/1\/(\d+)-1\/1\/(\d+)$/.exec(s);if(m){L=[];for(let n=+m[1];n<=+m[2];n++)L.push(pif('aruba','1/1/'+n))}else{const g=pif('aruba',s);L=g?[g]:null}
   if(!L||L.some(x=>!x)){out.push(E('Invalid input: '+a[1]),U('[tutor] Los puertos de Aruba se escriben 1/1/N (1 a 24 cobre, 25 a 28 SFP); también lag N y vlan N.'));return}
-  if(/^Po/.test(L[0]))LG(d,+L[0].slice(2));if(/^Vl/.test(L[0])){const v=+L[0].slice(2);if(!d.vlans[v]){out.push(E('VLAN '+v+' does not exist.'),U('[tutor] Primero crea la VLAN con vlan '+v+'.'));return}d.svi[v]=d.svi[v]||{ip:null,len:null,up:true}}d.ctx=L;d.mode='if';return}
+  if(/^Po/.test(L[0])){LG(d,+L[0].slice(2));if(mcF){d.lags[+L[0].slice(2)].mc=true;dirty(d)}}if(/^Vl/.test(L[0])){const v=+L[0].slice(2);if(!d.vlans[v]){out.push(E('VLAN '+v+' does not exist.'),U('[tutor] Primero crea la VLAN con vlan '+v+'.'));return}d.svi[v]=d.svi[v]||{ip:null,len:null,up:true}}d.ctx=L;d.mode='if';return}
  if(a=mt(tk,'ip route * *')){if(a[2]!=='0.0.0.0/0'||!ipok(a[3]))return bad(out,line);d.gw=a[3];dirty(d);d.mode='conf';return}
  if(mt(tk,'spanning-tree')){d.stp.mode='mstp';dirty(d);d.mode='conf';return}
  if(a=mt(tk,'spanning-tree mode *')){d.stp.mode=/^r/.test(a[2])?'rpvst':'mstp';dirty(d);return}
@@ -139,6 +156,9 @@ function aruba(d,line,env,out){let tk=toks(line),a;
  if(a=mt(tk,'spanning-tree vlan * priority *')){const l=plist(a[2]),p=+a[4];if(!l||!(p>=0&&p<=15))return bad(out,line);l.forEach(v=>d.stp.prio[v]=p*4096);dirty(d);return}
  return bad(out,line)}
 function aIf(d,tk,out,env){let a;const C=d.ctx,isV=/^Vl/.test(C[0]);const each=f=>{C.forEach(g=>f(/^Po/.test(g)?LG(d,+g.slice(2)):IF(d,g)));dirty(d);return 1};
+ if(isV&&(a=mt(tk,'active-gateway ip * mac *'))){const s=d.svi[+C[0].slice(2)];s.ag={ip:a[2],mac:a[4].toLowerCase()};dirty(d);return 1}
+ if(/^Po/.test(C[0])&&mt(tk,'multi-chassis')){LG(d,+C[0].slice(2)).mc=true;dirty(d);return 1}
+ if(!isV&&!/^Po/.test(C[0])&&(a=mt(tk,'ip address *'))){const m=/^([\d.]+)\/(\d+)$/.exec(a[2]);if(!m||!ipok(m[1])){out.push(E('Invalid input: '+a[2]));return 1}C.forEach(g=>{IF(d,g).ip=m[1]+'/'+m[2]});dirty(d);return 1}
  if(isV){const s=d.svi[+C[0].slice(2)];if(a=mt(tk,'ip address *')){const m=/^([\d.]+)\/(\d+)$/.exec(a[2]);if(!m||!ipok(m[1])||+m[2]>32){out.push(E('Invalid input: '+a[2]),U('[tutor] En Aruba la IP va con prefijo: ip address 192.168.99.11/24'));return 1}s.ip=m[1];s.len=+m[2];dirty(d);return 1}if(mt(tk,'no shutdown')){s.up=true;return 1}if(mt(tk,'shutdown')){s.up=false;dirty(d);return 1}return 0}
  if(mt(tk,'no shutdown'))return each(i=>i.up=true);if(mt(tk,'shutdown'))return each(i=>i.up=false);
  if(mt(tk,'no routing')||mt(tk,'routing'))return 1;
@@ -161,13 +181,16 @@ function aShow(d,what,env,out){const w=what.toLowerCase().split(/\s+/),k=(...p)=
   for(const n of Object.keys(d.lags)){const L=d.lags[n],u=ALLG.some(g=>lagOf(d,g)==+n&&lagUpPair(d,g,env));out.push(('lag'+n).padEnd(11)+String(L.mode==='trunk'?L.native:L.access).padEnd(8)+(L.mode||'access').padEnd(7)+'--'.padEnd(15)+(L.up?'yes':'no').padEnd(8)+(u?'up':'down').padEnd(8)+(L.up?'':'Administratively down'))}return}
  if(k('lacp','interfaces')||k('lacp','aggregates')){d.ran.lacp=1;const mem=ALLG.filter(g=>lagOf(d,g)!=null);out.push('','State abbreviations :','A - Active        P - Passive      F - Aggregable I - Individual','S - Short-timeout L - Long-timeout N - InSync     O - OutofSync','C - Collecting    D - Distributing','','Intf       Aggr       Port  State','           Name       Id','-----------------------------------');mem.forEach(g=>{const m=lagMode(d,g),u=lagUpPair(d,g,env);out.push(pn('aruba',g).padEnd(11)+('lag'+lagOf(d,g)).padEnd(11)+String(ALLG.indexOf(g)+1).padEnd(6)+(m==='on'?'static':(m==='active'?'A':'P')+'L'+(u?'FNCD':'IO')))});if(!mem.length)out.push('(sin puertos en LAG)');return}
  if(k('spanning-tree')){d.ran.stp=1;return out.push(...stpShow(d,env))}
+ if(k('vsf')||k('vsf','detail')){d.ran.vsf=1;return out.push(...vsfShow(d,env))}
+ if(k('vsx','status')||k('vsx','status','keepalive')){d.ran.vsx=1;return out.push(...vsxShow(d,env))}
  if(k('ip','interface','brief')){d.ran.ip=1;out.push('Interface       IP Address          Interface Status','                                    link/admin');Object.keys(d.svi).forEach(v=>{const s=d.svi[v];out.push(('vlan'+v).padEnd(16)+(s.ip?s.ip+'/'+s.len:'No Address').padEnd(20)+(s.up?'up/up':'down/down'))});return}
  out.push(E('Invalid input: '+what),U('[tutor] Prueba: show running-config, show vlan, show interface brief, show lacp interfaces, show spanning-tree.'))}
 function aVl(i,out){if(i.mode==='trunk'){out.push('    vlan trunk native '+i.native,'    vlan trunk allowed '+(i.allowed?vlist(i.allowed):'all'))}else if(i.mode==='access')out.push('    vlan access '+i.access)}
 /* ===== Juniper Junos ===== */
 function jn(d,v){return d.vlans[v]}
 function junos(d,line,env,out){let tk=toks(line.replace(/\[|\]/g,m=>' '+m+' ')),a;
- if(d.mode==='op'){if(mt(tk,'configure')||mt(tk,'edit')){d.cand=clone(pick(d));d.mode='cfg';out.push('Entering configuration mode','',{t:'[edit]',c:'dim'});return}if(a=mt(tk,'show **'))return jShow(d,a[1],env,out,d);if(mt(tk,'exit|quit'))return;
+ if(d.mode==='op'){if(mt(tk,'configure')||mt(tk,'edit')){d.cand=clone(pick(d));d.mode='cfg';out.push('Entering configuration mode','',{t:'[edit]',c:'dim'});return}if(a=mt(tk,'request virtual-chassis vc-port set pic-slot * port *')){const n=+a[7];if(+a[5]!==1||!(n>=0&&n<=3)){out.push(E('error: invalid port'));return}d.vcp['Te0/'+(n+1)]=true;out.push(U('[tutor] xe-0/1/'+n+' ahora es puerto de Virtual Chassis (vcp-255/1/'+n+').'));return}
+  if(a=mt(tk,'show **'))return jShow(d,a[1],env,out,d);if(mt(tk,'exit|quit'))return;
   if(tk[0]&&/^set|^delete|^commit/.test(tk[0])){out.push(E('unknown command.'),U('[tutor] set, delete y commit se usan en modo configuración: escribe configure.'));return}return out.push(E('unknown command.'))}
  if(a=mt(tk,'run show **'))return jShow(d,a[2],env,out,d);
  if(mt(tk,'show')||mt(tk,'show | compare')||mt(tk,'show configuration')){return jConf(d.cand,out)}
@@ -194,6 +217,9 @@ function jSet(d,c,t){const s=t.join(' ');let m;
  if(m=/^protocols rstp bridge-priority (\d+)(k?)$/.exec(s)){const p=+m[1]*(m[2]?1024:1);if(p%4096||p>61440)return'error: bridge-priority must be a multiple of 4k (0 - 60k)';c.stp.prio.all=p;return}
  if(/^protocols rstp( interface \S+)?$/.test(s)){c.stp.mode='rstp';return}
  if(m=/^chassis aggregated-devices ethernet device-count (\d+)$/.exec(s)){c.aecount=+m[1];return}
+ if(/^virtual-chassis preprovisioned$/.test(s)){c.vcpre=true;return}
+ if(m=/^virtual-chassis member (\d) role (routing-engine|line-card) serial-number (\S+)$/.exec(s)){c.vcm[m[1]]={role:m[2],sn:m[3].toUpperCase()};return}
+ if(/^protocols iccp (local-ip-addr \S+|peer \S+ .+)$/.test(s)||/^multi-chassis multi-chassis-protection \S+ interface ae\d+$/.test(s)||/^interfaces ae\d+ aggregated-ether-options (lacp (system-id|admin-key) \S+|mc-ae .+)$/.test(s)||/^interfaces ge-0\/0\/\d+ unit 0 family inet address [\d.]+\/\d+$/.test(s)||/^switch-options service-id \d+$/.test(s)){c.jx[s]=1;return}
  return'syntax error.'}
 function jDel(c,t){const s=t.join(' ');let m;
  if(m=/^interfaces (\S+) unit 0$/.exec(s)){const g=pif('juniper',m[1]);if(!g)return'syntax error.';const i=/^Po/.test(g)?LG(c,+g.slice(2)):IF(c,g);i.mode=null;i.mem=null;i.fam=false;i.native=1;return}
@@ -214,9 +240,14 @@ function jCfgLines(c){const r=[];r.push('system {','    host-name '+c.host+';','
  for(const g of ALLG)if(c.ifs[g])ifb(pn('juniper',g),c.ifs[g]);for(const n of Object.keys(c.lags))ifb('ae'+n,c.lags[n],true);
  if(Object.keys(c.svi).length){r.push('    irb {');for(const v of Object.keys(c.svi))r.push('        unit '+v+' {','            family inet {','                address '+c.svi[v].ip+'/'+c.svi[v].len+';','            }','        }');r.push('    }')}r.push('}');
  if(c.stp.prio.all!=null)r.push('protocols {','    rstp {','        bridge-priority '+(c.stp.prio.all/1024)+'k;','    }','}');if(c.gw)r.push('routing-options {','    static {','        route 0.0.0.0/0 next-hop '+c.gw+';','    }','}');
+ if(c.vcpre||Object.keys(c.vcm||{}).length){r.push('virtual-chassis {');if(c.vcpre)r.push('    preprovisioned;');for(const k of Object.keys(c.vcm))r.push('    member '+k+' {','        role '+c.vcm[k].role+';','        serial-number '+c.vcm[k].sn+';','    }');r.push('}')}
+ if(Object.keys(c.jx||{}).length){r.push('/* además (formato set): */');Object.keys(c.jx).forEach(x=>r.push('set '+x))}
  r.push('vlans {');for(const v of Object.keys(c.vlans))if(v!=='1'){r.push('    '+c.vlans[v]+' {','        vlan-id '+v+';');const l3=c.l3&&c.l3[c.vlans[v]];if(l3!=null)r.push('        l3-interface irb.'+l3+';');r.push('    }')}r.push('}');return r}
 function jShow(d,what,env,out){const w=what.toLowerCase().split(/\s+/),k=(...p)=>p.every((x,i)=>w[i]&&x.startsWith(w[i]))&&w.length===p.length;
  if(k('configuration'))return out.push(...jCfgLines(d));
+ if(k('virtual-chassis')||k('virtual-chassis','status')){d.ran.vc=1;return out.push(...vcShow(d,env))}
+ if(k('chassis','hardware')){return out.push('Hardware inventory:','Item             Version  Part number  Serial number     Description','Chassis                                '+SN[d.name]+'      EX4300-48P','FPC 0            REV 13   650-044931   '+SN[d.name]+'      EX4300-48P')}
+ if(k('iccp')){d.ran.iccp=1;return out.push(...iccpShow(d,env))}
  if(k('interfaces','terse')){d.ran.ifs=1;out.push('Interface               Admin Link Proto    Local                 Remote');for(const g of ALLG){const i=RI(d,g),u=i.up&&env.cabled(d.name,g);out.push(pn('juniper',g).padEnd(24)+(i.up?'up':'down').padEnd(6)+(u?'up':'down'));if(i.lag!=null)out.push((pn('juniper',g)+'.0').padEnd(24)+(i.up?'up':'down').padEnd(6)+(u?'up':'down').padEnd(5)+'aenet    --> ae'+i.lag);else if(d.ifs[g]&&d.ifs[g].mode)out.push((pn('juniper',g)+'.0').padEnd(24)+(i.up?'up':'down').padEnd(6)+(u?'up':'down').padEnd(5)+'eth-switch')}
   for(const n of Object.keys(d.lags))if(lagExists(d,+n)){const u=ALLG.some(g=>lagOf(d,g)==+n&&lagUpPair(d,g,env));out.push(('ae'+n).padEnd(24)+'up    '+(u?'up':'down'))}
   for(const v of Object.keys(d.svi))out.push(('irb.'+v).padEnd(24)+'up    up   inet     '+d.svi[v].ip+'/'+d.svi[v].len);return}
@@ -232,3 +263,36 @@ export const G={
  svi:(d,v,ip,len)=>{const s=d.svi[v];return!!s&&s.ip===ip&&s.len===len&&s.up&&(d.v!=='juniper'||(d.l3&&d.l3[d.vlans[v]]===v))},
  lag:(d,gs)=>{const n=lagOf(d,gs[0]);if(n==null||!gs.every(g=>lagOf(d,g)===n&&d.ifs[g].up))return null;if(!lagExists(d,n))return null;const m=lagMode(d,gs[0]);return m==='active'||m==='passive'?n:null},
  lagTrunk:(d,gs,vs)=>{const n=lagOf(d,gs[0]);const L=n!=null&&lagExists(d,n)&&d.lags[n];return!!L&&L.mode==='trunk'&&!!L.allowed&&vs.every(v=>L.allowed.includes(v))&&L.up}};
+
+/* ===== stack y multichasis ===== */
+export const SN={ACC1:'NW3720AA0101',ACC2:'NW3720AA0102',CORE:'NW3720AA0201',CORE2:'NW3720AA0202'};
+const MAC2={CORE:'0c9d.92a1.3c00',CORE2:'0c9d.92a1.3d00',ACC1:'0c9d.92a1.5e00',ACC2:'0c9d.92a1.5f00'};
+export function stackRing(env){return{c1:env.link('ACC1:STK1','ACC2:STK2'),c2:env.link('ACC2:STK1','ACC1:STK2')}}
+function swShow(d,env){const r=stackRing(env),n=r.c1||r.c2,D=env.D,p1=D.ACC1.swp[1]||1,p2=D.ACC1.swp[2]||1;const act=p1>=p2?1:2;
+ const L=['Switch/Stack Mac Address : '+MAC2.ACC1+' - Local Mac Address','Mac persistency wait time: Indefinite','                                             H/W   Current','Switch#   Role    Mac Address     Priority Version  State','-------------------------------------------------------------'];
+ L.push((act===1?'*':' ')+'1       '+(act===1?'Active ':'Standby')+'  '+MAC2.ACC1+'     '+String(p1).padEnd(6)+'   V01     Ready');
+ if(n)L.push((act===2?'*':' ')+'2       '+(act===2?'Active ':'Standby')+'  '+MAC2.ACC2+'     '+String(p2).padEnd(6)+'   V01     Ready');
+ if(!n)L.push('',U('[tutor] Solo hay un miembro: conecta los cables de stack (STK) entre ACC1 y ACC2.'));else if(!(r.c1&&r.c2))L.push('',U('[tutor] El stack funciona, pero con un solo cable no es anillo: si ese cable falla, el stack se parte.'));return L}
+export function svlFormed(env){const a=env.D.CORE,b=env.D.CORE2;const ok=x=>x.svl.dom!=null&&x.svl.links['Te0/3']&&x.svl.links['Te0/4']&&x.svl.rel;return!!(ok(a)&&ok(b)&&a.svl.dom===b.svl.dom&&env.link('CORE:Te0/3','CORE2:Te0/3')&&env.link('CORE:Te0/4','CORE2:Te0/4'))}
+function svlShow(d,env){const f=svlFormed(env),me=d.name==='CORE'?1:2,L=['Stackwise Virtual Configuration:','--------------------------------','Stackwise Virtual : Enabled'+(d.svl.rel?'':' (pendiente de reload)'),'Domain Number : '+(d.svl.dom==null?'-':d.svl.dom),'','Switch  Stackwise Virtual Link  Ports','------  ----------------------  ------'];
+ const row=(n,x)=>{const ls=Object.keys(x.svl.links);ls.forEach((g,i)=>L.push((i?'      ':String(n).padEnd(6))+'  '+(i?'                      ':String(x.svl.links[g]).padEnd(22))+'  TenGigabitEthernet'+n+'/0/'+g.slice(4)))};
+ if(f){row(1,env.D.CORE);row(2,env.D.CORE2);L.push('',' Dual-Active-Detection: '+(env.D.CORE.svl.dad['Gi0/22']&&env.D.CORE2.svl.dad['Gi0/22']&&env.link('CORE:Gi0/22','CORE2:Gi0/22')?'Ready (Gi1/0/22 <-> Gi2/0/22)':'No configurado'))}
+ else{row(me,d);L.push('',U('[tutor] El par aún no se forma: los dos necesitan el mismo dominio, los links en Te0/3 y Te0/4 cableados, guardar y reload.'))}return L}
+function vsfOk(env){const a=env.D.ACC1,b=env.D.ACC2,m1=a.vsf.mem[1],m2=a.vsf.mem[2],b1=b.vsf.mem[1];return!!(m1&&m1.links[1]&&m1.links[1].includes(27)&&m2&&m2.links[1]&&m2.links[1].includes(27)&&b1&&b1.links[1]&&b1.links[1].includes(27)&&b.vsf.renum&&b.vsf.num===2&&env.link('ACC1:Te0/3','ACC2:Te0/3'))}
+export const VSF=vsfOk;
+function vsfShow(d,env){const ok=vsfOk(env),a=env.D.ACC1;if(d.name==='ACC2'&&!d.vsf.renum)return['MAC Address          : 02:01:00:00:02:00','Secondary            :','Topology             : Standalone','Status               : No Split','','Mbr  Mac Address        Type    Status','---- ------------------ ------- ----------','1    0c:9d:92:a1:5f:00  JL668A  Conductor'];
+ const L=['MAC Address          : 02:01:00:00:01:00','Secondary            : '+(a.vsf.sec||''),'Topology             : '+(ok?'Chain':'Standalone'),'Status               : No Split','Split Detection Method : '+(a.vsf.split||'None'),'','Mbr  Mac Address        Type    Status','ID','---- ------------------ ------- ----------','1    0c:9d:92:a1:5e:00  JL668A  Conductor'];
+ if(ok)L.push('2    0c:9d:92:a1:5f:00  JL668A  '+(a.vsf.sec===2?'Standby':'Member'));else L.push('2    -                  JL668A  Not Present',U('[tutor] El miembro 2 no está: revisa el link VSF en los dos, el cable 1/1/27 <-> 1/1/27 y el renumber-to 2 en ACC2.'));return L}
+export function vsxState(env){const a=env.D.CORE,b=env.D.CORE2;const isl=x=>{const n=x.vsx.isl;if(n==null||!x.lags[n]||!x.lags[n].up)return false;const ms=Object.keys(x.ifs).filter(g=>x.ifs[g].lag===n&&x.ifs[g].up);return ms.includes('Te0/3')&&ms.includes('Te0/4')};
+ const islUp=!!(isl(a)&&isl(b)&&a.vsx.isl===b.vsx.isl&&env.link('CORE:Te0/3','CORE2:Te0/3')&&env.link('CORE:Te0/4','CORE2:Te0/4'));
+ const ip=(x)=>((x.ifs['Gi0/22']||{}).ip||'').split('/')[0];
+ const ka=!!(a.vsx.kp&&b.vsx.kp&&a.vsx.ks===ip(a)&&b.vsx.ks===ip(b)&&a.vsx.kp===ip(b)&&b.vsx.kp===ip(a)&&a.ifs['Gi0/22'].up&&b.ifs['Gi0/22'].up&&env.link('CORE:Gi0/22','CORE2:Gi0/22'));
+ const roles=!!(a.vsx.role&&b.vsx.role&&a.vsx.role!==b.vsx.role);return{islUp,ka,roles}}
+function vsxShow(d,env){const S=vsxState(env),o=d.name==='CORE'?env.D.CORE2:env.D.CORE;if(!d.vsx.isl&&!d.vsx.role)return[E('VSX is not configured.')];
+ return['VSX Operational State','---------------------','  ISL channel             : '+(S.islUp?'In-Sync':'Out-Of-Sync'),'  ISL mgmt channel        : '+(S.islUp?'operational':'inter_switch_link_down'),'  Config Sync Status      : '+(S.islUp?'In-Sync':'out-of-sync'),'  Keepalive State         : '+(S.ka?'Keepalive-Established':'Keepalive-Init'),'','Attribute           Local               Peer','------------        --------            --------','ISL link            lag'+(d.vsx.isl||'-')+'              '+(S.islUp?'lag'+o.vsx.isl:'-'),'System MAC          02:01:00:00:01:00   '+(S.islUp?'02:01:00:00:01:00':'-'),'Platform            8360                '+(S.islUp?'8360':'-'),'Device Role         '+(d.vsx.role||'-').padEnd(20)+(S.islUp?o.vsx.role||'-':'-')]}
+export function vcState(env){const a=env.D.ACC1,b=env.D.ACC2;const pre=a.vcpre&&a.vcm[0]&&a.vcm[1]&&a.vcm[0].sn===SN.ACC1&&a.vcm[1].sn===SN.ACC2&&a.vcm[0].role==='routing-engine'&&a.vcm[1].role==='routing-engine';return{vcp:!!(a.vcp['Te0/3']&&b.vcp['Te0/3']),cab:env.link('ACC1:Te0/3','ACC2:Te0/3'),pre:!!pre}}
+function vcShow(d,env){const S=vcState(env),ok=S.vcp&&S.cab&&S.pre;const L=[(d.vcpre?'Preprovisioned ':'')+'Virtual Chassis','Virtual Chassis ID: 5b2c.1a3f.0001','Virtual Chassis Mode: Enabled','                                                Mstr           Mixed Route Neighbor List','Member ID  Status   Serial No    Model          prio  Role      Mode  Mode ID  Interface','0 (FPC 0)  Prsnt    '+SN[d.name==='ACC2'&&!ok?'ACC2':'ACC1']+' ex4300-48p     129  Master*      N  VC   '+(ok?'1  vcp-255/1/2':'')];
+ if(ok)L.push('1 (FPC 1)  Prsnt    '+SN.ACC2+' ex4300-48p     129  Backup       N  VC   0  vcp-255/1/2');else L.push('',U('[tutor] Falta: '+[!S.vcp&&'convertir xe-0/1/2 en puerto VC en los dos switches',!S.cab&&'el cable entre los puertos VC',!S.pre&&'el preprovisioned con los dos seriales (show chassis hardware) y commit en ACC1'].filter(Boolean).join('; ')+'.'));return L}
+export function mcPairs(d){const o={};for(const st of Object.keys(d.jx||{})){let m;if(m=/^interfaces (ae\d+) aggregated-ether-options mc-ae (.+)$/.exec(st)){const t=m[2].split(/\s+/);for(let i=0;i+1<t.length;i+=2)o[m[1]+'.'+t[i]]=t[i+1]}if(m=/^interfaces (ae\d+) aggregated-ether-options lacp (system-id|admin-key) (\S+)$/.exec(st))o[m[1]+'.'+m[2]]=m[3].toLowerCase();if(m=/^protocols iccp local-ip-addr (\S+)$/.exec(st))o.local=m[1];if(m=/^protocols iccp peer (\S+) (.+)$/.exec(st)){o.peer=m[1];const t=m[2].split(/\s+/);for(let i=0;i<t.length;i++){if(t[i]==='redundancy-group-id-list')o.rg=t[i+1];if(t[i]==='liveness-detection')o.live=1}}if(m=/^multi-chassis multi-chassis-protection (\S+) interface (ae\d+)$/.exec(st)){o.mcpPeer=m[1];o.mcpIf=m[2]}if(m=/^interfaces ge-0\/0\/21 unit 0 family inet address ([\d.]+)\/\d+$/.exec(st))o.ip=m[1];if(m=/^switch-options service-id (\d+)$/.exec(st))o.sid=m[1]}return o}
+export function iccpUp(env){const a=mcPairs(env.D.CORE),b=mcPairs(env.D.CORE2);return!!(a.local&&b.local&&a.local===a.ip&&b.local===b.ip&&a.peer===b.local&&b.peer===a.local&&a.live&&b.live&&env.link('CORE:Gi0/22','CORE2:Gi0/22'))}
+function iccpShow(d,env){const P=mcPairs(d);if(!P.peer)return[E('error: the iccp subsystem is not running')];const up=iccpUp(env);return['Redundancy Group Information for peer '+P.peer,'  TCP Connection       : '+(up?'Established':'Not Established'),'  Liveliness Detection : '+(up?'Up':'Down'),'Redundancy Group ID          Status','  '+String(P.rg||'-').padEnd(29)+(up?'Up':'Down'),'','Client Application: lacpd','  Redundancy Group IDs Joined: '+(up?P.rg||'-':'None'),'Client Application: MCSNOOPD','  Redundancy Group IDs Joined: '+(up?P.rg||'-':'None')]}
