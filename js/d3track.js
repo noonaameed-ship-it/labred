@@ -8,9 +8,10 @@ window.D3={
  d3a:{z:3,t:'Lab 3D: sube el piso al CORE (trunk)'},d3b:{z:3,t:'Lab 3D: el otro lado del trunk'},
  d4a:{z:4,t:'Lab 3D: el CORE como root bridge'},d4b:{z:4,t:'Lab 3D: root de respaldo'},
  d5a:{z:5,t:'Lab 3D: junta dos cables en un LAG'},d5b:{z:5,t:'Lab 3D: el LAG del lado del CORE'},
- d5c:{z:5,t:'Lab 3D: stack y multichasis en tu fabricante'}};
+ d5c:{z:5,t:'Lab 3D: stack y multichasis en tu fabricante'},
+ k5:{z:5,t:'Consola a ciegas: stack y multichasis',h:'#consola-ciego',tid:'TK-5060',g:'txt:SOLO'}};
 for(const[id,o]of Object.entries(D3)){const L=LEVELS[o.z];if(!L||!L.items)continue;if(L.items.some(i=>i.id===id))continue;
- const ix=L.items.findIndex(i=>i.exam);const it={id,t:o.t,h:'#sitio-'+id,d3:true};if(ix<0)L.items.push(it);else L.items.splice(ix,0,it)}
-Object.assign(TID,Object.fromEntries(Object.keys(D3).map(id=>[id,'3D-'+id.slice(1).toUpperCase()])));
-Object.assign(GLYPH,Object.fromEntries(Object.keys(D3).map(id=>[id,'txt:3D'])));
+ const ix=L.items.findIndex(i=>i.exam);const it={id,t:o.t,h:o.h||'#sitio-'+id,d3:true};if(ix<0)L.items.push(it);else L.items.splice(ix,0,it)}
+Object.assign(TID,Object.fromEntries(Object.entries(D3).map(([id,o])=>[id,o.tid||'3D-'+id.slice(1).toUpperCase()])));
+Object.assign(GLYPH,Object.fromEntries(Object.entries(D3).map(([id,o])=>[id,o.g||'txt:3D'])));
 })();
