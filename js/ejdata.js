@@ -63,7 +63,7 @@ window.EJDATA={
 'el escritorio de Lupita':{t:'order',title:'Pruébalo tú: configura el puerto de Lupita',q:'PC en VENTAS (10) y teléfono en VOZ (70) en el puerto Gi0/12. Toca las líneas en orden:',
  lines:['interface g0/12',' description TEL+PC-LUPITA',' switchport mode access',' switchport access vlan 10',' switchport voice vlan 70',' spanning-tree portfast'],
  hint:['Primero entra al puerto.','Documenta qué hay conectado.','Es un puerto de acceso.','La PC va en VENTAS.','El teléfono en VOZ.','Al final, que no espere a STP al conectar.'],end:'Con show lldp neighbors ves el teléfono, y con show power inline lo que consume.'},
-'la sala de juntas':{t:'sort',keep:1,title:'Pruébalo tú: ¿seguro o peligroso?',q:'Clasifica cada configuración del puerto de la sala de juntas:',b:['🔒 Seguro','⚠ Peligroso'],
+'la sala de reuniones':{t:'sort',keep:1,title:'Pruébalo tú: ¿seguro o peligroso?',q:'Clasifica cada configuración del puerto de la sala de reuniones:',b:['🔒 Seguro','⚠ Peligroso'],
  items:[['switchport mode dynamic desirable',1,'Peligroso: negocia trunk con quien se conecte.'],['Puerto libre en la VLAN 1',1,'Peligroso: la VLAN 1 es la de todo por defecto.'],['Puerto libre en VLAN 666 SIN-USO y shutdown',0,'Seguro: aunque lo conecten, no hay red.'],['switchport nonegotiate en el uplink',0,'Seguro: no negocia trunk con nadie.'],['Lista de VLAN permitidas en el uplink',0,'Seguro: solo pasa lo necesario.'],['Nativa 999 en el trunk',0,'Seguro: la nativa no es una VLAN en uso.'],['Trunk con todas las VLAN permitidas',1,'Peligroso: expone todas las redes.']],end:'El consultor ya no tiene por dónde entrar.'},
 /* ===== content5 ===== */
 'el triángulo de NetCorp':{t:'quiz',keep:1,title:'Pruébalo tú: ¿qué pasa en el triángulo?',end:'STP rompe el bucle y lo recupera solo si algo falla.',
@@ -79,7 +79,7 @@ window.EJDATA={
  q:[{q:'Se configuró <code>spanning-tree vlan 10 priority 4096</code> en el CORE. ¿Quién es root de la VLAN 10?',o:['CORE','Un switch de acceso'],a:0,w:['4096 es la más baja.','']},
   {q:'¿Y de la VLAN 20?',o:['CORE','El switch con la MAC más baja'],a:1,w:['La prioridad solo se cambió para la 10.','En la 20 todos tienen 32768: decide la MAC.']},
   {q:'¿Cómo lo corriges?',o:['spanning-tree vlan 10,20 priority 4096','spanning-tree mode mst','Reiniciar el CORE'],a:0,w:['Ahora el CORE es root de las dos.','Cambia el modo, no corrige el root.','No cambia nada.']}]},
-'la plantilla de puerto de usuario':{t:'order',keep:1,title:'Pruébalo tú: arma la plantilla del puerto',q:'Toca las líneas en orden para el puerto de la sala de juntas:',
+'la plantilla de puerto de usuario':{t:'order',keep:1,title:'Pruébalo tú: arma la plantilla del puerto',q:'Toca las líneas en orden para el puerto de la sala de reuniones:',
  lines:['interface g0/5',' description PC-SALA-JUNTAS',' switchport mode access',' switchport access vlan 10',' spanning-tree portfast',' spanning-tree bpduguard enable'],
  hint:['Entra al puerto.','Documenta.','Es de usuario: acceso.','Su VLAN.','Que suba rápido.','Y la protección: si llega un BPDU, se apaga.'],end:'Si alguien conecta un switch de casa, el puerto se apaga en lugar de robarse el root.'},
 'lectura en dos minutos':{t:'quiz',keep:1,title:'Pruébalo tú: lee la salida',end:'El árbol está como debe: el bloqueo cae en el enlace entre pisos.',

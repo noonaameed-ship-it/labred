@@ -304,7 +304,7 @@ function caminoCard(){if(!st.cvNote||isOwner||isPassed('x1'))return'';const step
  return`<div class="card camino"><span class="tid">${ico('map')} Tu camino al temario nuevo</span><ol>${steps.map(([t,ok,h])=>`<li class="${ok?'ok':''}"><a href="${h}">${esc(t)}</a></li>`).join('')}</ol>${prev?`<p class="small" style="margin:0">Archivado: ${esc(prev)}</p>`:''}<p class="small" style="margin:4px 0 0">¿Ya dominas la Zona 0? Repite el examen de ubicación: si te va bien, puedes presentar la certificación directo.</p></div>`}
 
 /* ================= Arena: repaso inteligente, Turno NOC y duelos ================= */
-/* --- Repaso inteligente (tarjetas tipo Leitner con lo que cada quien falló) --- */
+/* --- Repaso inteligente (tarjetas tipo Leitner con lo que cada uno falló) --- */
 const REVDAYS=[0,0,1,3,7];
 function addMiss(lid,qi){if(isOwner)return;st.rev=st.rev||{};const k=lid+'#'+qi;st.rev[k]={box:1,due:today()}}
 function missByText(lid,text){const L=lesById(lid);if(!L)return;const qi=L.quiz.findIndex(q=>q.q===text);if(qi>=0)addMiss(lid,qi)}
