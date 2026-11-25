@@ -116,7 +116,7 @@ const CV=2,exOk=r=>(r.examBest||0)>=EXPASS&&r.v===CV;
 const used=r=>!!(r&&((r.qok&&Object.keys(r.qok).length)||r.expSent||r.evalText||r.lab||r.labRuns||r.attempts||r.examBest));
 const fastZone=z=>(st.fast||0)>z;
 const NREAL=()=>LEVELS.filter(L=>!L.soon&&L.items).length;
-const passIn=(done,id)=>{const r=(done||{})[id];if(!r)return false;if(EXAMS[id])return exOk(r);if(LABS[id])return!!r.lab&&labPasses(r)>=RUNS(id)&&sentOf(r)&&!r.redo;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&sentOf(r)&&!r.redo};
+const passIn=(done,id)=>{const r=(done||{})[id];if(!r)return false;if(window.D3&&D3[id])return(r.d3||0)>=D3PASS;if(EXAMS[id])return exOk(r);if(LABS[id])return!!r.lab&&labPasses(r)>=RUNS(id)&&sentOf(r)&&!r.redo;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&sentOf(r)&&!r.redo};
 const isPassed=id=>{const r=st.done[id];if(!r)return false;if(window.D3&&D3[id])return(r.d3||0)>=D3PASS;if(EXAMS[id])return exOk(r);if(LABS[id])return!!r.lab&&labPasses(r)>=RUNS(id)&&sentOf(r)&&!r.redo;const L=lesById(id);return L.quiz.every((_,i)=>r.qok&&r.qok[i])&&sentOf(r)&&!r.redo};
 const lesById=id=>Object.values(LES).find(l=>l.id===id);
 const unlocked=n=>cOn()||n<=st.unlocked;
@@ -276,7 +276,7 @@ function renderLogros(){const p=calcPts(),nb=nBadges(),nc=certCount(st.done),nx=
   <details class="card lghow"><summary><b>Cómo se gana XP</b></summary><table class="stack"><thead><tr><th>Actividad</th><th>Recompensa</th></tr></thead><tbody><tr><td>Pregunta correcta al primer intento</td><td>10 XP</td></tr><tr><td>Tu explicación</td><td>10 XP por punto (hasta 100)</td></tr><tr><td>Lab cerrado</td><td>2 XP por punto del lab (hasta 200), +50 si mezclas vendors</td></tr><tr><td>Certificación de zona (se aprueba con 80)</td><td>hasta 150 XP, más bono: +50 XP con 90 o más, +100 XP con 100</td></tr><tr><td>Señal del ticket</td><td>1, 2 o 3 barras según tu calificación</td></tr><tr><td>Practicar días seguidos</td><td>Uptime</td></tr></tbody></table></details>
  </div>`}
 /* ---------- modo creador ---------- */
-function markPassed(id){const r=item(id);if(EXAMS[id]){r.examBest=100;r.examPts=150;r.v=CV;r.attempts=(r.attempts||0)+1;return}if(LABS[id]){r.lab=true;r.labScore=100;r.labPasses=RUNS(id);r.labPts=Math.max(r.labPts||0,200)}else{const L=lesById(id);r.qok={};r.quiz={};L.quiz.forEach((_,i)=>{r.qok[i]=true;r.quiz[i]='ok'});r.quizPts=L.quiz.length*10}r.exp=10;r.expPts=100}
+function markPassed(id){const r=item(id);if(window.D3&&D3[id]){r.d3=100;r.d3last=100;r.labPts=Math.max(r.labPts||0,200);return}if(EXAMS[id]){r.examBest=100;r.examPts=150;r.v=CV;r.attempts=(r.attempts||0)+1;return}if(LABS[id]){r.lab=true;r.labScore=100;r.labPasses=RUNS(id);r.labPts=Math.max(r.labPts||0,200)}else{const L=lesById(id);r.qok={};r.quiz={};L.quiz.forEach((_,i)=>{r.qok[i]=true;r.quiz[i]='ok'});r.quizPts=L.quiz.length*10}r.exp=10;r.expPts=100}
 function renderCreador(){
  if(!isOwner){$('#v-creador').innerHTML='<div class="band"><p>Esta sección es solo para el creador de PacketPath.</p></div>';return}
  let bk=null;try{bk=JSON.parse(localStorage.getItem('labred_bk')||'null')}catch(e){}
