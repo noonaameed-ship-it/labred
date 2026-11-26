@@ -83,10 +83,11 @@ export function mount(view,arg){
 function head(crumb,h1,p){return`<header class="band hero"><div class="in"><p class="crumb">${crumb}</p><h1>${h1}</h1>${p?`<p>${p}</p>`:''}</div></header>`}
 
 function index(view){const P=P3(),open0=P.open('d5c'),got=P.get(),v=getV();
- const card=m=>{const sc=got['c'+m.id],open=open0||!!(P.grant&&P.grant(m.id));return`<div class="card cli"><span class="tid">${m.z}${open?'':' · 🔒'}</span><b>${esc(m.t)}</b><span class="small">${sc!=null?(sc>=PASS?'✓ ':'✗ ')+sc+'/100':'Sin intentar'}</span><span class="clact">${open?`<a class="btnl" href="#consola-${m.id}">Abrir consola</a>${m.solo?'':`<a class="btn" href="#sitio-${m.id}">Verlo en 3D</a>`}`:'<span class="small">Se abre con 3D-5C</span>'}</span></div>`};
+ const exOk=m=>!!((P.own&&P.own())||(P.grant&&P.grant(m.id)));
+ const card=m=>{const sc=got['c'+m.id],open=m.solo?exOk(m):open0||exOk(m);return`<div class="card cli"><span class="tid">${m.z}${open?'':' · 🔒'}</span><b>${esc(m.t)}</b><span class="small">${sc!=null?(sc>=PASS?'✓ ':'✗ ')+sc+'/100':'Sin intentar'}</span><span class="clact">${open?`<a class="btnl" href="#consola-${m.id}">Abrir consola</a>${m.solo?'':`<a class="btn" href="#sitio-${m.id}">Verlo en 3D</a>`}`:'<span class="small">Se abre con 3D-5C</span>'}</span></div>`};
  view.innerHTML=head('<a href="#arena">Arena</a> / labs de consola','Labs de consola: stack y multichasis','Lo mismo que en el sitio 3D, pero sin cablear: los equipos ya están conectados y tú te concentras en la configuración. El 3D es para entender dónde va cada cable; esto es para que la configuración te salga bien a la primera.')+
  `<div class="lecw"><div class="card"><h3>Tu fabricante</h3><div class="z5v">${['cisco','aruba','juniper'].map(k=>`<button class="btn${k===v?' on':''}" data-v="${k}" aria-pressed="${k===v}">${VNS[k]}</button>`).join('')}<span class="small">El lab a ciegas (TK-5060) se hace en este fabricante.</span></div></div>
- ${['aruba','cisco','juniper'].map(vv=>`<h3 class="clh">${VNS[vv]}</h3><div class="clgrid">${[...VS[vv],...(vv==='aruba'?['v7']:[])].map(id=>card(ALL.find(m=>m.id===id))).join('')}</div>`).join('')}
+ ${['aruba','cisco','juniper'].map(vv=>`<h3 class="clh">${VNS[vv]}</h3><div class="clgrid">${[...VS[vv],...(vv==='aruba'&&exOk(V7)?['v7']:[])].map(id=>card(ALL.find(m=>m.id===id))).join('')}</div>`).join('')}
  <div class="card"><h3>TK-5060 · Consola a ciegas</h3><p>Los dos labs de tu fabricante seguidos, sin pistas ni lista de tareas. Al final entregas y se califica. Mínimo ${PASS}/100. Es obligatorio antes de la certificación de la Zona 5.</p><a class="btnl" href="#consola-ciego">Ir al lab a ciegas</a></div></div>`;
  view.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{setV(b.dataset.v);index(view)})}
 
@@ -111,7 +112,7 @@ function termHTML(S){return`<div class="clterm"><div class="cltabs" role="tablis
 
 /* ---------- práctica guiada ---------- */
 function practice(view,m){const P=P3();
- if(!P.open('d5c')&&!(P.grant&&P.grant(m.id))){view.innerHTML=head('<a href="#consola">Labs de consola</a>','🔒 Todavía no se abre','Los labs de consola de stack y multichasis se abren junto con el lab 3D 3D-5C de la Zona 5.')+'<div class="lecw"><div class="card"><a class="btn" href="#mapa">Ir a mi mapa</a></div></div>';return}
+ const gr=!!((P.own&&P.own())||(P.grant&&P.grant(m.id)));if(m.solo?!gr:(!P.open('d5c')&&!gr)){view.innerHTML=head('<a href="#consola">Labs de consola</a>','🔒 Todavía no se abre',m.solo?'Este lab es parte de una clase especial que abre tu instructor.':'Los labs de consola de stack y multichasis se abren junto con el lab 3D 3D-5C de la Zona 5.')+'<div class="lecw"><div class="card"><a class="btn" href="#mapa">Ir a mi mapa</a></div></div>';return}
  const S=session(m,m.v);let won=false;
  view.innerHTML=head(`<a href="#consola">Labs de consola</a> / ${esc(m.z)}`,esc(m.t),'')+
  `<div class="lecw clw"><div class="card cls"><p class="tid">${esc(m.z)} · ${VN[m.v]} · práctica guiada</p><p>${m.story}</p>${topo(S)}</div>
