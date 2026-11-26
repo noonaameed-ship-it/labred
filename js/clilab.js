@@ -25,34 +25,55 @@ function cablesOf(m){const pre=Array.isArray(m.pre)?m.pre:[];return m.req.concat
 
 /* ---------- VSF de 5 miembros en anillo (solo consola) ---------- */
 const code=a=>'<pre class="s3code">'+a.join('\n')+'</pre>';
-const SW5=['SW1','SW2','SW3','SW4','SW5'],has=(m,k,p)=>!!(m&&m.links[k]&&m.links[k].includes(p));
-const vsfMem=(D,k)=>has(D.SW1.vsf.mem[k],1,49)&&has(D.SW1.vsf.mem[k],2,50);
-const vsfJoin=(D,k)=>{const x=D['SW'+k];return has(x.vsf.mem[1],1,49)&&has(x.vsf.mem[1],2,50)&&x.vsf.renum&&x.vsf.num===k};
-const vsfUp=(D,k)=>k===1?vsfMem(D,1):vsfMem(D,k)&&vsfJoin(D,k);
-const V7={id:'v7',v:'aruba',z:'Zona 5 · Aruba',t:'VSF de 5 miembros en anillo',solo:true,devs:SW5,con:'SW1',
- pos:Object.fromEntries(SW5.map((d,i)=>{const a=-Math.PI/2+i*2*Math.PI/5;return[d,[Math.round(280+215*Math.cos(a)),Math.round(150+118*Math.sin(a))]]})),
- pl:(d,g)=>'1/1/'+(g==='Te0/25'?49:50),
- story:'Proyecto: el piso nuevo necesita 240 puertos. Son <b>cinco Aruba CX 6300</b> (SW1 a SW5) que deben quedar como <b>un solo switch VSF en anillo</b>. SW1 es el conductor (miembro 1) y SW2 el standby. Cada switch usa <code>1/1/49</code> como <b>link 1</b> y <code>1/1/50</code> como <b>link 2</b>; el cableado ya está hecho en anillo: el 50 de cada uno va al 49 del siguiente, y el 50 de SW5 regresa al 49 de SW1. SW2 a SW5 se unen como miembros 2 a 5. Detección de split por la red de administración.',
- req:SW5.map((d,i)=>[d+':Te0/26',SW5[(i+1)%5]+':Te0/25','fibra']),
- cfg:D=>{SW5.forEach(n=>preCfg(D[n],{host:n}))},
- goals:[{t:()=>'SW1: vsf member 1 a 5, cada uno con link 1 en N/1/49 y link 2 en N/1/50',ok:D=>[1,2,3,4,5].every(k=>vsfMem(D,k))},
+const SW5=['SW1','SW2','SW3','SW4','SW5'],only=(m,k,p)=>!!(m&&m.links[k]&&m.links[k].length===1&&m.links[k][0]===p);
+/* Modelo del anillo: el 1/1/50 (link 2) de cada miembro va al 1/1/49 (link 1) del siguiente; el de SW5 regresa a SW1. */
+const decl=(D,k,l)=>only(D.SW1.vsf.mem[k],l,l===1?49:50);
+const joined=(D,k)=>{if(k===1)return true;const x=D['SW'+k];return only(x.vsf.mem[1],1,49)&&only(x.vsf.mem[1],2,50)&&x.vsf.renum&&x.vsf.num===k};
+const linkUp=(D,k)=>{const n=k%5+1;return joined(D,k)&&joined(D,n)&&decl(D,k,2)&&decl(D,n,1)};
+function ringState(D){const up=[1,2,3,4,5].map(k=>linkUp(D,k)),pres=new Set([1]);let ch=true;while(ch){ch=false;for(let k=1;k<=5;k++){const n=k%5+1;if(up[k-1]&&(pres.has(k)!==pres.has(n))){pres.add(k);pres.add(n);ch=true}}}
+ return{up,pres,ring:up.every(Boolean),topo:up.every(Boolean)?'Ring':pres.size>1?'Chain':'Standalone'}}
+const MAC=k=>'38:21:c7:5d:'+(40+k)+':80';
+function ringShow(d,S,line){const D=S.D,link=/\blink\b/i.test(line),topo=/\btopology\b/i.test(line);
+ if(d.name!=='SW1'&&!d.vsf.renum)return link?['VSF Member 1','','Link  Link State  Peer Member  Peer Link  Interfaces','----  ----------  -----------  ---------  ----------',...[1,2].map(l=>`${l}     down                                ${(d.vsf.mem[1]&&d.vsf.mem[1].links[l]||[]).map(p=>'1/1/'+p).join(',')}`)]:['MAC Address          : '+MAC(+d.name[2]),'Secondary            :','Topology             : Standalone','Status               : No Split','Split Detection Method : None','','Mbr  Mac Address        Type    Status','ID','---  ------------------ ------- ---------------','1    '+MAC(+d.name[2])+'  JL667A  Conductor'];
+ if(d.name!=='SW1')return[{t:'[tutor] Este switch ya es el miembro '+d.vsf.num+' del stack: el stack se administra desde la consola del conductor (SW1).',c:'tut'}];
+ const R=ringState(D),C=D.SW1;
+ if(link){const o=[];for(let k=1;k<=5;k++){const M=C.vsf.mem[k];if(!M)continue;o.push('VSF Member '+k,'','Link  Link State  Peer Member  Peer Link  Interfaces','----  ----------  -----------  ---------  ----------');
+   for(const l of[1,2]){const ps=(M.links[l]||[]).map(p=>k+'/1/'+p).join(',');if(!ps)continue;const peer=l===2?k%5+1:(k+3)%5+1,u=l===2?R.up[k-1]:R.up[peer-1];o.push(`${l}     ${u?'up  ':'down'}        ${u?peer:' '}            ${u?(l===2?1:2):' '}          ${ps}`)}o.push('')}return o.length?o:['No VSF members configured']}
+ const L=['MAC Address          : '+MAC(1),'Secondary            : '+(C.vsf.sec||''),'Topology             : '+R.topo,'Status               : No Split','Split Detection Method : '+(C.vsf.split||'None'),'','Mbr  Mac Address        Type    Status','ID','---  ------------------ ------- ---------------'];
+ for(let k=1;k<=5;k++){const M=C.vsf.mem[k];if(!M&&k>1)continue;const p=R.pres.has(k)&&(k===1||!!M);L.push(`${k}    ${p?MAC(k):'                 '}  ${((M&&M.type)||'jl667a').toUpperCase()}  ${k===1?'Conductor':!p?'Not Present':C.vsf.sec===k?'Standby':'Member'}`)}
+ if(S.m.tut){const miss=[1,2,3,4,5].filter(k=>!R.pres.has(k)),down=[1,2,3,4,5].filter(k=>!R.up[k-1]);
+  if(R.ring)L.push({t:'[tutor] Anillo completo: si se corta un enlace, los 5 siguen juntos por el otro lado.',c:'tut'});
+  else L.push({t:'[tutor] '+(miss.length?'No están: '+miss.map(k=>'miembro '+k).join(', ')+'. ':'')+(down.length?'Enlaces del anillo caídos: '+down.map(k=>`${k}→${k%5+1}`).join(', ')+'. Revisa con show vsf link.':''),c:'tut'})}
+ return L}
+const ringGoals=[{t:()=>'SW1: vsf member 1 a 5 (type jl667a), cada uno con link 1 en N/1/49 y link 2 en N/1/50',ok:D=>[1,2,3,4,5].every(k=>decl(D,k,1)&&decl(D,k,2))},
+  ...[2,3,4,5].map(k=>({t:()=>`SW${k}: link 1 en 1/1/49, link 2 en 1/1/50 y vsf renumber-to ${k}`,ok:D=>joined(D,k)})),
   {t:()=>'SW1: vsf secondary-member 2 y vsf split-detect mgmt',ok:D=>D.SW1.vsf.sec===2&&D.SW1.vsf.split==='mgmt'},
-  {t:()=>'SW1: guarda con write memory',ok:D=>D.SW1.saved&&!!D.SW1.vsf.mem[5]},
-  ...[2,3,4,5].map(k=>({t:()=>`SW${k}: link 1 en 1/1/49, link 2 en 1/1/50 y vsf renumber-to ${k}`,ok:D=>vsfJoin(D,k)})),
-  {t:()=>'SW1: verifica con show vsf (5 miembros, topología Ring)',ok:D=>!!D.SW1.ran.vsf&&[1,2,3,4,5].every(k=>vsfUp(D,k))&&D.SW1.vsf.sec===2}],
- show:(d,S)=>{const D=S.D;if(d.name!=='SW1'&&!d.vsf.renum)return['MAC Address          : 02:01:00:00:0'+d.name[2]+':00','Topology             : Standalone','Status               : No Split','','Mbr  Mac Address        Type    Status','---- ------------------ ------- ----------','1    0c:9d:92:a1:5'+d.name[2]+':00  JL668A  Conductor'];
-  if(d.name!=='SW1')return['[tutor] Este switch ya es el miembro '+d.vsf.num+' del stack: el stack se administra desde la consola del conductor (SW1).'];
-  const up=[1,2,3,4,5].map(k=>vsfUp(D,k)),n=up.filter(Boolean).length,ring=n===5,C=D.SW1;
-  const L=['MAC Address          : 02:01:00:00:01:00','Secondary            : '+(C.vsf.sec||''),'Topology             : '+(ring?'Ring':n>1?'Chain':'Standalone'),'Status               : '+(ring||n<2?'No Split':'No Split'),'Split Detection Method : '+(C.vsf.split||'None'),'','Mbr  Mac Address        Type    Status','ID','---- ------------------ ------- ----------'];
-  up.forEach((u,i)=>{const k=i+1;L.push(`${k}    ${u?'0c:9d:92:a1:5'+k+':00':'-                '}  JL668A  ${k===1?'Conductor':!u?'Not Present':C.vsf.sec===k?'Standby':'Member'}`)});
-  const miss=up.map((u,i)=>u?0:i+1).filter(Boolean);
-  if(miss.length)L.push({t:'[tutor] Faltan: '+miss.map(k=>!vsfMem(D,k)?`miembro ${k} (en SW1 declara vsf member ${k} con link 1 ${k}/1/49 y link 2 ${k}/1/50)`:`miembro ${k} (en SW${k}: link 1 1/1/49, link 2 1/1/50 y vsf renumber-to ${k})`).join('; ')+'.',c:'tut'});
-  else L.push({t:'[tutor] Anillo completo: si se corta un cable, los 5 siguen juntos por el otro lado.',c:'tut'});return L},
- hints:[()=>'Dos partes. En el conductor (SW1) declaras los 5 miembros con sus dos links. Luego en cada switch nuevo declaras su propio link 1 y link 2 (todavía es "miembro 1") y lo renumeras a su número: se reinicia y se une al stack.',
-  ()=>'Comandos: <code>vsf member N</code> → <code>type jl668a</code> → <code>link 1 N/1/49</code> → <code>link 2 N/1/50</code>; <code>vsf secondary-member 2</code>; <code>vsf split-detect mgmt</code>; <code>write memory</code>. En SW2…SW5: <code>vsf member 1</code>, sus links con <code>1/1/</code>, <code>end</code> y <code>vsf renumber-to N</code> (confirmas con y).',
-  ()=>'<b>SW1:</b>'+code(['configure terminal',...[1,2,3,4,5].flatMap(k=>['vsf member '+k,'  type jl668a','  link 1 '+k+'/1/49','  link 2 '+k+'/1/50','  exit']),'vsf secondary-member 2','vsf split-detect mgmt','end','write memory'])+'<b>SW2</b> (y igual SW3, SW4, SW5 con su número):'+code(['configure terminal','vsf member 1','  link 1 1/1/49','  link 2 1/1/50','  end','vsf renumber-to 2','y'])+'<b>SW1:</b> <code>show vsf</code>'],
+  {t:()=>'SW1: guarda con write memory',ok:D=>D.SW1.saved&&!!D.SW1.vsf.mem[5]&&D.SW1.vsf.sec===2},
+  {t:()=>'SW1: verifica con show vsf (5 miembros, topología Ring) y show vsf link (10 enlaces up)',ok:D=>!!D.SW1.ran.vsf&&!!D.SW1.ran.vsfl&&ringState(D).ring&&D.SW1.vsf.sec===2}];
+const RING={v:'aruba',z:'Zona 5 · Aruba',solo:true,devs:SW5,con:'SW1',
+ pos:Object.fromEntries(SW5.map((d,i)=>{const a=-Math.PI/2+i*2*Math.PI/5;return[d,[Math.round(280+215*Math.cos(a)),Math.round(150+118*Math.sin(a))]]})),
+ pl:(d,g)=>'1/1/'+(g==='Te0/25'?49:50),req:SW5.map((d,i)=>[d+':Te0/26',SW5[(i+1)%5]+':Te0/25','fibra']),show:ringShow,tut:true};
+const V7={...RING,id:'v7',t:'VSF de 5 miembros en anillo',
+ story:'Proyecto: el piso nuevo necesita 240 puertos. Son <b>cinco Aruba CX 6300F de 48 puertos (JL667A)</b>, SW1 a SW5, que deben quedar como <b>un solo switch VSF en anillo</b>. SW1 es el conductor (miembro 1) y SW2 el standby. En cada switch, <code>1/1/49</code> es el <b>link 1</b> y <code>1/1/50</code> el <b>link 2</b>. El cableado ya está hecho en anillo: el 50 de cada uno va al 49 del siguiente, y el 50 de SW5 regresa al 49 de SW1. Los puertos OOBM de SW1 y SW2 ya están en la red de administración para la detección de split.',
+ cfg:D=>{SW5.forEach(n=>preCfg(D[n],{host:n}))},goals:ringGoals,
+ hints:[()=>'Tres partes. 1) En el conductor (SW1) declaras los 5 miembros con su modelo y sus dos links, con la numeración del stack. 2) En cada switch nuevo declaras sus propios links (todavía es "miembro 1", así que usa 1/1/49 y 1/1/50) y, en modo configuración, lo renumeras: guarda, se reinicia y se une. 3) Ya con el stack formado, en SW1 eliges el standby, activas split-detect, guardas y verificas.',
+  ()=>'Comandos: <code>vsf member N</code> → <code>type jl667a</code> → <code>link 1 N/1/49</code> → <code>link 2 N/1/50</code>. En SW2…SW5: <code>vsf member 1</code>, <code>link 1 1/1/49</code>, <code>link 2 1/1/50</code>, <code>exit</code> y, todavía en configuración, <code>vsf renumber-to N</code> (confirmas con y). Al final en SW1: <code>vsf secondary-member 2</code>, <code>vsf split-detect mgmt</code>, <code>write memory</code>, <code>show vsf</code> y <code>show vsf link</code>.',
+  ()=>'<b>SW1:</b>'+code(['configure terminal',...[1,2,3,4,5].flatMap(k=>['vsf member '+k,'  type jl667a','  link 1 '+k+'/1/49','  link 2 '+k+'/1/50','  exit'])])+'<b>SW2</b> (igual en SW3, SW4 y SW5 con su número):'+code(['configure terminal','vsf member 1','  link 1 1/1/49','  link 2 1/1/50','  exit','vsf renumber-to 2','y'])+'<b>SW1:</b>'+code(['vsf secondary-member 2','vsf split-detect mgmt','end','write memory','show vsf','show vsf link'])],
  done:'Cinco switches, una sola IP y una sola configuración: 240 puertos administrados como uno. En anillo, si se corta un enlace VSF el stack sigue unido por el otro lado; en cadena se partiría en dos.'};
-const ALL=[...VMIS,V7];
+const V8={...RING,id:'v8',t:'VSF de 5: encuentra la falla',tut:false,
+ story:'Llamada del cliente: "El instalador dejó listo el stack de 5 del piso nuevo, pero el monitoreo dice que <b>no es anillo</b> y que <b>falta un switch</b>." Es el mismo diseño: cinco CX 6300F (JL667A), SW1 conductor, SW2 standby, link 1 en <code>1/1/49</code> y link 2 en <code>1/1/50</code>, anillo 50→49 y el 50 de SW5 al 49 de SW1. <b>Diagnostica con show</b> (<code>show vsf</code>, <code>show vsf link</code>, <code>show running-config</code>) antes de tocar nada, corrige todo lo que falte y deja el stack completo y guardado.',
+ cfg:D=>{SW5.forEach(n=>preCfg(D[n],{host:n}));const C=D.SW1.vsf;for(let k=1;k<=5;k++)C.mem[k]={type:'jl667a',links:{1:[49],2:[k===4?49:50]}};C.split='mgmt';D.SW1.saved=true;
+  for(let k=2;k<=5;k++){const x=D['SW'+k];x.vsf.mem[1]={links:{1:[49],2:[50]}};if(k<5){x.vsf.renum=true;x.vsf.num=k;x.saved=true}}},
+ goals:[{t:()=>'Encuentra y corrige el enlace del anillo que está mal declarado en el conductor',ok:D=>[1,2,3,4,5].every(k=>decl(D,k,1)&&decl(D,k,2))},
+  {t:()=>'Haz que el switch que falta se una al stack con su número',ok:D=>joined(D,5)},
+  {t:()=>'Deja un standby y la detección de split como pide el diseño',ok:D=>D.SW1.vsf.sec===2&&D.SW1.vsf.split==='mgmt'},
+  {t:()=>'SW1: guarda con write memory',ok:D=>D.SW1.saved&&D.SW1.vsf.sec===2&&[1,2,3,4,5].every(k=>decl(D,k,2))},
+  {t:()=>'SW1: comprueba con show vsf (Ring, 5 miembros) y show vsf link',ok:D=>!!D.SW1.ran.vsf&&!!D.SW1.ran.vsfl&&ringState(D).ring&&D.SW1.vsf.sec===2}],
+ hints:[()=>'Empieza en SW1 con <code>show vsf</code> (quién está y qué topología) y <code>show vsf link</code> (qué enlace está caído y con qué puertos está declarado). Compara contra el diseño: link 2 siempre es el 50. Luego revisa el switch que no aparece desde su propia consola.',
+  ()=>'Hay tres fallas: en SW1 el link 2 del miembro 4 apunta al puerto equivocado; SW5 tiene sus links pero nunca se renumeró; y en SW1 falta el standby. Corrige en <code>vsf member 4</code> con <code>link 2 4/1/50</code>, en SW5 <code>vsf renumber-to 5</code> y en SW1 <code>vsf secondary-member 2</code>.',
+  ()=>'<b>SW1:</b>'+code(['show vsf','show vsf link','configure terminal','vsf member 4','  link 2 4/1/50','  exit','vsf secondary-member 2','end','write memory'])+'<b>SW5:</b>'+code(['show vsf','configure terminal','vsf renumber-to 5','y'])+'<b>SW1:</b>'+code(['show vsf','show vsf link'])],
+ done:'Así se diagnostica un stack: primero show vsf y show vsf link, luego comparas con el diseño y corriges. Un solo puerto mal declarado rompe el anillo y lo deja en cadena; un switch sin renumerar nunca se une.'};
+const ALL=[...VMIS,V7,V8];
 
 /* Una "sesión" de lab: dispositivos, cables ya conectados y el entorno que leen los objetivos. */
 function session(m,v){const D={};for(const n of(m.devs||DEVS))D[n]=mkDev(n,v);m.cfg&&m.cfg(D);
@@ -76,7 +97,7 @@ function topo(S){const m=S.m,ds=S.devs,used=new Set(ds),lines=[];const cab=cable
 
 export function mount(view,arg){
  if(view._clOff){view._clOff();view._clOff=null}
- if(/^v[1-7]$/.test(arg))return practice(view,ALL.find(m=>m.id===arg));
+ if(/^v[1-8]$/.test(arg))return practice(view,ALL.find(m=>m.id===arg));
  if(arg==='ciego')return blind(view);
  return index(view)}
 
@@ -87,7 +108,7 @@ function index(view){const P=P3(),open0=P.open('d5c'),got=P.get(),v=getV();
  const card=m=>{const sc=got['c'+m.id],open=m.solo?exOk(m):open0||exOk(m);return`<div class="card cli"><span class="tid">${m.z}${open?'':' · 🔒'}</span><b>${esc(m.t)}</b><span class="small">${sc!=null?(sc>=PASS?'✓ ':'✗ ')+sc+'/100':'Sin intentar'}</span><span class="clact">${open?`<a class="btnl" href="#consola-${m.id}">Abrir consola</a>${m.solo?'':`<a class="btn" href="#sitio-${m.id}">Verlo en 3D</a>`}`:'<span class="small">Se abre con 3D-5C</span>'}</span></div>`};
  view.innerHTML=head('<a href="#arena">Arena</a> / labs de consola','Labs de consola: stack y multichasis','Lo mismo que en el sitio 3D, pero sin cablear: los equipos ya están conectados y tú te concentras en la configuración. El 3D es para entender dónde va cada cable; esto es para que la configuración te salga bien a la primera.')+
  `<div class="lecw"><div class="card"><h3>Tu fabricante</h3><div class="z5v">${['cisco','aruba','juniper'].map(k=>`<button class="btn${k===v?' on':''}" data-v="${k}" aria-pressed="${k===v}">${VNS[k]}</button>`).join('')}<span class="small">El lab a ciegas (TK-5060) se hace en este fabricante.</span></div></div>
- ${['aruba','cisco','juniper'].map(vv=>`<h3 class="clh">${VNS[vv]}</h3><div class="clgrid">${[...VS[vv],...(vv==='aruba'&&exOk(V7)?['v7']:[])].map(id=>card(ALL.find(m=>m.id===id))).join('')}</div>`).join('')}
+ ${['aruba','cisco','juniper'].map(vv=>`<h3 class="clh">${VNS[vv]}</h3><div class="clgrid">${[...VS[vv],...(vv==='aruba'?['v7','v8'].filter(id=>exOk(ALL.find(m=>m.id===id))):[])].map(id=>card(ALL.find(m=>m.id===id))).join('')}</div>`).join('')}
  <div class="card"><h3>TK-5060 · Consola a ciegas</h3><p>Los dos labs de tu fabricante seguidos, sin pistas ni lista de tareas. Al final entregas y se califica. Mínimo ${PASS}/100. Es obligatorio antes de la certificación de la Zona 5.</p><a class="btnl" href="#consola-ciego">Ir al lab a ciegas</a></div></div>`;
  view.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{setV(b.dataset.v);index(view)})}
 
@@ -98,7 +119,7 @@ function term(view,S,onCmd){const box=view.querySelector('.clterm'),out=box.quer
   for(const l of S.out[S.cur]){const e=document.createElement('div');if(typeof l==='string')e.textContent=l;else{e.textContent=l.t;e.className=l.c||''}out.appendChild(e)}
   out.scrollTop=out.scrollHeight;view.querySelectorAll('[data-tab]').forEach(t=>{t.classList.toggle('on',t.dataset.tab===S.cur);t.setAttribute('aria-selected',t.dataset.tab===S.cur)});view.querySelectorAll('.cln').forEach(n=>n.classList.toggle('on',n.dataset.dev===S.cur))}
  function to(dev){if(!S.devs.includes(dev))return;S.cur=dev;paint();inp.focus({preventScroll:true})}
- function exec(l){const d=S.D[S.cur];S.out[S.cur].push({t:prompt(d)+' '+l,c:'cmdl'});if(d.v==='cisco'&&d.mode==='exec'&&!l.trim()&&!d.started)d.started=1;if(S.m.show&&/^\s*(do\s+)?sh(ow?)?\s+vsf\b/i.test(l)&&d.mode!=='vsfm'){d.ran.vsf=1;S.out[S.cur].push(...S.m.show(d,S))}else S.out[S.cur].push(...run(d,l,S.env));if(S.out[S.cur].length>600)S.out[S.cur].splice(0,S.out[S.cur].length-600);paint();onCmd&&onCmd()}
+ function exec(l){const d=S.D[S.cur];S.out[S.cur].push({t:prompt(d)+' '+l,c:'cmdl'});if(d.v==='cisco'&&d.mode==='exec'&&!l.trim()&&!d.started)d.started=1;if(S.m.show&&/^\s*(do\s+)?sh(ow?)?\s+vsf\b/i.test(l)){if(/\blink\b/i.test(l))d.ran.vsfl=1;else d.ran.vsf=1;S.out[S.cur].push(...S.m.show(d,S,l))}else S.out[S.cur].push(...run(d,l,S.env));if(S.out[S.cur].length>600)S.out[S.cur].splice(0,S.out[S.cur].length-600);paint();onCmd&&onCmd()}
  let hi=-1;inp.addEventListener('keydown',e=>{const d=S.D[S.cur];
   if(e.key==='Enter'){const l=inp.value;inp.value='';hi=-1;exec(l)}
   else if(e.key==='ArrowUp'){const h=d.hist;if(!h.length)return;hi=hi<0?h.length-1:Math.max(0,hi-1);inp.value=h[hi];e.preventDefault()}
@@ -126,7 +147,7 @@ function practice(view,m){const P=P3();
   const hb=view.querySelector('#clhint');if(hb)hb.onclick=()=>{S.hint++;check()};
   if(all&&!won){won=true;const sc=score();P.done('c'+m.id,sc);sfx(sc>=PASS?'win':'bad');
    const i=ALL.indexOf(m),nx=ALL[i+1];
-   view.querySelector('#clres').innerHTML=`<div class="s3win${sc>=PASS?'':' s3fail'}"><b>${sc>=PASS?'¡Configuración correcta!':'Terminado, pero con muchas pistas'}</b><span>Calificación: <b>${sc}/100</b> · mínimo ${PASS}</span><p>${m.done}</p>${nx?`<a class="btnl" href="#consola-${nx.id}">Siguiente: ${esc(nx.t)}</a>`:''}<a class="btn" href="#consola-ciego">Ir al lab a ciegas</a></div>`;
+   view.querySelector('#clres').innerHTML=`<div class="s3win${sc>=PASS?'':' s3fail'}"><b>${sc>=PASS?'¡Configuración correcta!':'Terminado, pero con muchas pistas'}</b><span>Calificación: <b>${sc}/100</b> · mínimo ${PASS}</span><p>${m.done}</p>${nx?`<a class="btnl" href="#consola-${nx.id}">Siguiente: ${esc(nx.t)}</a>`:''}${m.solo?'':'<a class="btn" href="#consola-ciego">Ir al lab a ciegas</a>'}</div>`;
    S.out[S.cur].push({t:`[tutor] ✔ Todo configurado: ${sc}/100. `+m.done.replace(/<[^>]+>/g,''),c:'win'});T.paint()}}
  check()}
 
