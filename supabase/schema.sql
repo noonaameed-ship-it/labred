@@ -961,3 +961,25 @@ grant execute on function public.admin_users() to authenticated;
 grant execute on function public.admin_user_rename(uuid, text) to authenticated;
 grant execute on function public.admin_user_block(uuid, boolean) to authenticated;
 grant execute on function public.admin_user_delete(uuid) to authenticated;
+
+-- ============ Clases especiales: el instructor abre un tema a alumnos concretos ============
+create table if not exists public.grants (
+  id bigserial primary key,
+  student_id uuid not null references auth.users(id) on delete cascade,
+  pack text not null,
+  granted_by uuid default auth.uid(),
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (student_id, pack)
+);
+alter table public.grants enable row level security;
+drop policy if exists "clases: alumno ve las suyas" on public.grants;
+drop policy if exists "clases: instructor ve todas" on public.grants;
+drop policy if exists "clases: instructor abre" on public.grants;
+drop policy if exists "clases: instructor cambia" on public.grants;
+drop policy if exists "clases: instructor quita" on public.grants;
+create policy "clases: alumno ve las suyas" on public.grants for select to authenticated using (student_id = auth.uid());
+create policy "clases: instructor ve todas" on public.grants for select to authenticated using (public.is_admin());
+create policy "clases: instructor abre" on public.grants for insert to authenticated with check (public.is_admin());
+create policy "clases: instructor cambia" on public.grants for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "clases: instructor quita" on public.grants for delete to authenticated using (public.is_admin());

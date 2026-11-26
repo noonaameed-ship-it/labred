@@ -1184,3 +1184,10 @@ input#s3cmd:focus,.s3in input:focus{outline:none!important;box-shadow:none!impor
 .cli{display:flex;flex-direction:column;gap:6px}.clact{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .clh{margin:18px 0 8px}.clsum{margin:10px 0}
 .s3tl li.bad{color:#f87171}
+/* clases especiales */
+.grantc{margin:12px auto;max-width:1100px;border:2px solid var(--blue)}
+.grantc h2{margin:4px 0 6px}
+.gform{display:grid;gap:10px;max-width:640px}.gform label{display:grid;gap:4px}
+.glist{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px}
+.gopt{display:flex!important;gap:8px;align-items:center;padding:6px;border-radius:8px;cursor:pointer}.gopt:hover{background:var(--card2,rgba(127,127,127,.08))}
+.gcur{list-style:none;padding-left:0}.gcur li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0}

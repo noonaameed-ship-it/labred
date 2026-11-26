@@ -20,7 +20,7 @@ const prog={get(){try{if(window.PP3D)return window.PP3D.get();return JSON.parse(
 
 let S=null;
 const UNL={t1:'d0b',c1:'d3b',c2:'d5b',c3:'d3b'};
-const isOpen=id=>{try{if(!window.PP3D)return true;if(/^d/.test(id))return window.PP3D.open(id);if(/^v/.test(id))return window.PP3D.open('d5c');return!UNL[id]||window.PP3D.passed(UNL[id])}catch(e){return true}};
+const isOpen=id=>{try{if(!window.PP3D)return true;if(/^d/.test(id))return window.PP3D.open(id);if(/^v/.test(id))return window.PP3D.open('d5c')||!!(window.PP3D.grant&&window.PP3D.grant(id));return!UNL[id]||window.PP3D.passed(UNL[id])}catch(e){return true}};
 const lockTxt=id=>/^v/.test(id)?'Se abre al llegar al ticket 3D-5C de la Zona 5':/^d/.test(id)?'Se abre cuando llegues a este ticket en tu mapa':'Se abre al aprobar '+(UNL[id]||'').replace(/^d(\d)(.)/,(m,z,l)=>'el Lab 3D-'+z+l.toUpperCase());
 const PASS3=70;const scoreStars=sc=>sc>=90?3:sc>=80?2:sc>=70?1:0;
 function badge(id,v){if(!v)return'';if(/^[dv]/.test(id)){const st=scoreStars(v);return st?'★'.repeat(st)+'☆'.repeat(3-st)+' '+v:'✗ '+v}return'★'.repeat(v)+'☆'.repeat(3-v)}
